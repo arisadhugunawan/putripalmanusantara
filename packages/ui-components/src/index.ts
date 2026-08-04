@@ -1,3 +1,11 @@
-// Design-system components (Button, Card, Input, Accordion, etc.) are implemented in Phase 3
-// per docs/03-design.md. This file is the package's public entry point.
-export {};
+export * from "./Accordion";
+export * from "./Badge";
+export * from "./Button";
+export * from "./Card";
+export * from "./Container";
+export * from "./Section";
+export * from "./form/Label";
+export * from "./form/Input";
+export * from "./form/Textarea";
+export * from "./form/FieldError";
+export * from "./utils/cn";

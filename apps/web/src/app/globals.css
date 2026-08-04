@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
+/* Scan the workspace design-system package for Tailwind class usage (docs/06-architecture.md §8). */
+@source "../../../../packages/ui-components/src";
+
 :root {
+  /* ── Color palette — docs/03-design.md §2 ────────────────────────── */
+  --color-primary-50: #f3fae9;
+  --color-primary-100: #e4f3cd;
+  --color-primary-500: #a4dc4a;
+  --color-primary-600: #8bc236;
+  --color-primary-700: #6e9a2e;
+
+  --color-secondary-500: #ffd800;
+
+  --color-accent-500: #a0784f;
+  --color-accent-600: #86603d;
+
+  --color-neutral-50: #fafaf9;
+  --color-neutral-100: #f5f6f4;
+  --color-neutral-200: #e7e9e5;
+  --color-neutral-300: #d3d6cf;
+  --color-neutral-600: #5b6660;
+  --color-neutral-900: #1f2421;
+
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: var(--color-neutral-900);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+
+  --color-secondary-500: var(--color-secondary-500);
+
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+
+  --color-neutral-50: var(--color-neutral-50);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-900: var(--color-neutral-900);
+
+  /* ── Typography — docs/03-design.md §3 ─────────────────────────── */
+  --font-heading: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --text-h1: 36px;
+  --text-h1--line-height: 1.15;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 700;
+
+  --text-h2: 28px;
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.015em;
+  --text-h2--font-weight: 700;
+
+  --text-h3: 22px;
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h3--font-weight: 600;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 1.6;
+
+  --text-body: 15px;
+  --text-body--line-height: 1.6;
+
+  --text-small: 13px;
+  --text-small--line-height: 1.5;
+
+  /* Desktop breakpoint overrides applied via the `md:` variant below. */
+
+  /* ── Radius & shadow — docs/03-design.md §5.2 ──────────────────── */
+  --radius-card: 20px;
+  --radius-button: 9999px;
+  --radius-field: 10px;
+  --shadow-card: 0 4px 20px rgba(31, 36, 33, 0.06);
+  --shadow-card-hover: 0 8px 28px rgba(31, 36, 33, 0.1);
+
+  /* ── Container widths — docs/03-design.md §4 ───────────────────── */
+  --container-page: 1200px;
+  --container-page-lg: 1320px;
 }
 
-@media (prefers-color-scheme: dark) {
+/* Desktop type scale — docs/03-design.md §3.1 (mobile sizes above are the base/default). */
+@media (min-width: 1024px) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --text-h1: 60px;
+    --text-h2: 40px;
+    --text-h3: 28px;
+    --text-body-lg: 18px;
+    --text-body: 16px;
+    --text-small: 14px;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+}
+
+/* docs/03-design.md §7 — motion must respect the user's reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

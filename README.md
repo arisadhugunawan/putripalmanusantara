@@ -96,6 +96,14 @@ Seluruh endpoint di `docs/05-api.md` sudah diimplementasikan di `apps/api` (base
 
 **Catatan:** `GET /sitemap.xml` dan `GET /robots.txt` (`docs/05-api.md` §3.10) sengaja **tidak** diimplementasikan di backend — akan dibangun sebagai file convention Next.js (`sitemap.ts`/`robots.ts`) di Phase 6, karena itu adalah pola standar Next.js App Router dan menghindari duplikasi data antara frontend/backend.
 
+## Design System
+
+Design tokens (`docs/03-design.md` §2–§4) hidup sebagai CSS custom properties Tailwind v4 di `apps/web/src/app/globals.css` (`@theme` block) — warna, skala tipografi responsif (mobile → desktop di breakpoint 1024px), radius, shadow, dan container width. Font heading memakai **Sora** (bukan General Sans/Satoshi — keduanya font komersial Fontshare yang tidak tersedia di Google Fonts; Sora dipilih sebagai alternatif open-source dengan karakter visual terdekat), font body **Inter** sesuai rekomendasi utama dokumen.
+
+Komponen dasar di `packages/ui-components` (dikonsumsi `apps/web` via `transpilePackages`, sumber TSX langsung tanpa build step terpisah): `Button` (3 varian), `Card`, `Input`/`Textarea`/`Label`/`FieldError`, `Accordion` (single-open, ikon plus/minus animasi), `Badge`, `Container`, `Section`. Seluruh komponen menghormati `prefers-reduced-motion` (global CSS rule) dan target sentuh 44×44px minimum.
+
+Diverifikasi visual di browser (desktop & mobile viewport) — lihat halaman showcase sementara di `apps/web/src/app/page.tsx` (akan digantikan Homepage asli di Phase 4).
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -103,7 +111,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Phase 0 — Setup & Scaffolding
 - [x] Phase 1 — Database (Prisma schema sesuai `docs/04-database.md`)
 - [x] Phase 2 — Backend API (`docs/05-api.md`)
-- [ ] Phase 3 — Design System (`docs/03-design.md`)
+- [x] Phase 3 — Design System (`docs/03-design.md`)
 - [ ] Phase 4 — Halaman Publik
 - [ ] Phase 5 — Admin CMS Panel
 - [ ] Phase 6 — SEO Technical

@@ -1,69 +1,106 @@
-import Image from "next/image";
+import {
+  Accordion,
+  Badge,
+  Button,
+  Card,
+  Container,
+  FieldError,
+  Input,
+  Label,
+  Section,
+  Textarea,
+} from "@ppn/ui-components";
 
-export default function Home() {
+const FAQ_ITEMS = [
+  { id: "1", question: "What products does PPN export?", answer: "Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber." },
+  { id: "2", question: "Which countries do you ship to?", answer: "Thailand, Malaysia, China, India, the Middle East, and Europe." },
+];
+
+export default function DesignSystemShowcase() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="flex-1">
+      <Section>
+        <Container className="flex flex-col gap-16">
+          <div>
+            <p className="text-small uppercase tracking-wide text-neutral-600">Phase 3 — Design System Preview</p>
+            <h1 className="text-h1 text-neutral-900">Design tokens & base components</h1>
+            <p className="mt-4 max-w-2xl text-body-lg text-neutral-600">
+              This page exists only to visually verify the design system built in Phase 3. It
+              will be replaced by the real Homepage in Phase 4.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h2 className="text-h2 text-neutral-900">Buttons</h2>
+            <div className="flex flex-wrap items-center gap-4">
+              <Button variant="primary">Request Quotation</Button>
+              <Button variant="secondary">View Products</Button>
+              <Button variant="ghost">Learn more</Button>
+              <Button variant="primary" disabled>
+                Disabled
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h2 className="text-h2 text-neutral-900">Badges</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="neutral">Draft</Badge>
+              <Badge variant="primary">Published</Badge>
+              <Badge variant="accent">New</Badge>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h2 className="text-h2 text-neutral-900">Cards</h2>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+              {["Semi Husked Coconut", "Copra", "Coconut Shell Charcoal"].map((name) => (
+                <Card key={name} hoverable>
+                  <h3 className="text-h3 text-neutral-900">{name}</h3>
+                  <p className="mt-2 text-body text-neutral-600">
+                    Export-ready product, sorted and quality-checked before shipment.
+                  </p>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h2 className="text-h2 text-neutral-900">Form fields</h2>
+            <Card className="max-w-lg">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <Label htmlFor="demo-name">Name</Label>
+                  <Input id="demo-name" placeholder="Your name" />
+                </div>
+                <div>
+                  <Label htmlFor="demo-email">Email</Label>
+                  <Input id="demo-email" type="email" invalid defaultValue="not-an-email" />
+                  <FieldError>Please enter a valid email address.</FieldError>
+                </div>
+                <div>
+                  <Label htmlFor="demo-message">Message</Label>
+                  <Textarea id="demo-message" placeholder="Tell us what you need" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h2 className="text-h2 text-neutral-900">Accordion (FAQ)</h2>
+            <Accordion items={FAQ_ITEMS} className="max-w-2xl" />
+          </div>
+        </Container>
+      </Section>
+
+      <Section tone="soft">
+        <Container>
+          <h2 className="text-h2 text-neutral-900">Soft-tint section</h2>
+          <p className="mt-2 max-w-xl text-body text-neutral-600">
+            Used sparingly for section rhythm, per docs/03-design.md §2.1.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        </Container>
+      </Section>
+    </main>
   );
 }
