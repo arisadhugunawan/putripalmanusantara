@@ -1,0 +1,29 @@
+{
+  "name": "ppn-website",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CV Putri Palma Nusantara — Company Profile Website (monorepo)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "postinstall": "npm run build --workspace=@ppn/shared-types",
+    "dev:web": "npm run dev --workspace=web",
+    "dev:api": "npm run start:dev --workspace=api",
+    "build:web": "npm run build --workspace=web",
+    "build:api": "npm run build --workspace=api",
+    "build": "npm run build:api && npm run build:web",
+    "lint": "npm run lint --workspace=web && npm run lint --workspace=api",
+    "format": "prettier --write .",
+    "prisma:generate": "npm run prisma:generate --workspace=api",
+    "prisma:migrate": "npm run prisma:migrate --workspace=api",
+    "prisma:studio": "npm run prisma:studio --workspace=api"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}
