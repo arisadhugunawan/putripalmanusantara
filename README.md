@@ -82,13 +82,27 @@ Kredensial Admin hasil seed diambil dari `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWO
 
 `GET /health` di API mengonfirmasi koneksi database aktif (jumlah produk tersimpan).
 
+## Backend API
+
+Seluruh endpoint di `docs/05-api.md` sudah diimplementasikan di `apps/api` (base path `/api/v1`), termasuk:
+
+- Response envelope konsisten (`{ success, data, meta, error }`) via `ResponseInterceptor` + `HttpExceptionFilter`
+- Auth admin JWT (HTTP-only cookie), guard `JwtAuthGuard` di seluruh route `/admin/*`
+- Validasi server-side (`class-validator`) di seluruh endpoint POST/PUT
+- Anti-spam form publik: honeypot field (`website`) + rate limiting per-IP (`@nestjs/throttler`) — 5 req/menit untuk `/quotation-requests` & `/contact`, 5 req/15menit untuk login admin
+- Notifikasi email ke admin (Resend) bersifat best-effort — kegagalan kirim email tidak pernah menggagalkan submission (data sudah tersimpan di DB)
+- Upload media lokal (`apps/api/uploads`, disajikan statis di `/uploads`) dengan driver S3-compatible siap pakai untuk production (`MEDIA_STORAGE_DRIVER=s3`)
+- Webhook revalidasi ke frontend (`RevalidationService`) dipanggil best-effort setiap admin publish/update — endpoint `/api/revalidate` di sisi Next.js akan dibangun di Phase 4/6
+
+**Catatan:** `GET /sitemap.xml` dan `GET /robots.txt` (`docs/05-api.md` §3.10) sengaja **tidak** diimplementasikan di backend — akan dibangun sebagai file convention Next.js (`sitemap.ts`/`robots.ts`) di Phase 6, karena itu adalah pola standar Next.js App Router dan menghindari duplikasi data antara frontend/backend.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
 
 - [x] Phase 0 — Setup & Scaffolding
 - [x] Phase 1 — Database (Prisma schema sesuai `docs/04-database.md`)
-- [ ] Phase 2 — Backend API (`docs/05-api.md`)
+- [x] Phase 2 — Backend API (`docs/05-api.md`)
 - [ ] Phase 3 — Design System (`docs/03-design.md`)
 - [ ] Phase 4 — Halaman Publik
 - [ ] Phase 5 — Admin CMS Panel
