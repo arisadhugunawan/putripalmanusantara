@@ -19,6 +19,12 @@ apps/api/dist/
 
 # Prisma
 apps/api/prisma/dev.db
+apps/api/generated/
+# Prisma's bundled AI-agent reference docs (from `prisma init`) — vendor docs, not project source
+apps/api/.agents/
+apps/api/.claude/
+apps/api/.windsurf/
+apps/api/skills-lock.json
 
 # Logs
 *.log

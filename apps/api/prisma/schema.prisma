@@ -1,0 +1,298 @@
+// Prisma schema — implements docs/04-database.md as a physical PostgreSQL schema.
+// Every model below maps 1:1 to a section in that document; see the comment above each
+// model for the matching section number.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── 3.1 Admin ────────────────────────────────────────────────────────────
+// Sole system role (docs/01-prd.md §6.2 — no public/buyer login).
+enum AdminRole {
+  super_admin
+  editor
+}
+
+model Admin {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         AdminRole @default(editor)
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+// ── 3.14 Media ───────────────────────────────────────────────────────────
+enum MediaFileType {
+  image
+  video
+  pdf
+}
+
+model Media {
+  id         String        @id @default(cuid())
+  fileUrl    String        @map("file_url")
+  fileType   MediaFileType @map("file_type")
+  altText    String        @map("alt_text")
+  width      Int?
+  height     Int?
+  uploadedAt DateTime      @default(now()) @map("uploaded_at")
+
+  productsAsCover      Product[]                      @relation("ProductCoverImage")
+  productGalleryItems  ProductGalleryImage[]
+  packagingApps        ProductPackagingApplication[]
+  articlesAsCover      Article[]                      @relation("ArticleCoverImage")
+  galleryItems         GalleryItem[]
+  facilitiesAsCover    Facility[]                     @relation("FacilityCoverImage")
+  facilityGalleryItems FacilityGalleryImage[]
+  productionSteps      ProductionStep[]
+
+  @@index([fileType])
+  @@map("media")
+}
+
+// ── 3.2–3.6 Product & related ───────────────────────────────────────────
+enum ContentStatus {
+  draft
+  published
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  name             String
+  category         String
+  shortDescription String        @map("short_description")
+  fullDescription  String        @map("full_description")
+  coverImageId     String?       @map("cover_image_id")
+  coverImage       Media?        @relation("ProductCoverImage", fields: [coverImageId], references: [id])
+  metaTitle        String?       @map("meta_title")
+  metaDescription  String?       @map("meta_description")
+  isFeatured       Boolean       @default(false) @map("is_featured")
+  status           ContentStatus @default(draft)
+  order            Int           @default(0)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  gallery           ProductGalleryImage[]
+  specifications    ProductSpecification[]
+  packagingAndApps  ProductPackagingApplication[]
+  downloads         ProductDownload[]
+  quotationRequests QuotationRequest[]
+
+  @@index([status])
+  @@index([isFeatured])
+  @@map("products")
+}
+
+model ProductGalleryImage {
+  id        String  @id @default(cuid())
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaId   String  @map("media_id")
+  media     Media   @relation(fields: [mediaId], references: [id])
+  order     Int     @default(0)
+
+  @@map("product_gallery")
+}
+
+model ProductSpecification {
+  id        String  @id @default(cuid())
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  specKey   String  @map("spec_key")
+  specValue String  @map("spec_value")
+  order     Int     @default(0)
+
+  @@map("product_specifications")
+}
+
+enum PackagingApplicationType {
+  packaging
+  application
+}
+
+model ProductPackagingApplication {
+  id          String                   @id @default(cuid())
+  productId   String                   @map("product_id")
+  product     Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type        PackagingApplicationType
+  title       String
+  description String
+  mediaId     String?                  @map("media_id")
+  media       Media?                   @relation(fields: [mediaId], references: [id])
+
+  @@map("product_packaging_applications")
+}
+
+model ProductDownload {
+  id         String   @id @default(cuid())
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fileName   String   @map("file_name")
+  fileUrl    String   @map("file_url")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  @@map("product_downloads")
+}
+
+// ── 3.7 Article ──────────────────────────────────────────────────────────
+model Article {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  excerpt         String
+  content         String
+  coverImageId    String?       @map("cover_image_id")
+  coverImage      Media?        @relation("ArticleCoverImage", fields: [coverImageId], references: [id])
+  category        String?
+  author          String        @default("CV Putri Palma Nusantara")
+  metaTitle       String?       @map("meta_title")
+  metaDescription String?       @map("meta_description")
+  status          ContentStatus @default(draft)
+  publishedAt     DateTime?     @map("published_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([publishedAt])
+  @@map("articles")
+}
+
+// ── 3.8 GalleryItem ─────────────────────────────────────────────────────
+enum GalleryCategory {
+  product
+  facility
+  production
+  drone
+}
+
+model GalleryItem {
+  id       String          @id @default(cuid())
+  mediaId  String          @map("media_id")
+  media    Media           @relation(fields: [mediaId], references: [id])
+  category GalleryCategory
+  caption  String?
+  order    Int             @default(0)
+
+  @@index([category])
+  @@map("gallery_items")
+}
+
+// ── 3.9 Facility ─────────────────────────────────────────────────────────
+model Facility {
+  id           String   @id @default(cuid())
+  name         String
+  description  String
+  coverImageId String?  @map("cover_image_id")
+  coverImage   Media?   @relation("FacilityCoverImage", fields: [coverImageId], references: [id])
+  order        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  gallery FacilityGalleryImage[]
+
+  @@map("facilities")
+}
+
+// Join table implementing the ERD relation "FACILITY ||--o{ MEDIA : memiliki galeri"
+// (docs/04-database.md §2) — FR-FAC-02 requires a facility to have a photo gallery,
+// not just a single cover image.
+model FacilityGalleryImage {
+  id         String   @id @default(cuid())
+  facilityId String   @map("facility_id")
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  mediaId    String   @map("media_id")
+  media      Media    @relation(fields: [mediaId], references: [id])
+  order      Int      @default(0)
+
+  @@map("facility_gallery")
+}
+
+// ── 3.10 ProductionStep ─────────────────────────────────────────────────
+model ProductionStep {
+  id             String @id @default(cuid())
+  title          String
+  description    String
+  illustrationId String? @map("icon_or_image_id")
+  illustration   Media?  @relation(fields: [illustrationId], references: [id])
+  order          Int     @default(0)
+
+  @@map("production_steps")
+}
+
+// ── 3.11 HomepageStatistic ──────────────────────────────────────────────
+model HomepageStatistic {
+  id    String  @id @default(cuid())
+  label String
+  value String
+  icon  String?
+  order Int     @default(0)
+
+  @@map("homepage_statistics")
+}
+
+// ── 3.12 FAQ ─────────────────────────────────────────────────────────────
+model Faq {
+  id       String        @id @default(cuid())
+  question String
+  answer   String
+  order    Int           @default(0)
+  status   ContentStatus @default(draft)
+
+  @@map("faqs")
+}
+
+// ── 3.13 QuotationRequest ───────────────────────────────────────────────
+enum QuotationRequestType {
+  quotation
+  general_contact
+}
+
+enum QuotationRequestStatus {
+  new
+  in_progress
+  done
+}
+
+model QuotationRequest {
+  id                String                 @id @default(cuid())
+  type              QuotationRequestType
+  name              String
+  company           String
+  country           String
+  email             String
+  phone             String?
+  productId         String?                @map("product_id")
+  product           Product?               @relation(fields: [productId], references: [id])
+  estimatedQuantity String?                @map("estimated_quantity")
+  message           String
+  status            QuotationRequestStatus @default(new)
+  sourcePage        String                 @map("source_page")
+  createdAt         DateTime               @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([productId])
+  @@map("quotation_requests")
+}
+
+// ── 3.15 SiteSetting ─────────────────────────────────────────────────────
+model SiteSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  group String
+
+  @@map("site_settings")
+}

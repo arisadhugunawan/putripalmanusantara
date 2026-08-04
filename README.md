@@ -21,7 +21,7 @@ docs/                 Dokumentasi acuan proyek (01–07), final, tidak boleh dia
 | Frontend | Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 | SSR/SSG/ISR sesuai `docs/06-architecture.md` §4 |
 | Backend | NestJS + TypeScript | Struktur modular cocok untuk banyak entitas CRUD di `docs/05-api.md` |
 | Database | PostgreSQL 18 (lokal via Postgres.app) | Sesuai `docs/06-architecture.md` §2 — final, tidak dapat diganti MySQL |
-| ORM | Prisma (Phase 1) | Migration & schema mengikuti `docs/04-database.md` |
+| ORM | Prisma 7 (driver adapter `@prisma/adapter-pg`) | Schema di `apps/api/prisma/schema.prisma` 1:1 dengan `docs/04-database.md`; client di-generate ke `apps/api/generated/prisma` (bukan `node_modules`, ketentuan generator `prisma-client` di Prisma 7) |
 | Auth Admin | JWT via HTTP-only cookie | Sesuai `docs/05-api.md` §2 |
 | Anti-spam form publik | Honeypot field + rate limiting per-IP | Opsi non-CAPTCHA dari `docs/05-api.md` §6 — dipilih agar tidak butuh API key pihak ketiga |
 | Media storage | Local disk (dev) / S3-compatible (production, via env `MEDIA_STORAGE_DRIVER`) | Sesuai `docs/06-architecture.md` §2 |
@@ -62,22 +62,32 @@ npm run dev:web   # Next.js di http://localhost:3000
 | `npm run build` | Build backend lalu frontend |
 | `npm run lint` | Lint kedua app |
 | `npm run format` | Format seluruh repo dengan Prettier |
-| `npm run prisma:generate` / `prisma:migrate` / `prisma:studio` | Perintah Prisma (tersedia mulai Phase 1) |
+| `npm run prisma:generate` / `prisma:migrate` / `prisma:studio` | Perintah Prisma (proxy ke `apps/api`) |
 
 ## Database Lokal
 
-Database dev: `ppn_dev` (PostgreSQL 18, user `iketutari`, port 5432 lokal). Cek koneksi:
+Database dev: `ppn_dev` (PostgreSQL 18, user lokal, port 5432). Cek koneksi:
 
 ```bash
 /Applications/Postgres.app/Contents/Versions/latest/bin/psql -h localhost -d ppn_dev -c '\dt'
 ```
+
+Isi database dengan data awal (produk, FAQ, tahap produksi, fasilitas, statistik, 1 akun Admin) — aman dijalankan berulang kali:
+
+```bash
+cd apps/api && npm run prisma:seed
+```
+
+Kredensial Admin hasil seed diambil dari `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD` di `apps/api/.env`.
+
+`GET /health` di API mengonfirmasi koneksi database aktif (jumlah produk tersimpan).
 
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
 
 - [x] Phase 0 — Setup & Scaffolding
-- [ ] Phase 1 — Database (Prisma schema sesuai `docs/04-database.md`)
+- [x] Phase 1 — Database (Prisma schema sesuai `docs/04-database.md`)
 - [ ] Phase 2 — Backend API (`docs/05-api.md`)
 - [ ] Phase 3 — Design System (`docs/03-design.md`)
 - [ ] Phase 4 — Halaman Publik
