@@ -78,104 +78,156 @@ export class AdminProductsController {
     return product;
   }
 
+  /** Sub-resources (gallery/specs/downloads/packaging) all live on the product detail page. */
+  private async revalidateProduct(id: string) {
+    const slug = await this.productsService.getSlug(id);
+    if (slug) await this.revalidation.revalidate([`/products/${slug}`]);
+  }
+
   // ── Gallery ─────────────────────────────────────────────────────────
   @Post(':id/gallery')
-  addGalleryItem(
+  async addGalleryItem(
     @Param('id') id: string,
     @Body() dto: AddProductGalleryItemDto,
   ) {
-    return this.productsService.addGalleryItem(id, dto);
+    const result = await this.productsService.addGalleryItem(id, dto);
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Put(':id/gallery/:galleryId')
-  updateGalleryItem(
+  async updateGalleryItem(
     @Param('id') id: string,
     @Param('galleryId') galleryId: string,
     @Body() dto: UpdateProductGalleryItemDto,
   ) {
-    return this.productsService.updateGalleryItem(id, galleryId, dto);
+    const result = await this.productsService.updateGalleryItem(
+      id,
+      galleryId,
+      dto,
+    );
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Delete(':id/gallery/:galleryId')
-  removeGalleryItem(
+  async removeGalleryItem(
     @Param('id') id: string,
     @Param('galleryId') galleryId: string,
   ) {
-    return this.productsService.removeGalleryItem(id, galleryId);
+    const result = await this.productsService.removeGalleryItem(id, galleryId);
+    await this.revalidateProduct(id);
+    return result;
   }
 
   // ── Specifications ──────────────────────────────────────────────────
   @Post(':id/specifications')
-  addSpecification(
+  async addSpecification(
     @Param('id') id: string,
     @Body() dto: UpsertProductSpecificationDto,
   ) {
-    return this.productsService.addSpecification(id, dto);
+    const result = await this.productsService.addSpecification(id, dto);
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Put(':id/specifications/:specId')
-  updateSpecification(
+  async updateSpecification(
     @Param('id') id: string,
     @Param('specId') specId: string,
     @Body() dto: UpsertProductSpecificationDto,
   ) {
-    return this.productsService.updateSpecification(id, specId, dto);
+    const result = await this.productsService.updateSpecification(
+      id,
+      specId,
+      dto,
+    );
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Delete(':id/specifications/:specId')
-  removeSpecification(
+  async removeSpecification(
     @Param('id') id: string,
     @Param('specId') specId: string,
   ) {
-    return this.productsService.removeSpecification(id, specId);
+    const result = await this.productsService.removeSpecification(id, specId);
+    await this.revalidateProduct(id);
+    return result;
   }
 
   // ── Downloads ───────────────────────────────────────────────────────
   @Post(':id/downloads')
-  addDownload(@Param('id') id: string, @Body() dto: UpsertProductDownloadDto) {
-    return this.productsService.addDownload(id, dto);
+  async addDownload(
+    @Param('id') id: string,
+    @Body() dto: UpsertProductDownloadDto,
+  ) {
+    const result = await this.productsService.addDownload(id, dto);
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Put(':id/downloads/:downloadId')
-  updateDownload(
+  async updateDownload(
     @Param('id') id: string,
     @Param('downloadId') downloadId: string,
     @Body() dto: UpsertProductDownloadDto,
   ) {
-    return this.productsService.updateDownload(id, downloadId, dto);
+    const result = await this.productsService.updateDownload(
+      id,
+      downloadId,
+      dto,
+    );
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Delete(':id/downloads/:downloadId')
-  removeDownload(
+  async removeDownload(
     @Param('id') id: string,
     @Param('downloadId') downloadId: string,
   ) {
-    return this.productsService.removeDownload(id, downloadId);
+    const result = await this.productsService.removeDownload(id, downloadId);
+    await this.revalidateProduct(id);
+    return result;
   }
 
   // ── Packaging / Application (FR-CMS-03, docs/04-database.md §6) ─────
   @Post(':id/packaging-applications')
-  addPackagingApplication(
+  async addPackagingApplication(
     @Param('id') id: string,
     @Body() dto: UpsertProductPackagingApplicationDto,
   ) {
-    return this.productsService.addPackagingApplication(id, dto);
+    const result = await this.productsService.addPackagingApplication(id, dto);
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Put(':id/packaging-applications/:entryId')
-  updatePackagingApplication(
+  async updatePackagingApplication(
     @Param('id') id: string,
     @Param('entryId') entryId: string,
     @Body() dto: UpsertProductPackagingApplicationDto,
   ) {
-    return this.productsService.updatePackagingApplication(id, entryId, dto);
+    const result = await this.productsService.updatePackagingApplication(
+      id,
+      entryId,
+      dto,
+    );
+    await this.revalidateProduct(id);
+    return result;
   }
 
   @Delete(':id/packaging-applications/:entryId')
-  removePackagingApplication(
+  async removePackagingApplication(
     @Param('id') id: string,
     @Param('entryId') entryId: string,
   ) {
-    return this.productsService.removePackagingApplication(id, entryId);
+    const result = await this.productsService.removePackagingApplication(
+      id,
+      entryId,
+    );
+    await this.revalidateProduct(id);
+    return result;
   }
 }

@@ -53,6 +53,15 @@ export class ProductsService {
     return toProductDetail(product);
   }
 
+  /** Lightweight lookup used by the controller to revalidate the right public URL after a sub-resource mutation. */
+  async getSlug(id: string): Promise<string | null> {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      select: { slug: true },
+    });
+    return product?.slug ?? null;
+  }
+
   // ── Admin ───────────────────────────────────────────────────────────
   async findAllForAdmin() {
     const products = await this.prisma.product.findMany({

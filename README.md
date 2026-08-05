@@ -124,6 +124,25 @@ Diverifikasi end-to-end di browser dengan API live: navigasi semua halaman, subm
 1. `StatCounter` memformat angka dengan locale `undefined` (browser locale) → menghasilkan `1.200+` alih-alih `1,200+`; dipaksa ke `en-US` karena konten publik berbahasa Inggris
 2. `QuotationForm`/`ContactForm` membaca `event.currentTarget` **setelah** `await` — di React, `currentTarget` di-null-kan begitu dispatch event sinkron selesai, jadi form gagal reset & masuk ke error state meski submission ke backend sudah berhasil (201 Created). Diperbaiki dengan menangkap referensi form sebelum `await`.
 
+## Admin CMS Panel
+
+Panel admin (`apps/web/src/app/admin`) berbahasa Indonesia sesuai `docs/01-prd.md` §5.2, CSR di balik autentikasi sesuai `docs/06-architecture.md` §4. Karena cookie JWT bersifat HttpOnly dan berdomain API (bukan frontend), middleware Next.js tidak bisa membacanya — autentikasi diperiksa di client via `GET /admin/auth/me` (browser tetap mengirim cookie secara otomatis ke origin API). Modul yang tersedia:
+
+- **Login & Dashboard** — ringkasan jumlah quotation baru, artikel, produk (FR-CMS-02)
+- **Produk** — CRUD penuh termasuk gambar sampul, galeri, spesifikasi, packaging/application, dan file PDF unduhan — semua sub-resource memicu revalidasi halaman publik terkait
+- **Artikel** — CRUD dengan editor rich text sungguhan (Tiptap: tebal, miring, judul, daftar, kutipan) sesuai FR-CMS-04, bukan textarea biasa
+- **Galeri** — unggah, kategorikan (Produk/Fasilitas/Proses/Drone), hapus media
+- **Fasilitas** & **Proses Produksi** — CRUD single-page termasuk galeri per fasilitas dan ilustrasi per tahap (docs/05-api.md §4.6)
+- **Homepage** — editor statistik (bulk replace), CRUD FAQ, toggle produk unggulan
+- **Kontak/Quotation** — daftar submission dengan filter status, lihat detail pesan, ubah status (FR-CMS-07)
+- **Pengaturan** — data perusahaan, kontak, SEO default, plus tambah pengaturan baru secara bebas (FR-CMS-09)
+
+Infrastruktur: `lib/admin/client.ts` (fetch dengan `credentials:'include'`), `lib/admin/auth-context.tsx` (React context untuk sesi admin), `components/admin/AdminGate.tsx` (route protection + redirect ke `/admin/login`), `components/admin/MediaUploadField.tsx` (unggah-dan-lampirkan langsung ke `/admin/media`, dipakai di seluruh modul yang butuh gambar).
+
+**Diverifikasi end-to-end di browser dengan API live** (bukan hanya lolos build): route protection (akses `/admin` tanpa login → redirect otomatis ke `/admin/login`, dikonfirmasi lewat network log `401` → `/admin/login`), login sungguhan dengan kredensial seed, dashboard menampilkan angka asli dari database, tambah spesifikasi produk (`POST` sungguhan → `201 Created` → tabel ter-refresh), dan tambah artikel dengan konten rich text (`POST` → `201` → **konten HTML `<strong>` terverifikasi tersimpan langsung di database** via query).
+
+**Bug nyata ditemukan & diperbaiki:** endpoint sub-resource produk (`gallery`, `specifications`, `downloads`, `packaging-applications`) dan galeri fasilitas tidak memicu `RevalidationService` seperti endpoint utama — perubahan sub-resource baru akan tampil di halaman publik setelah ISR alami (maks. 1 jam), bukan seketika. Diperbaiki dengan menambahkan pemanggilan revalidasi di seluruh endpoint sub-resource tersebut.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -133,7 +152,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Phase 2 — Backend API (`docs/05-api.md`)
 - [x] Phase 3 — Design System (`docs/03-design.md`)
 - [x] Phase 4 — Halaman Publik
-- [ ] Phase 5 — Admin CMS Panel
+- [x] Phase 5 — Admin CMS Panel
 - [ ] Phase 6 — SEO Technical
 - [ ] Phase 7 — Performance Optimization
 - [ ] Phase 8 — QA & Verifikasi

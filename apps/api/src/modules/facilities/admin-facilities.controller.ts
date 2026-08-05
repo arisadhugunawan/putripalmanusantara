@@ -57,18 +57,25 @@ export class AdminFacilitiesController {
   }
 
   @Post(':id/gallery')
-  addGalleryItem(
+  async addGalleryItem(
     @Param('id') id: string,
     @Body() dto: AddFacilityGalleryItemDto,
   ) {
-    return this.facilitiesService.addGalleryItem(id, dto);
+    const result = await this.facilitiesService.addGalleryItem(id, dto);
+    await this.revalidation.revalidate(['/facilities']);
+    return result;
   }
 
   @Delete(':id/gallery/:galleryId')
-  removeGalleryItem(
+  async removeGalleryItem(
     @Param('id') id: string,
     @Param('galleryId') galleryId: string,
   ) {
-    return this.facilitiesService.removeGalleryItem(id, galleryId);
+    const result = await this.facilitiesService.removeGalleryItem(
+      id,
+      galleryId,
+    );
+    await this.revalidation.revalidate(['/facilities']);
+    return result;
   }
 }
