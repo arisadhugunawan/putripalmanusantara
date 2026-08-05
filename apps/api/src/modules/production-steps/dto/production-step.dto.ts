@@ -1,5 +1,12 @@
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateProductionStepDto {
   @IsString()
@@ -18,6 +25,10 @@ export class CreateProductionStepDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpdateProductionStepDto {
@@ -37,4 +48,8 @@ export class UpdateProductionStepDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }

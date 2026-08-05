@@ -1,24 +1,35 @@
 "use client";
 
+import type { Locale, ProductSummary } from "@ppn/shared-types";
 import { buttonVariants, cn } from "@ppn/ui-components";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
+import { getMainNavEntries, isDropdown, type NavDropdownGroup } from "@/lib/nav-config";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { MobileMenu } from "./MobileMenu";
+import { NavDropdown } from "./NavDropdown";
 
-/** Main navigation — docs/01-prd.md §8 (final; Articles is intentionally excluded, FR-ART-04). */
-const NAV_ITEMS = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About Us" },
-  { href: "/products", label: "Products" },
-  { href: "/production-process", label: "Production Process" },
-  { href: "/facilities", label: "Facilities" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/contact", label: "Contact Us" },
-];
+const SCROLL_SOLID_THRESHOLD = 8;
+const SCROLL_SHRINK_THRESHOLD = 80;
+/** Below this, the header never auto-hides — avoids a jumpy hide/show right at the top. */
+const SCROLL_HIDE_MIN = 160;
 
-export function Header() {
-  const [scrolled, setScrolled] = useState(false);
+export function Header({
+  dictionary,
+  locale,
+  products,
+}: {
+  dictionary: Dictionary;
+  locale: Locale;
+  products: ProductSummary[];
+}) {
+  const [solid, setSolid] = useState(false);
+  const [shrunk, setShrunk] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const lastScrollY = useRef(0);
   const pathname = usePathname();
 
   // Close the mobile drawer on navigation — adjusted during render (React's recommended
@@ -31,7 +42,16 @@ export function Header() {
 
   useEffect(() => {
     function onScroll() {
-      setScrolled(window.scrollY > 8);
+      const y = window.scrollY;
+      setSolid(y > SCROLL_SOLID_THRESHOLD);
+      setShrunk(y > SCROLL_SHRINK_THRESHOLD);
+
+      if (y > SCROLL_HIDE_MIN) {
+        setHidden(y > lastScrollY.current);
+      } else {
+        setHidden(false);
+      }
+      lastScrollY.current = y;
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -45,95 +65,116 @@ export function Header() {
     };
   }, [menuOpen]);
 
+  const entries = getMainNavEntries(dictionary);
+  const productsGroup: NavDropdownGroup = {
+    label: dictionary.nav.ourProducts,
+    items: products.map((product) => ({ href: `/products/${product.slug}`, label: product.name })),
+  };
+  // "Our Products" sits right after "About Company", matching the brief's menu order.
+  entries.splice(2, 0, productsGroup);
+
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 transition-colors duration-200",
-        scrolled ? "bg-white/90 backdrop-blur-sm shadow-card" : "bg-white",
-      )}
-    >
-      <div className="mx-auto flex max-w-(--container-page) items-center justify-between px-5 py-4 sm:px-8">
-        <Link href="/" className="text-h3 font-heading font-bold text-neutral-900">
-          PPN
-        </Link>
-
-        <nav className="hidden items-center gap-8 lg:flex">
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "text-body text-neutral-600 transition-colors hover:text-neutral-900",
-                  isActive && "text-neutral-900 font-medium underline underline-offset-8 decoration-primary-500",
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <Link href="/#request-quotation" className={cn("hidden lg:inline-flex", buttonVariants("primary", "sm"))}>
-          Request Quotation
-        </Link>
-
-        <button
-          type="button"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-          className="flex h-11 w-11 items-center justify-center rounded-field text-neutral-900 lg:hidden"
-        >
-          <span className="relative block h-4 w-6">
-            <span
-              className={cn(
-                "absolute left-0 top-0 h-0.5 w-6 bg-current transition-transform duration-200",
-                menuOpen && "translate-y-[7px] rotate-45",
-              )}
-            />
-            <span
-              className={cn(
-                "absolute left-0 top-[7px] h-0.5 w-6 bg-current transition-opacity duration-200",
-                menuOpen && "opacity-0",
-              )}
-            />
-            <span
-              className={cn(
-                "absolute left-0 top-[14px] h-0.5 w-6 bg-current transition-transform duration-200",
-                menuOpen && "-translate-y-[7px] -rotate-45",
-              )}
-            />
-          </span>
-        </button>
-      </div>
-
-      {/* Mobile fullscreen drawer — docs/03-design.md §5.3 */}
-      <div
+    <>
+      <header
         className={cn(
-          "fixed inset-x-0 top-[65px] bottom-0 z-40 bg-white transition-transform duration-300 ease-out lg:hidden",
-          menuOpen ? "translate-x-0" : "translate-x-full",
+          "sticky top-0 z-50 transform-gpu transition-transform duration-300 ease-out",
+          hidden && "-translate-y-full",
         )}
       >
-        <nav className="flex h-full flex-col gap-2 px-5 py-8">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-field px-3 py-4 text-h3 text-neutral-900 hover:bg-neutral-100"
-            >
-              {item.label}
-            </Link>
-          ))}
+      <div
+        className={cn(
+          "border-b transition-[background-color,box-shadow] duration-300",
+          solid ? "border-transparent bg-white shadow-card" : "border-neutral-200/80 bg-white/95",
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto flex max-w-(--container-page) items-center justify-between px-5 transition-[padding] duration-300 sm:px-8",
+            shrunk ? "py-3" : "py-4",
+          )}
+        >
           <Link
-            href="/#request-quotation"
-            className={cn("mt-4 w-full", buttonVariants("primary", "md"))}
+            href="/"
+            className={cn(
+              "font-heading font-bold text-neutral-900 transition-[font-size] duration-300",
+              shrunk ? "text-h3" : "text-h2",
+            )}
           >
-            Request Quotation
+            PPN
           </Link>
-        </nav>
+
+          <nav className="hidden items-center gap-7 lg:flex" aria-label={dictionary.nav.home}>
+            {entries.map((entry) =>
+              isDropdown(entry) ? (
+                <NavDropdown key={entry.label} label={entry.label} items={entry.items} />
+              ) : (
+                <Link
+                  key={entry.href}
+                  href={entry.href}
+                  className={cn(
+                    "text-body text-neutral-600 transition-colors hover:text-neutral-900",
+                    pathname === entry.href && "font-medium text-neutral-900",
+                  )}
+                >
+                  {entry.label}
+                </Link>
+              ),
+            )}
+          </nav>
+
+          <div className="hidden items-center gap-2 lg:flex">
+            <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
+            <Link href="/#request-quotation" className={buttonVariants("primary", "sm")}>
+              {dictionary.nav.requestQuotation}
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-1 lg:hidden">
+            <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
+            <button
+              type="button"
+              aria-label={menuOpen ? dictionary.nav.closeMenu : dictionary.nav.openMenu}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((value) => !value)}
+              className="flex h-11 w-11 items-center justify-center rounded-field text-neutral-900"
+            >
+              <span className="relative block h-4 w-6">
+                <span
+                  className={cn(
+                    "absolute left-0 top-0 h-0.5 w-6 bg-current transition-transform duration-200",
+                    menuOpen && "translate-y-[7px] rotate-45",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "absolute left-0 top-[7px] h-0.5 w-6 bg-current transition-opacity duration-200",
+                    menuOpen && "opacity-0",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "absolute left-0 top-[14px] h-0.5 w-6 bg-current transition-transform duration-200",
+                    menuOpen && "-translate-y-[7px] -rotate-45",
+                  )}
+                />
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
-    </header>
+      </header>
+
+      {/* Rendered as a sibling, not a header child — a `transform` on an ancestor (the
+          header above uses transform-gpu for the hide/show animation) creates a new
+          containing block, which would make this drawer's `fixed inset-y-0` resolve
+          against the header's own box instead of the viewport. */}
+      <MobileMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        dictionary={dictionary}
+        locale={locale}
+        productsGroup={productsGroup}
+      />
+    </>
   );
 }

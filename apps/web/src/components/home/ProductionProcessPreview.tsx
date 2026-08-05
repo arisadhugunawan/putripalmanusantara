@@ -1,6 +1,6 @@
 import { Container, Section, buttonVariants } from "@ppn/ui-components";
 import type { ProductionStep } from "@ppn/shared-types";
-import Link from "next/link";
+import { Link } from "@/i18n/Link";
 import { ProductionTimeline } from "@/components/production/ProductionTimeline";
 
 /** FR-HOME-06 — condensed production process timeline with a link to the full page. */

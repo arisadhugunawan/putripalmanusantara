@@ -3,10 +3,12 @@ import type {
   ArticleSummary,
   Media as SharedMedia,
 } from '@ppn/shared-types';
+import { DEFAULT_LOCALE } from '@ppn/shared-types';
 import type {
   ArticleModel as Article,
   MediaModel as Media,
 } from '../../../generated/prisma/models';
+import { translate } from '../../common/utils/i18n.util';
 
 type ArticleWithCover = Article & { coverImage: Media | null };
 
@@ -22,27 +24,44 @@ function toMedia(media: Media): SharedMedia {
   };
 }
 
-export function toArticleSummary(article: ArticleWithCover): ArticleSummary {
+export function toArticleSummary(
+  article: ArticleWithCover,
+  locale: string = DEFAULT_LOCALE,
+): ArticleSummary {
+  const t = translate(article, article.translations, locale, [
+    'title',
+    'excerpt',
+    'category',
+  ]);
   return {
     id: article.id,
     slug: article.slug,
-    title: article.title,
-    excerpt: article.excerpt,
+    title: t.title,
+    excerpt: t.excerpt,
     cover_image: article.coverImage ? toMedia(article.coverImage) : null,
-    category: article.category,
+    category: t.category,
     author: article.author,
     published_at: (article.publishedAt ?? article.createdAt).toISOString(),
   };
 }
 
-export function toArticleDetail(article: ArticleWithCover): ArticleDetail {
+export function toArticleDetail(
+  article: ArticleWithCover,
+  locale: string = DEFAULT_LOCALE,
+): ArticleDetail {
+  const t = translate(article, article.translations, locale, [
+    'content',
+    'metaTitle',
+    'metaDescription',
+  ]);
   return {
-    ...toArticleSummary(article),
-    content: article.content,
-    meta_title: article.metaTitle,
-    meta_description: article.metaDescription,
+    ...toArticleSummary(article, locale),
+    content: t.content,
+    meta_title: t.metaTitle,
+    meta_description: t.metaDescription,
     status: article.status,
     created_at: article.createdAt.toISOString(),
     updated_at: article.updatedAt.toISOString(),
+    translations: article.translations as ArticleDetail['translations'],
   };
 }

@@ -201,6 +201,33 @@ Semua 8 test lolos (`3 suites, 8 tests passed`). Cakupan ini sengaja dibatasi ke
 
 **Hasil:** tidak ditemukan requirement yang belum terimplementasi atau bertentangan dengan `01-prd.md` selama QA pass ini.
 
+## Internasionalisasi & Revisi Header (Post-Launch)
+
+Permintaan terpisah setelah Phase 8 selesai: header/navigasi premium bergaya perusahaan ekspor internasional (dropdown, scroll behavior, language selector) plus dukungan 6 bahasa. Brief ini **secara eksplisit mengesampingkan** tiga hal yang sudah difinalisasi di dokumen asli — dikonfirmasi lewat tiga putaran klarifikasi dengan pemilik bisnis sebelum implementasi:
+
+1. **Struktur menu** — 6 item dari brief baru (Home, About Company▾, Our Products▾, Facilities & Gallery▾, News, Contact), menggantikan 7 item wajib di `01-prd.md` §14.
+2. **Artikel di navigasi** — "News" di menu utama, menggantikan larangan eksplisit FR-ART-04.
+3. **Bahasa** — 5 bahasa non-Inggris ditambahkan, menggantikan `01-prd.md` §5.2 (konten publik hanya Inggris).
+
+**Keputusan konten jujur** — dropdown "About Company" awalnya minta 5 item, tapi "PPN Team" **dihapus** karena tidak ada data staf sungguhan di CMS mana pun (fabrikasi nama/foto staf melanggar aturan proyek soal data dummy). 4 item lain dipetakan ke halaman nyata yang paling relevan: `About Us#who-we-are`, `Production Process` (untuk "What We Do?"), `About Us#legal-certificate` (section baru, jujur menyatakan sertifikasi menyusul — sama seperti pola placeholder Hero video), `Facilities` (untuk "Factory"). "Facilities & Gallery" diimplementasikan sebagai satu trigger nav dengan dropdown 2 item, bukan menggabung dua halaman yang sudah substansial.
+
+### Arsitektur i18n
+
+- **Routing** — path-prefixed (`/en/...`, `/id/...`, dst.) mengikuti pola resmi Next 16 App Router (`app/[locale]/...` + `proxy.ts`, bukan `middleware.ts` yang sudah deprecated). Tidak ada dependency npm baru. `app/layout.tsx` tetap satu-satunya root `<html>` (mendukung SSG — membaca locale via `cookies()` di sana akan mematikan static generation untuk seluruh situs), jadi `/admin/*` tetap tidak berprefix locale (tetap berbahasa Indonesia, sesuai keputusan lama) sementara `<html lang>` dikoreksi di sisi klien lewat `LocaleHtmlLang`.
+- **String UI statis** (label nav, footer, tombol umum) — sistem dictionary (`apps/web/src/i18n/dictionaries/*.ts`) mengikuti pola resmi Next.js. **Batasan yang didokumentasikan secara sadar:** isi halaman yang hardcode di komponen (headline Hero, paragraf About, kartu Why-Choose-Us, dll.) belum masuk dictionary — hanya header/footer/nav yang penuh diterjemahkan sekarang; memperluas ke body halaman lain adalah pekerjaan mekanis serupa untuk lain waktu.
+- **Konten dari CMS** (produk, artikel, fasilitas, proses produksi, statistik homepage, FAQ, site settings, item galeri) — kolom `translations Json?` baru **additive-only** di 11 model Prisma (migrasi `20260805080904_add_translations_columns`), menyimpan override 5 bahasa non-Inggris di atas kolom scalar Inggris yang tidak diubah. API publik menerima `?locale=`, fallback otomatis ke Inggris per-field jika terjemahan belum ada.
+- **Admin CMS** — komponen `LocaleTabs` (tab strip 6 bendera bahasa) dibangun dan diintegrasikan penuh di form edit Produk sebagai contoh acuan (termasuk bug nyata yang ditemukan & diperbaiki: pindah tab sebelum menyimpan sempat meng-null-kan field Inggris karena tab tak-aktif ter-unmount dari DOM — diperbaiki dengan menyembunyikan lewat CSS, bukan unmount). DTO/service 6 modul admin lain (Artikel, Fasilitas, Proses Produksi, Statistik Homepage, FAQ, Pengaturan, Galeri) sudah menerima & menyimpan `translations`, tapi UI tab-bahasa untuk form-form tersebut belum dibangun — pekerjaan lanjutan mekanis mengikuti pola yang sama.
+
+**Isi terjemahan** — seluruh ~54 baris konten yang sudah ada (produk, spesifikasi, kemasan/aplikasi, artikel, fasilitas, tahap produksi, statistik, FAQ, sebagian site settings) diterjemahkan sekaligus lewat skrip satu-kali `apps/api/scripts/translate-seed-content.ts` (dicocokkan lewat natural key seperti slug/title, bukan ID database, supaya tetap valid setelah re-seed). **Setiap terjemahan adalah draf buatan AI (Claude), bukan dari layanan penerjemahan eksternal, dan WAJIB direview oleh penutur asli atau penerjemah profesional sebelum benar-benar ditampilkan ke pembeli internasional sungguhan** — terutama spesifikasi produk dan teks sertifikasi di masa depan, di mana kesalahan terjemahan membawa risiko bisnis/hukum nyata. Nama perusahaan, nomor WhatsApp, email, dan alamat sengaja **tidak** diterjemahkan (tetap dalam bentuk aslinya di semua bahasa).
+
+**Diverifikasi end-to-end** (bukan hanya lolos build): alur penuh admin → database → API → tampilan publik diuji langsung di browser (ubah nama produk lewat tab Bahasa Indonesia di admin → tersimpan di kolom `translations` → `GET /products/:slug?locale=id` mengembalikan nama terjemahan → judul halaman publik `/id/products/:slug` berubah sesuai). Perilaku header diverifikasi satu per satu: dropdown desktop, language switcher (6 bahasa, ganti URL + cookie `NEXT_LOCALE` persisten), drawer mobile dengan grup collapsible bersarang, scroll shrink/hide/show, Escape menutup dropdown, klik di luar menutup dropdown — semuanya lewat pengecekan state DOM langsung, bukan asumsi dari screenshot (alat screenshot browser di sesi ini sempat memberi koordinat yang salah karena skala tampilan, jadi verifikasi memakai `aria-expanded` dan `getBoundingClientRect()` langsung).
+
+**Bug nyata ditemukan & diperbaiki selama build ini:**
+1. `next/root-params` (fitur baru Next 16.3) **tidak berlaku** untuk struktur proyek ini — fitur itu hanya membaca segmen dinamis yang berada **di atas** root layout fisik, sedangkan root layout proyek ini sengaja tetap di luar `app/[locale]/` (agar `/admin` tidak berprefiks locale), sehingga `locale` bukan root param di sini. Ditemukan lewat error build sungguhan, bukan asumsi; diperbaiki dengan threading `params` eksplisit di lokasi yang murah dilakukan, dan default aman di `PageHeader`/`not-found.tsx` untuk lokasi yang tidak murah.
+2. `params` **tidak reliable** untuk file khusus `not-found.tsx` — kosong (`undefined`) saat dirender sebagai fallback boundary selama static generation halaman lain, dikonfirmasi lewat error build sungguhan. Halaman 404 disederhanakan untuk selalu berbahasa Inggris.
+3. `transform-gpu` pada elemen `<header>` (untuk animasi hide/show saat scroll) membuat containing block baru bagi descendant `position: fixed` — drawer mobile yang saat itu dirender **di dalam** `<header>` jadi terpotong tingginya (77px, mengikuti tinggi header, bukan tinggi viewport). Ditemukan lewat inspeksi `getBoundingClientRect()` langsung, bukan tebakan. Diperbaiki dengan memindahkan `<MobileMenu>` menjadi sibling dari `<header>`, bukan child.
+4. Endpoint revalidasi on-demand (`/api/revalidate`) awalnya hanya me-revalidate path tanpa prefiks locale (mis. `/products/x`), padahal URL nyata sekarang berprefiks locale — diperbaiki agar setiap path yang dikirim backend di-expand ke 6 varian locale sekaligus.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -214,6 +241,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Phase 6 — SEO Technical
 - [x] Phase 7 — Performance Optimization
 - [x] Phase 8 — QA & Verifikasi
+- [x] Post-Launch — Internasionalisasi (6 bahasa) & Revisi Header
 
 ## Batasan Scope (Wajib Dipatuhi)
 

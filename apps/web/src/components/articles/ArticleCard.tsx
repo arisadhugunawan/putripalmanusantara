@@ -1,6 +1,6 @@
 import { Card } from "@ppn/ui-components";
 import type { ArticleSummary } from "@ppn/shared-types";
-import Link from "next/link";
+import { Link } from "@/i18n/Link";
 import { SafeImage } from "@/components/SafeImage";
 
 export function ArticleCard({ article }: { article: ArticleSummary }) {

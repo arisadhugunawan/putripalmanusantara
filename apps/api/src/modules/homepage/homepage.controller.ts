@@ -1,4 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
+import { resolveLocale } from '../../common/utils/i18n.util';
 import { HomepageService } from './homepage.service';
 
 @Controller('api/v1/homepage')
@@ -6,7 +7,7 @@ export class HomepageController {
   constructor(private readonly homepageService: HomepageService) {}
 
   @Get('statistics')
-  findStatistics() {
-    return this.homepageService.findStatistics();
+  findStatistics(@Query('locale') locale?: string) {
+    return this.homepageService.findStatistics(resolveLocale(locale));
   }
 }

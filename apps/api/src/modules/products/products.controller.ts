@@ -1,4 +1,5 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { resolveLocale } from '../../common/utils/i18n.util';
 import { ProductsService } from './products.service';
 
 @Controller('api/v1/products')
@@ -6,17 +7,20 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
-  findAll() {
-    return this.productsService.findPublished();
+  findAll(@Query('locale') locale?: string) {
+    return this.productsService.findPublished(resolveLocale(locale));
   }
 
   @Get('featured')
-  findFeatured() {
-    return this.productsService.findFeatured();
+  findFeatured(@Query('locale') locale?: string) {
+    return this.productsService.findFeatured(resolveLocale(locale));
   }
 
   @Get(':slug')
-  findOne(@Param('slug') slug: string) {
-    return this.productsService.findPublishedBySlug(slug);
+  findOne(@Param('slug') slug: string, @Query('locale') locale?: string) {
+    return this.productsService.findPublishedBySlug(
+      slug,
+      resolveLocale(locale),
+    );
   }
 }

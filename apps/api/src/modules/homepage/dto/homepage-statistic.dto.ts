@@ -1,7 +1,9 @@
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   MinLength,
@@ -25,6 +27,10 @@ export class HomepageStatisticItemDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class ReplaceHomepageStatisticsDto {

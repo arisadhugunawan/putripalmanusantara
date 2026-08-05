@@ -9,3 +9,4 @@ export * from "./homepage";
 export * from "./quotation";
 export * from "./settings";
 export * from "./admin";
+export * from "./i18n";

@@ -24,25 +24,25 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ── Public ──────────────────────────────────────────────────────────
-  async findPublished() {
+  async findPublished(locale?: string) {
     const products = await this.prisma.product.findMany({
       where: { status: 'published' },
       include: { coverImage: true },
       orderBy: { order: 'asc' },
     });
-    return products.map(toProductSummary);
+    return products.map((product) => toProductSummary(product, locale));
   }
 
-  async findFeatured() {
+  async findFeatured(locale?: string) {
     const products = await this.prisma.product.findMany({
       where: { status: 'published', isFeatured: true },
       include: { coverImage: true },
       orderBy: { order: 'asc' },
     });
-    return products.map(toProductSummary);
+    return products.map((product) => toProductSummary(product, locale));
   }
 
-  async findPublishedBySlug(slug: string) {
+  async findPublishedBySlug(slug: string, locale?: string) {
     const product = await this.prisma.product.findFirst({
       where: { slug, status: 'published' },
       include: DETAIL_INCLUDE,
@@ -50,7 +50,7 @@ export class ProductsService {
     if (!product) {
       throw new ApiException('NOT_FOUND', 'Product not found.', 404);
     }
-    return toProductDetail(product);
+    return toProductDetail(product, locale);
   }
 
   /** Lightweight lookup used by the controller to revalidate the right public URL after a sub-resource mutation. */
@@ -68,7 +68,7 @@ export class ProductsService {
       include: DETAIL_INCLUDE,
       orderBy: { order: 'asc' },
     });
-    return products.map(toProductDetail);
+    return products.map((product) => toProductDetail(product));
   }
 
   async findByIdForAdmin(id: string) {
@@ -97,6 +97,7 @@ export class ProductsService {
         isFeatured: dto.is_featured ?? false,
         status: dto.status ?? 'draft',
         order: dto.order ?? 0,
+        translations: dto.translations,
         specifications: dto.specifications
           ? {
               create: dto.specifications.map((spec, index) => ({
@@ -131,6 +132,7 @@ export class ProductsService {
         isFeatured: dto.is_featured,
         status: dto.status,
         order: dto.order,
+        translations: dto.translations,
       },
       include: DETAIL_INCLUDE,
     });

@@ -1,6 +1,6 @@
 import { Container, Section, buttonVariants } from "@ppn/ui-components";
 import type { GalleryItem } from "@ppn/shared-types";
-import Link from "next/link";
+import { Link } from "@/i18n/Link";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 
 /** FR-HOME-08 — gallery preview grid with a link to the full gallery. */

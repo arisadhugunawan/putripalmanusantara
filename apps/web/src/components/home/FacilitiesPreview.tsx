@@ -1,6 +1,6 @@
 import { Container, Section, buttonVariants } from "@ppn/ui-components";
 import type { Facility } from "@ppn/shared-types";
-import Link from "next/link";
+import { Link } from "@/i18n/Link";
 import { FacilityGrid } from "@/components/facilities/FacilityGrid";
 
 /** FR-HOME-07 — facilities highlight grid with a link to the full page. */

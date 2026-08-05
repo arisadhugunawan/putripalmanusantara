@@ -1,4 +1,5 @@
 import type { Media } from "./media";
+import type { Translations } from "./i18n";
 import type { ContentStatus } from "./product";
 
 /** Card / listing shape — GET /articles, /articles/latest */
@@ -21,4 +22,6 @@ export interface ArticleDetail extends ArticleSummary {
   status: ContentStatus;
   created_at: string;
   updated_at: string;
+  /** Admin-only — see ProductDetail['translations']. */
+  translations?: Translations | null;
 }

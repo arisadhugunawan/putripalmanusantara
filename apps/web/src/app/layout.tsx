@@ -40,6 +40,11 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Next only allows one root <html> document for the whole app (admin stays outside
+  // app/[locale]/, always Indonesian). `lang` defaults to "en" here and is corrected
+  // client-side by <LocaleHtmlLang> inside app/[locale]/layout.tsx — reading the real
+  // locale here would require a dynamic API (cookies/headers), which would opt the
+  // entire site out of static generation (docs/06-architecture.md §4 SSG+ISR).
   return (
     <html lang="en" className={`${sora.variable} ${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">

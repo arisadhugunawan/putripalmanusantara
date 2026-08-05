@@ -1,8 +1,10 @@
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -79,6 +81,10 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductSpecificationInputDto)
   specifications?: ProductSpecificationInputDto[];
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpdateProductDto {
@@ -130,6 +136,10 @@ export class UpdateProductDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class SetFeaturedDto {

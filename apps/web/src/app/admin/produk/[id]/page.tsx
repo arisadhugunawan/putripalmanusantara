@@ -1,18 +1,27 @@
 "use client";
 
 import { Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
-import { PRODUCT_CATEGORIES } from "@ppn/shared-types";
-import type { ProductDetail } from "@ppn/shared-types";
+import { LOCALE_LABELS, PRODUCT_CATEGORIES } from "@ppn/shared-types";
+import type { ProductDetail, Translations } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+
+const TRANSLATABLE_FIELDS = [
+  { key: "name", label: "Nama Produk", multiline: false },
+  { key: "category", label: "Kategori", multiline: false },
+  { key: "shortDescription", label: "Ringkasan Singkat", multiline: true },
+  { key: "fullDescription", label: "Deskripsi Lengkap", multiline: true },
+] as const;
 
 export default function EditProductPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [product, setProduct] = useState<ProductDetail | null>(null);
+  const [translations, setTranslations] = useState<Translations>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -20,6 +29,7 @@ export default function EditProductPage() {
   async function load() {
     const data = await adminApi.get<ProductDetail>(`/admin/products/${id}`);
     setProduct(data);
+    setTranslations(data.translations ?? {});
   }
 
   useEffect(() => {
@@ -27,6 +37,13 @@ export default function EditProductPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  function setTranslatedField(locale: string, field: string, value: string) {
+    setTranslations((prev) => ({
+      ...prev,
+      [locale]: { ...prev[locale as keyof Translations], [field]: value },
+    }));
+  }
 
   async function handleSaveBasics(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,6 +60,7 @@ export default function EditProductPage() {
         full_description: formData.get("full_description"),
         status: formData.get("status"),
         is_featured: formData.get("is_featured") === "on",
+        translations,
       });
       setSavedMessage("Perubahan tersimpan.");
       await load();
@@ -74,48 +92,84 @@ export default function EditProductPage() {
       <Card className="mt-6">
         <h2 className="text-h3 text-neutral-900">Informasi Dasar</h2>
         <form onSubmit={handleSaveBasics} className="mt-4 flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="name">Nama Produk</Label>
-              <Input id="name" name="name" defaultValue={product.name} required />
-            </div>
-            <div>
-              <Label htmlFor="slug">Slug (URL)</Label>
-              <Input id="slug" name="slug" defaultValue={product.slug} required />
-            </div>
+          <div>
+            <Label htmlFor="slug">Slug (URL)</Label>
+            <Input id="slug" name="slug" defaultValue={product.slug} required />
+            <p className="mt-1 text-small text-neutral-600">
+              Slug tidak diterjemahkan — sama untuk semua bahasa.
+            </p>
           </div>
 
-          <div>
-            <Label htmlFor="category">Kategori</Label>
-            <Input id="category" name="category" defaultValue={product.category} list="categories" required />
-            <datalist id="categories">
-              {PRODUCT_CATEGORIES.map((category) => (
-                <option key={category} value={category} />
-              ))}
-            </datalist>
-          </div>
-
-          <div>
-            <Label htmlFor="short_description">Ringkasan Singkat</Label>
-            <Textarea
-              id="short_description"
-              name="short_description"
-              rows={2}
-              defaultValue={product.short_description}
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="full_description">Deskripsi Lengkap</Label>
-            <Textarea
-              id="full_description"
-              name="full_description"
-              rows={5}
-              defaultValue={product.full_description}
-              required
-            />
-          </div>
+          {/* docs README "Internationalization" — English tab binds to the real product
+              columns (submitted via FormData, unchanged behavior); the other 5 tabs bind
+              into the `translations` state (submitted as JSON alongside the form fields). */}
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Label htmlFor="name">Nama Produk</Label>
+                    <Input id="name" name="name" defaultValue={product.name} required />
+                  </div>
+                  <div>
+                    <Label htmlFor="category">Kategori</Label>
+                    <Input id="category" name="category" defaultValue={product.category} list="categories" required />
+                    <datalist id="categories">
+                      {PRODUCT_CATEGORIES.map((category) => (
+                        <option key={category} value={category} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <Label htmlFor="short_description">Ringkasan Singkat</Label>
+                    <Textarea
+                      id="short_description"
+                      name="short_description"
+                      rows={2}
+                      defaultValue={product.short_description}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="full_description">Deskripsi Lengkap</Label>
+                    <Textarea
+                      id="full_description"
+                      name="full_description"
+                      rows={5}
+                      defaultValue={product.full_description}
+                      required
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <p className="text-small text-neutral-600">
+                    Terjemahan {LOCALE_LABELS[locale].name} — kosongkan untuk memakai teks
+                    Inggris sebagai cadangan.
+                  </p>
+                  {TRANSLATABLE_FIELDS.map((field) => (
+                    <div key={field.key}>
+                      <Label htmlFor={`${field.key}-${locale}`}>{field.label}</Label>
+                      {field.multiline ? (
+                        <Textarea
+                          id={`${field.key}-${locale}`}
+                          rows={field.key === "fullDescription" ? 5 : 2}
+                          value={translations[locale]?.[field.key] ?? ""}
+                          onChange={(e) => setTranslatedField(locale, field.key, e.target.value)}
+                        />
+                      ) : (
+                        <Input
+                          id={`${field.key}-${locale}`}
+                          value={translations[locale]?.[field.key] ?? ""}
+                          onChange={(e) => setTranslatedField(locale, field.key, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+          </LocaleTabs>
 
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">

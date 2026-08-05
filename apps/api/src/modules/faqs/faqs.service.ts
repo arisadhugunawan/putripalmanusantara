@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { DEFAULT_LOCALE, type Faq } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
+import { translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateFaqDto, UpdateFaqDto } from './dto/faq.dto';
 
@@ -7,10 +9,24 @@ import type { CreateFaqDto, UpdateFaqDto } from './dto/faq.dto';
 export class FaqsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findPublished() {
-    return this.prisma.faq.findMany({
+  async findPublished(locale: string = DEFAULT_LOCALE): Promise<Faq[]> {
+    const faqs = await this.prisma.faq.findMany({
       where: { status: 'published' },
       orderBy: { order: 'asc' },
+    });
+    // Explicit reshape — omits the raw `translations` blob from the public response.
+    return faqs.map((faq) => {
+      const t = translate(faq, faq.translations, locale, [
+        'question',
+        'answer',
+      ]);
+      return {
+        id: faq.id,
+        question: t.question,
+        answer: t.answer,
+        order: faq.order,
+        status: faq.status,
+      };
     });
   }
 
@@ -25,6 +41,7 @@ export class FaqsService {
         answer: dto.answer,
         order: dto.order ?? 0,
         status: dto.status ?? 'draft',
+        translations: dto.translations,
       },
     });
   }
@@ -38,6 +55,7 @@ export class FaqsService {
         answer: dto.answer,
         order: dto.order,
         status: dto.status,
+        translations: dto.translations,
       },
     });
   }

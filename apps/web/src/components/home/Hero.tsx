@@ -1,5 +1,5 @@
 import { Container, buttonVariants, cn } from "@ppn/ui-components";
-import Link from "next/link";
+import { Link } from "@/i18n/Link";
 
 /**
  * FR-HOME-01 — video autoplay/muted/loop with poster fallback. No footage has been

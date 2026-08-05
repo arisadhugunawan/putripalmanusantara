@@ -40,22 +40,22 @@ export class ArticlesService {
     ]);
 
     return {
-      items: items.map(toArticleSummary),
+      items: items.map((article) => toArticleSummary(article, query.locale)),
       meta: buildPaginationMeta(query.page, query.limit, total),
     };
   }
 
-  async findLatest() {
+  async findLatest(locale?: string) {
     const items = await this.prisma.article.findMany({
       where: { status: 'published' },
       include: { coverImage: true },
       orderBy: { publishedAt: 'desc' },
       take: 3,
     });
-    return items.map(toArticleSummary);
+    return items.map((article) => toArticleSummary(article, locale));
   }
 
-  async findPublishedBySlug(slug: string) {
+  async findPublishedBySlug(slug: string, locale?: string) {
     const article = await this.prisma.article.findFirst({
       where: { slug, status: 'published' },
       include: { coverImage: true },
@@ -63,7 +63,7 @@ export class ArticlesService {
     if (!article) {
       throw new ApiException('NOT_FOUND', 'Article not found.', 404);
     }
-    return toArticleDetail(article);
+    return toArticleDetail(article, locale);
   }
 
   // ── Admin ───────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export class ArticlesService {
       include: { coverImage: true },
       orderBy: { createdAt: 'desc' },
     });
-    return items.map(toArticleDetail);
+    return items.map((article) => toArticleDetail(article));
   }
 
   async findByIdForAdmin(id: string) {
@@ -101,6 +101,7 @@ export class ArticlesService {
         metaDescription: dto.meta_description,
         status: dto.status ?? 'draft',
         publishedAt: dto.status === 'published' ? new Date() : null,
+        translations: dto.translations,
       },
       include: { coverImage: true },
     });
@@ -129,6 +130,7 @@ export class ArticlesService {
         metaDescription: dto.meta_description,
         status: dto.status,
         publishedAt: justPublished ? new Date() : undefined,
+        translations: dto.translations,
       },
       include: { coverImage: true },
     });

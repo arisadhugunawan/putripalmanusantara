@@ -47,6 +47,10 @@ model Media {
   width      Int?
   height     Int?
   uploadedAt DateTime      @default(now()) @map("uploaded_at")
+  /// i18n — non-English alt_text overrides, e.g. {"id": {"altText": "..."}, "zh": {...}}.
+  /// English (altText above) stays the untouched source of truth; see README
+  /// "Internationalization" section.
+  translations Json?
 
   productsAsCover      Product[]                      @relation("ProductCoverImage")
   productGalleryItems  ProductGalleryImage[]
@@ -83,6 +87,9 @@ model Product {
   order            Int           @default(0)
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/category/shortDescription/fullDescription/
+  /// metaTitle/metaDescription, e.g. {"id": {"name": "...", ...}, "zh": {...}}.
+  translations     Json?
 
   gallery           ProductGalleryImage[]
   specifications    ProductSpecification[]
@@ -113,6 +120,8 @@ model ProductSpecification {
   specKey   String  @map("spec_key")
   specValue String  @map("spec_value")
   order     Int     @default(0)
+  /// i18n — non-English overrides for specKey/specValue.
+  translations Json?
 
   @@map("product_specifications")
 }
@@ -131,6 +140,8 @@ model ProductPackagingApplication {
   description String
   mediaId     String?                  @map("media_id")
   media       Media?                   @relation(fields: [mediaId], references: [id])
+  /// i18n — non-English overrides for title/description.
+  translations Json?
 
   @@map("product_packaging_applications")
 }
@@ -163,6 +174,8 @@ model Article {
   publishedAt     DateTime?     @map("published_at")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/excerpt/content/metaTitle/metaDescription/category.
+  translations    Json?
 
   @@index([status])
   @@index([publishedAt])
@@ -184,6 +197,8 @@ model GalleryItem {
   category GalleryCategory
   caption  String?
   order    Int             @default(0)
+  /// i18n — non-English override for caption.
+  translations Json?
 
   @@index([category])
   @@map("gallery_items")
@@ -199,6 +214,8 @@ model Facility {
   order        Int      @default(0)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/description.
+  translations Json?
 
   gallery FacilityGalleryImage[]
 
@@ -227,6 +244,8 @@ model ProductionStep {
   illustrationId String? @map("icon_or_image_id")
   illustration   Media?  @relation(fields: [illustrationId], references: [id])
   order          Int     @default(0)
+  /// i18n — non-English overrides for title/description.
+  translations   Json?
 
   @@map("production_steps")
 }
@@ -238,6 +257,8 @@ model HomepageStatistic {
   value String
   icon  String?
   order Int     @default(0)
+  /// i18n — non-English overrides for label/value.
+  translations Json?
 
   @@map("homepage_statistics")
 }
@@ -249,6 +270,8 @@ model Faq {
   answer   String
   order    Int           @default(0)
   status   ContentStatus @default(draft)
+  /// i18n — non-English overrides for question/answer.
+  translations Json?
 
   @@map("faqs")
 }
@@ -293,6 +316,8 @@ model SiteSetting {
   key   String @unique
   value String
   group String
+  /// i18n — non-English overrides for value, e.g. {"id": {"value": "..."}, "zh": {...}}.
+  translations Json?
 
   @@map("site_settings")
 }

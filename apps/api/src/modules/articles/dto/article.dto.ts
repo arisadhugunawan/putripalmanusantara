@@ -1,7 +1,9 @@
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
 import {
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -52,6 +54,10 @@ export class CreateArticleDto {
   @IsOptional()
   @IsIn(['draft', 'published'])
   status?: 'draft' | 'published';
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpdateArticleDto {
@@ -98,6 +104,10 @@ export class UpdateArticleDto {
   @IsOptional()
   @IsIn(['draft', 'published'])
   status?: 'draft' | 'published';
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class ArticleQueryDto {
@@ -114,4 +124,10 @@ export class ArticleQueryDto {
   @IsOptional()
   @IsString()
   sort = '-published_at';
+
+  // Not @IsIn(SUPPORTED_LOCALES) on purpose — an unrecognized locale should gracefully fall
+  // back to English (see resolveLocale()), not 400 the whole request.
+  @IsOptional()
+  @IsString()
+  locale?: string;
 }

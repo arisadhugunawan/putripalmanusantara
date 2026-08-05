@@ -3,7 +3,9 @@ import type {
   Media as SharedMedia,
   ProductionStep as SharedStep,
 } from '@ppn/shared-types';
+import { DEFAULT_LOCALE } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
+import { translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CreateProductionStepDto,
@@ -34,18 +36,24 @@ function toMedia(media: {
 export class ProductionStepsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<SharedStep[]> {
+  async findAll(locale?: string): Promise<SharedStep[]> {
     const steps = await this.prisma.productionStep.findMany({
       include: { illustration: true },
       orderBy: { order: 'asc' },
     });
-    return steps.map((step) => ({
-      id: step.id,
-      title: step.title,
-      description: step.description,
-      illustration: step.illustration ? toMedia(step.illustration) : null,
-      order: step.order,
-    }));
+    return steps.map((step) => {
+      const t = translate(step, step.translations, locale ?? DEFAULT_LOCALE, [
+        'title',
+        'description',
+      ]);
+      return {
+        id: step.id,
+        title: t.title,
+        description: t.description,
+        illustration: step.illustration ? toMedia(step.illustration) : null,
+        order: step.order,
+      };
+    });
   }
 
   async create(dto: CreateProductionStepDto) {
@@ -55,6 +63,7 @@ export class ProductionStepsService {
         description: dto.description,
         illustrationId: dto.illustration_id,
         order: dto.order ?? 0,
+        translations: dto.translations,
       },
     });
   }
@@ -68,6 +77,7 @@ export class ProductionStepsService {
         description: dto.description,
         illustrationId: dto.illustration_id,
         order: dto.order,
+        translations: dto.translations,
       },
     });
   }

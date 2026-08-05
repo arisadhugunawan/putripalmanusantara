@@ -1,4 +1,5 @@
 import type { Media } from "./media";
+import type { Translations } from "./i18n";
 
 export const PRODUCT_CATEGORIES = [
   "Semi Husked Coconut",
@@ -66,4 +67,7 @@ export interface ProductDetail extends ProductSummary {
   downloads: ProductDownload[];
   created_at: string;
   updated_at: string;
+  /** Admin-only — present so the CMS can populate LocaleTabs; absent on public responses
+   * where the mapper already resolved a single locale's content into the fields above. */
+  translations?: Translations | null;
 }

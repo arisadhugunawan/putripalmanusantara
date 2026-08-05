@@ -15,6 +15,8 @@ import type {
   ProductPackagingApplicationModel as ProductPackagingApplication,
   ProductSpecificationModel as ProductSpecification,
 } from '../../../generated/prisma/models';
+import { DEFAULT_LOCALE } from '@ppn/shared-types';
+import { translate } from '../../common/utils/i18n.util';
 
 type ProductWithRelations = Product & {
   coverImage: Media | null;
@@ -38,29 +40,50 @@ function toMedia(media: Media): SharedMedia {
 
 export function toProductSummary(
   product: ProductWithRelations,
+  locale: string = DEFAULT_LOCALE,
 ): ProductSummary {
+  const t = translate(product, product.translations, locale, [
+    'name',
+    'category',
+    'shortDescription',
+  ]);
   return {
     id: product.id,
     slug: product.slug,
-    name: product.name,
-    category: product.category,
-    short_description: product.shortDescription,
+    name: t.name,
+    category: t.category,
+    short_description: t.shortDescription,
     cover_image: product.coverImage ? toMedia(product.coverImage) : null,
     is_featured: product.isFeatured,
   };
 }
 
-export function toProductDetail(product: ProductWithRelations): ProductDetail {
+export function toProductDetail(
+  product: ProductWithRelations,
+  locale: string = DEFAULT_LOCALE,
+): ProductDetail {
+  const t = translate(product, product.translations, locale, [
+    'fullDescription',
+    'metaTitle',
+    'metaDescription',
+  ]);
+
   const specifications: SharedProductSpecification[] = (
     product.specifications ?? []
   )
     .sort((a, b) => a.order - b.order)
-    .map((spec) => ({
-      id: spec.id,
-      spec_key: spec.specKey,
-      spec_value: spec.specValue,
-      order: spec.order,
-    }));
+    .map((spec) => {
+      const specT = translate(spec, spec.translations, locale, [
+        'specKey',
+        'specValue',
+      ]);
+      return {
+        id: spec.id,
+        spec_key: specT.specKey,
+        spec_value: specT.specValue,
+        order: spec.order,
+      };
+    });
 
   const gallery: SharedProductGalleryItem[] = (product.gallery ?? [])
     .sort((a, b) => a.order - b.order)
@@ -70,29 +93,33 @@ export function toProductDetail(product: ProductWithRelations): ProductDetail {
       order: item.order,
     }));
 
+  const mapPackagingApp = (
+    item: ProductPackagingApplication & { media: Media | null },
+  ): SharedPackagingApplication => {
+    const itemT = translate(item, item.translations, locale, [
+      'title',
+      'description',
+    ]);
+    return {
+      id: item.id,
+      type: item.type,
+      title: itemT.title,
+      description: itemT.description,
+      media: item.media ? toMedia(item.media) : null,
+    };
+  };
+
   const packaging: SharedPackagingApplication[] = (
     product.packagingAndApps ?? []
   )
     .filter((item) => item.type === 'packaging')
-    .map((item) => ({
-      id: item.id,
-      type: item.type,
-      title: item.title,
-      description: item.description,
-      media: item.media ? toMedia(item.media) : null,
-    }));
+    .map(mapPackagingApp);
 
   const applications: SharedPackagingApplication[] = (
     product.packagingAndApps ?? []
   )
     .filter((item) => item.type === 'application')
-    .map((item) => ({
-      id: item.id,
-      type: item.type,
-      title: item.title,
-      description: item.description,
-      media: item.media ? toMedia(item.media) : null,
-    }));
+    .map(mapPackagingApp);
 
   const downloads: SharedProductDownload[] = (product.downloads ?? []).map(
     (download) => ({
@@ -104,10 +131,10 @@ export function toProductDetail(product: ProductWithRelations): ProductDetail {
   );
 
   return {
-    ...toProductSummary(product),
-    full_description: product.fullDescription,
-    meta_title: product.metaTitle,
-    meta_description: product.metaDescription,
+    ...toProductSummary(product, locale),
+    full_description: t.fullDescription,
+    meta_title: t.metaTitle,
+    meta_description: t.metaDescription,
     status: product.status,
     order: product.order,
     gallery,
@@ -117,5 +144,7 @@ export function toProductDetail(product: ProductWithRelations): ProductDetail {
     downloads,
     created_at: product.createdAt.toISOString(),
     updated_at: product.updatedAt.toISOString(),
+    // Raw blob, not locale-resolved — lets the admin CMS populate LocaleTabs for editing.
+    translations: product.translations as ProductDetail['translations'],
   };
 }

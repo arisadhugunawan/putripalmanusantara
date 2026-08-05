@@ -17,12 +17,12 @@ const INCLUDE = {
 export class FacilitiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(locale?: string) {
     const facilities = await this.prisma.facility.findMany({
       include: INCLUDE,
       orderBy: { order: 'asc' },
     });
-    return facilities.map(toFacility);
+    return facilities.map((facility) => toFacility(facility, locale));
   }
 
   async findOne(id: string) {
@@ -42,6 +42,7 @@ export class FacilitiesService {
         description: dto.description,
         coverImageId: dto.cover_image_id,
         order: dto.order ?? 0,
+        translations: dto.translations,
       },
       include: INCLUDE,
     });
@@ -57,6 +58,7 @@ export class FacilitiesService {
         description: dto.description,
         coverImageId: dto.cover_image_id,
         order: dto.order,
+        translations: dto.translations,
       },
       include: INCLUDE,
     });

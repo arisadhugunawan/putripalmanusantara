@@ -19,7 +19,7 @@ export interface BreadcrumbLdItem {
 }
 
 /** NFR-SEO-01/05 — BreadcrumbList, mirrors the visible <Breadcrumb> component. */
-export function breadcrumbJsonLd(items: BreadcrumbLdItem[]) {
+export function breadcrumbJsonLd(items: BreadcrumbLdItem[], locale: string) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -27,13 +27,13 @@ export function breadcrumbJsonLd(items: BreadcrumbLdItem[]) {
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: item.path ? `${SITE_URL}${item.path}` : undefined,
+      item: item.path ? `${SITE_URL}/${locale}${item.path === "/" ? "" : item.path}` : undefined,
     })),
   };
 }
 
 /** NFR-SEO-01 — Product schema on detail pages. */
-export function productJsonLd(product: ProductDetail) {
+export function productJsonLd(product: ProductDetail, locale: string) {
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -41,13 +41,13 @@ export function productJsonLd(product: ProductDetail) {
     description: product.short_description,
     category: product.category,
     image: product.cover_image?.file_url,
-    url: `${SITE_URL}/products/${product.slug}`,
+    url: `${SITE_URL}/${locale}/products/${product.slug}`,
     brand: { "@type": "Brand", name: SITE_NAME },
   };
 }
 
 /** NFR-SEO-01 — Article schema on detail pages. */
-export function articleJsonLd(article: ArticleDetail) {
+export function articleJsonLd(article: ArticleDetail, locale: string) {
   return {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -58,7 +58,7 @@ export function articleJsonLd(article: ArticleDetail) {
     dateModified: article.updated_at,
     author: { "@type": "Organization", name: article.author },
     publisher: { "@type": "Organization", name: SITE_NAME },
-    mainEntityOfPage: `${SITE_URL}/articles/${article.slug}`,
+    mainEntityOfPage: `${SITE_URL}/${locale}/articles/${article.slug}`,
   };
 }
 

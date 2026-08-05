@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { DEFAULT_LOCALE } from '@ppn/shared-types';
+import { translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { UpdateSettingsDto } from './dto/settings.dto';
 
@@ -18,12 +20,15 @@ const PUBLIC_KEYS = [
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findPublic() {
+  async findPublic(locale: string = DEFAULT_LOCALE) {
     const settings = await this.prisma.siteSetting.findMany({
       where: { key: { in: PUBLIC_KEYS } },
     });
     return Object.fromEntries(
-      settings.map((setting) => [setting.key, setting.value]),
+      settings.map((setting) => {
+        const t = translate(setting, setting.translations, locale, ['value']);
+        return [setting.key, t.value];
+      }),
     );
   }
 
@@ -36,11 +41,16 @@ export class SettingsService {
       dto.settings.map((setting) =>
         this.prisma.siteSetting.upsert({
           where: { key: setting.key },
-          update: { value: setting.value, group: setting.group },
+          update: {
+            value: setting.value,
+            group: setting.group,
+            translations: setting.translations,
+          },
           create: {
             key: setting.key,
             value: setting.value,
             group: setting.group,
+            translations: setting.translations,
           },
         }),
       ),

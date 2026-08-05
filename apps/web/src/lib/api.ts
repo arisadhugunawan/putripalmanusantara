@@ -45,64 +45,74 @@ async function requestOrNull<T>(path: string, revalidate?: number | false) {
   }
 }
 
-export async function getProducts(): Promise<ProductSummary[]> {
-  const json = await request<ProductSummary[]>("/products");
+/** Appends `?locale=` (or `&locale=`) — the locale becomes part of the fetch cache key
+ * (`next: { revalidate }` caches per-URL), so different locales never collide in cache. */
+function withLocale(path: string, locale?: string) {
+  if (!locale) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}locale=${encodeURIComponent(locale)}`;
+}
+
+export async function getProducts(locale?: string): Promise<ProductSummary[]> {
+  const json = await request<ProductSummary[]>(withLocale("/products", locale));
   return json.data;
 }
 
-export async function getFeaturedProducts(): Promise<ProductSummary[]> {
-  const json = await request<ProductSummary[]>("/products/featured");
+export async function getFeaturedProducts(locale?: string): Promise<ProductSummary[]> {
+  const json = await request<ProductSummary[]>(withLocale("/products/featured", locale));
   return json.data;
 }
 
-export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
-  return requestOrNull<ProductDetail>(`/products/${encodeURIComponent(slug)}`);
+export async function getProductBySlug(slug: string, locale?: string): Promise<ProductDetail | null> {
+  return requestOrNull<ProductDetail>(withLocale(`/products/${encodeURIComponent(slug)}`, locale));
 }
 
 export async function getArticles(
   page = 1,
   limit = 9,
+  locale?: string,
 ): Promise<{ items: ArticleSummary[]; meta: PaginationMeta }> {
-  const json = await request<ArticleSummary[]>(`/articles?page=${page}&limit=${limit}`);
+  const json = await request<ArticleSummary[]>(
+    withLocale(`/articles?page=${page}&limit=${limit}`, locale),
+  );
   return { items: json.data, meta: json.meta as PaginationMeta };
 }
 
-export async function getLatestArticles(): Promise<ArticleSummary[]> {
-  const json = await request<ArticleSummary[]>("/articles/latest");
+export async function getLatestArticles(locale?: string): Promise<ArticleSummary[]> {
+  const json = await request<ArticleSummary[]>(withLocale("/articles/latest", locale));
   return json.data;
 }
 
-export async function getArticleBySlug(slug: string): Promise<ArticleDetail | null> {
-  return requestOrNull<ArticleDetail>(`/articles/${encodeURIComponent(slug)}`);
+export async function getArticleBySlug(slug: string, locale?: string): Promise<ArticleDetail | null> {
+  return requestOrNull<ArticleDetail>(withLocale(`/articles/${encodeURIComponent(slug)}`, locale));
 }
 
-export async function getGallery(category?: GalleryCategory): Promise<GalleryItem[]> {
+export async function getGallery(category?: GalleryCategory, locale?: string): Promise<GalleryItem[]> {
   const query = category ? `?category=${category}` : "";
-  const json = await request<GalleryItem[]>(`/gallery${query}`);
+  const json = await request<GalleryItem[]>(withLocale(`/gallery${query}`, locale));
   return json.data;
 }
 
-export async function getFacilities(): Promise<Facility[]> {
-  const json = await request<Facility[]>("/facilities");
+export async function getFacilities(locale?: string): Promise<Facility[]> {
+  const json = await request<Facility[]>(withLocale("/facilities", locale));
   return json.data;
 }
 
-export async function getProductionSteps(): Promise<ProductionStep[]> {
-  const json = await request<ProductionStep[]>("/production-steps");
+export async function getProductionSteps(locale?: string): Promise<ProductionStep[]> {
+  const json = await request<ProductionStep[]>(withLocale("/production-steps", locale));
   return json.data;
 }
 
-export async function getHomepageStatistics(): Promise<HomepageStatistic[]> {
-  const json = await request<HomepageStatistic[]>("/homepage/statistics");
+export async function getHomepageStatistics(locale?: string): Promise<HomepageStatistic[]> {
+  const json = await request<HomepageStatistic[]>(withLocale("/homepage/statistics", locale));
   return json.data;
 }
 
-export async function getFaqs(): Promise<Faq[]> {
-  const json = await request<Faq[]>("/faqs");
+export async function getFaqs(locale?: string): Promise<Faq[]> {
+  const json = await request<Faq[]>(withLocale("/faqs", locale));
   return json.data;
 }
 
-export async function getPublicSettings(): Promise<PublicSiteSettings> {
-  const json = await request<PublicSiteSettings>("/settings/public");
+export async function getPublicSettings(locale?: string): Promise<PublicSiteSettings> {
+  const json = await request<PublicSiteSettings>(withLocale("/settings/public", locale));
   return json.data;
 }

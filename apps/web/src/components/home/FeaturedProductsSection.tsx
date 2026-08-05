@@ -1,6 +1,6 @@
 import { Container, Section, buttonVariants } from "@ppn/ui-components";
 import type { ProductSummary } from "@ppn/shared-types";
-import Link from "next/link";
+import { Link } from "@/i18n/Link";
 import { ProductCard } from "@/components/products/ProductCard";
 
 /** FR-HOME-05 — featured products grid. */

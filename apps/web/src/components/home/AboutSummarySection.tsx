@@ -1,5 +1,5 @@
 import { Container, Section, buttonVariants } from "@ppn/ui-components";
-import Link from "next/link";
+import { Link } from "@/i18n/Link";
 import { SafeImage } from "@/components/SafeImage";
 
 /** FR-HOME-03 — condensed company profile with a link to the full About page. */

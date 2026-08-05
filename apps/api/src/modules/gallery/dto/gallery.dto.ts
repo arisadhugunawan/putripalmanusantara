@@ -1,5 +1,13 @@
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 const CATEGORIES = ['product', 'facility', 'production', 'drone'] as const;
 
@@ -25,6 +33,10 @@ export class CreateGalleryItemDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpdateGalleryItemDto {
@@ -40,4 +52,8 @@ export class UpdateGalleryItemDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }

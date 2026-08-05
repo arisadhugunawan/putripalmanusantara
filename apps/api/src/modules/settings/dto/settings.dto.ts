@@ -1,5 +1,13 @@
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
-import { IsArray, IsString, MinLength, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 
 export class SettingItemDto {
   @IsString()
@@ -12,6 +20,10 @@ export class SettingItemDto {
   @IsString()
   @MinLength(1)
   group!: string;
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpdateSettingsDto {

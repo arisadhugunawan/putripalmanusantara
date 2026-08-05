@@ -1,5 +1,13 @@
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateFaqDto {
   @IsString()
@@ -18,6 +26,10 @@ export class CreateFaqDto {
   @IsOptional()
   @IsIn(['draft', 'published'])
   status?: 'draft' | 'published';
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpdateFaqDto {
@@ -37,4 +49,8 @@ export class UpdateFaqDto {
   @IsOptional()
   @IsIn(['draft', 'published'])
   status?: 'draft' | 'published';
+
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
