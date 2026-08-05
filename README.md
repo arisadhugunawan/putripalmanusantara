@@ -143,6 +143,21 @@ Infrastruktur: `lib/admin/client.ts` (fetch dengan `credentials:'include'`), `li
 
 **Bug nyata ditemukan & diperbaiki:** endpoint sub-resource produk (`gallery`, `specifications`, `downloads`, `packaging-applications`) dan galeri fasilitas tidak memicu `RevalidationService` seperti endpoint utama — perubahan sub-resource baru akan tampil di halaman publik setelah ISR alami (maks. 1 jam), bukan seketika. Diperbaiki dengan menambahkan pemanggilan revalidasi di seluruh endpoint sub-resource tersebut.
 
+## SEO Technical
+
+Implementasi teknis SEO sesuai `docs/02-requirements.md` §3.2 (NFR-SEO) dan `docs/06-architecture.md` §7:
+
+- **Schema.org (JSON-LD)** — `Organization` di setiap halaman (root layout), `Product` di detail produk, `Article` di detail artikel, `FAQPage` di Homepage (satu-satunya tempat FAQ tampil), `BreadcrumbList` otomatis di setiap halaman yang memakai komponen `PageHeader` (dibangun dari array breadcrumb yang sama dengan yang tampil visual, sehingga tidak mungkin berbeda)
+- **OpenGraph & Twitter Card** — dibangun lewat helper tunggal `lib/seo.ts#buildPageMetadata()` di setiap halaman publik, memastikan title/description/canonical/OG/Twitter selalu konsisten dari satu sumber
+- **Canonical URL** — di setiap halaman via `alternates.canonical`, `metadataBase` diset di root layout
+- **Sitemap dinamis** (`app/sitemap.ts`) & **robots.txt** (`app/robots.ts`, disallow `/admin`) — file convention Next.js, mengambil data produk/artikel published langsung dari API
+- **Image SEO** — `alt_text` wajib diisi di level database (`NOT NULL`) dan di form upload CMS (`MediaUploadField` menolak unggah tanpa alt text)
+- Admin panel (`/admin/*`) diberi `robots: { index: false }` sebagai lapisan pertahanan kedua selain `robots.txt`
+
+Diverifikasi langsung lewat `curl` terhadap HTML/XML yang benar-benar di-render (bukan cuma baca kode): `robots.txt` dan `sitemap.xml` menghasilkan output yang benar, JSON-LD `Organization`/`FAQPage`/`Product`/`Article`/`BreadcrumbList` muncul persis seperti yang diharapkan di halaman terkait, canonical URL dan OG tags benar di setiap halaman yang dicek.
+
+**Bug nyata ditemukan & diperbaiki:** judul halaman Home menjadi dobel ("...Exporter | CV Putri Palma Nusantara") karena template judul dari root layout (`%s | {nama situs}`) diterapkan ke judul Home yang sudah memuat nama situs sendiri. Diperbaiki dengan opsi `absoluteTitle` pada `buildPageMetadata()` yang melewati (bypass) template untuk kasus ini.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -153,7 +168,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Phase 3 — Design System (`docs/03-design.md`)
 - [x] Phase 4 — Halaman Publik
 - [x] Phase 5 — Admin CMS Panel
-- [ ] Phase 6 — SEO Technical
+- [x] Phase 6 — SEO Technical
 - [ ] Phase 7 — Performance Optimization
 - [ ] Phase 8 — QA & Verifikasi
 

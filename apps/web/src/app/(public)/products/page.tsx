@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import { getProducts } from "@/lib/api";
 import { PageHeader } from "@/components/page/PageHeader";
 import { ProductCard } from "@/components/products/ProductCard";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Products | CV Putri Palma Nusantara",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Products",
   description:
     "Browse Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber — export-ready coconut products from CV Putri Palma Nusantara.",
-};
+  path: "/products",
+});
 
 // FR-PROD-01 — grid of all published products (4 categories).
 export default async function ProductsPage() {

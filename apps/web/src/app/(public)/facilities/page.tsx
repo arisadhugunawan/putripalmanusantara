@@ -4,12 +4,14 @@ import { getFacilities, getGallery } from "@/lib/api";
 import { FacilityGrid } from "@/components/facilities/FacilityGrid";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { PageHeader } from "@/components/page/PageHeader";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Facilities | CV Putri Palma Nusantara",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Facilities",
   description:
     "Warehouse, loading area, weighbridge, quality control, and container stuffing facilities at CV Putri Palma Nusantara.",
-};
+  path: "/facilities",
+});
 
 // FR-FAC-01/02/03 — facility grid plus a separate drone (aerial) gallery.
 export default async function FacilitiesPage() {

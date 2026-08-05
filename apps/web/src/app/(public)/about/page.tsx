@@ -2,12 +2,14 @@ import { Card, Container, Section, buttonVariants } from "@ppn/ui-components";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page/PageHeader";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About Us | CV Putri Palma Nusantara",
+export const metadata: Metadata = buildPageMetadata({
+  title: "About Us",
   description:
     "CV Putri Palma Nusantara is an Indonesian exporter of coconut-derived products, connecting local producers with international buyers.",
-};
+  path: "/about",
+});
 
 const VALUES = [
   { title: "Integrity", description: "Transparent communication and honest representation of our products and capacity." },

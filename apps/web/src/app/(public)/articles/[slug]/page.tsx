@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { getArticleBySlug, getArticles } from "@/lib/api";
 import { PageHeader } from "@/components/page/PageHeader";
 import { SafeImage } from "@/components/SafeImage";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { articleJsonLd } from "@/lib/json-ld";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateStaticParams() {
   const { items } = await getArticles(1, 100);
@@ -16,10 +19,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
   if (!article) return {};
-  return {
-    title: article.meta_title || `${article.title} | CV Putri Palma Nusantara`,
+  return buildPageMetadata({
+    title: article.meta_title || article.title,
     description: article.meta_description || article.excerpt,
-  };
+    path: `/articles/${article.slug}`,
+    imageUrl: article.cover_image?.file_url,
+    type: "article",
+  });
 }
 
 // FR-ART-02 — unique slug URL with its own SEO meta.
@@ -36,6 +42,7 @@ export default async function ArticleDetailPage({ params }: PageProps<"/articles
 
   return (
     <main>
+      <JsonLd data={articleJsonLd(article)} />
       <PageHeader
         breadcrumb={[
           { label: "Home", href: "/" },

@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import { getProductionSteps } from "@/lib/api";
 import { PageHeader } from "@/components/page/PageHeader";
 import { ProductionTimeline } from "@/components/production/ProductionTimeline";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Production Process | CV Putri Palma Nusantara",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Production Process",
   description:
     "From farmer to export: the 8-stage production process behind every CV Putri Palma Nusantara shipment.",
-};
+  path: "/production-process",
+});
 
 // FR-PROC-01/02/03 — full 8-stage timeline.
 export default async function ProductionProcessPage() {

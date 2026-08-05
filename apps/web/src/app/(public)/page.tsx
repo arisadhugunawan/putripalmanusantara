@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   getFacilities,
   getFaqs,
@@ -19,6 +20,17 @@ import { ProductionProcessPreview } from "@/components/home/ProductionProcessPre
 import { QuotationSection } from "@/components/home/QuotationSection";
 import { StatisticsSection } from "@/components/home/StatisticsSection";
 import { WhyChooseUsSection } from "@/components/home/WhyChooseUsSection";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { faqPageJsonLd } from "@/lib/json-ld";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "CV Putri Palma Nusantara — Indonesian Coconut Product Exporter",
+  description:
+    "CV Putri Palma Nusantara exports Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber to buyers across Asia, the Middle East, and Europe.",
+  path: "/",
+  absoluteTitle: true,
+});
 
 // docs/03-design.md §9.1 — homepage section order is final.
 export default async function HomePage() {
@@ -36,6 +48,8 @@ export default async function HomePage() {
 
   return (
     <main>
+      {/* NFR-SEO-01 — FAQPage schema, since FAQ only ever appears on Home (FR-FAQ). */}
+      {faqs.length > 0 && <JsonLd data={faqPageJsonLd(faqs)} />}
       <Hero />
       <StatisticsSection statistics={statistics} />
       <AboutSummarySection />

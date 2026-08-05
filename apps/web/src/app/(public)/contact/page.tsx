@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import { getPublicSettings } from "@/lib/api";
 import { ContactForm } from "@/components/forms/ContactForm";
 import { PageHeader } from "@/components/page/PageHeader";
+import { buildPageMetadata } from "@/lib/seo";
 import { whatsAppLink } from "@/lib/whatsapp";
 
-export const metadata: Metadata = {
-  title: "Contact Us | CV Putri Palma Nusantara",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Contact Us",
   description: "Get in touch with CV Putri Palma Nusantara by email, WhatsApp, or our contact form.",
-};
+  path: "/contact",
+});
 
 // FR-CONTACT-01/02/03/04/05
 export default async function ContactPage() {

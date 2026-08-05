@@ -4,11 +4,13 @@ import Link from "next/link";
 import { getArticles } from "@/lib/api";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { PageHeader } from "@/components/page/PageHeader";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Insight & Articles | CV Putri Palma Nusantara",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Insight & Articles",
   description: "Industry insight and updates from CV Putri Palma Nusantara.",
-};
+  path: "/articles",
+});
 
 // FR-ART-01/02/03 — not a top-nav item (FR-ART-04); reached via Home or direct links.
 export default async function ArticlesPage({

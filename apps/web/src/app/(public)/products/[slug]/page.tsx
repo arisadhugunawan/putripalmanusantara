@@ -6,6 +6,9 @@ import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { PageHeader } from "@/components/page/PageHeader";
 import { QuotationForm } from "@/components/forms/QuotationForm";
 import { SafeImage } from "@/components/SafeImage";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { productJsonLd } from "@/lib/json-ld";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -18,10 +21,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) return {};
-  return {
-    title: product.meta_title || `${product.name} | CV Putri Palma Nusantara`,
+  return buildPageMetadata({
+    title: product.meta_title || product.name,
     description: product.meta_description || product.short_description,
-  };
+    path: `/products/${product.slug}`,
+    imageUrl: product.cover_image?.file_url,
+  });
 }
 
 // docs/03-design.md §9.3 — Gallery → Description/Specification → Packaging → Application →
@@ -33,6 +38,7 @@ export default async function ProductDetailPage({ params }: PageProps<"/products
 
   return (
     <main>
+      <JsonLd data={productJsonLd(product)} />
       <PageHeader
         breadcrumb={[
           { label: "Home", href: "/" },
