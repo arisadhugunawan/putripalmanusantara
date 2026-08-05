@@ -23,7 +23,7 @@ export function AboutSummarySection() {
             capacity — from raw material sourcing through to export-ready shipment.
           </p>
           <Link href="/about" className={`mt-6 inline-flex ${buttonVariants("secondary", "md")}`}>
-            Learn More
+            Learn More About Us
           </Link>
         </div>
       </Container>

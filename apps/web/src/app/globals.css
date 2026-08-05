@@ -9,7 +9,9 @@
   --color-primary-100: #e4f3cd;
   --color-primary-500: #a4dc4a;
   --color-primary-600: #8bc236;
-  --color-primary-700: #6e9a2e;
+  /* Darkened from the design doc's #6e9a2e (3.32:1 on white, fails WCAG AA) to meet the
+     4.5:1 minimum text contrast required by NFR-A11Y-01, while staying in the same hue. */
+  --color-primary-700: #4a651e;
 
   --color-secondary-500: #ffd800;
 
