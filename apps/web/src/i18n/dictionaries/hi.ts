@@ -7,6 +7,7 @@ const dictionary: Dictionary = {
     home: "होम",
     aboutCompany: "कंपनी के बारे में",
     aboutCompanyProfile: "CV. Putri Palma Nusantara",
+    aboutTeam: "PPN टीम",
     aboutWhatWeDo: "हम क्या करते हैं?",
     aboutLegalCertificate: "कानूनी एवं प्रमाणपत्र",
     aboutFactory: "फैक्ट्री",

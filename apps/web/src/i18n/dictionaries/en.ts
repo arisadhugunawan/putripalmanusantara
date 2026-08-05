@@ -5,6 +5,7 @@ const dictionary: Dictionary = {
     home: "Home",
     aboutCompany: "About Company",
     aboutCompanyProfile: "CV. Putri Palma Nusantara",
+    aboutTeam: "PPN Team",
     aboutWhatWeDo: "What We Do?",
     aboutLegalCertificate: "Legal & Certificate",
     aboutFactory: "Factory",

@@ -18,11 +18,11 @@ export function isDropdown(entry: NavEntry): entry is NavDropdownGroup {
 
 /**
  * Single source of truth for the main nav, used by both Header and Footer (previously two
- * separately-maintained NAV_ITEMS arrays). "About Company" and "Facilities & Gallery" anchor
- * into existing pages rather than new routes — see README "Internationalization & Header
- * Redesign" section for why ("PPN Team" has no real content and was dropped rather than
- * fabricated; "What We Do?"/"Factory" map to Production Process/Facilities, the closest real
- * pages, instead of non-existent About subpages).
+ * separately-maintained NAV_ITEMS arrays). "About Company" anchors into the About page's own
+ * in-page sections (sticky nav + smooth scroll, see AboutNav.tsx) rather than separate
+ * routes — see README "Internationalization & Header Redesign" section. "PPN Team" now has
+ * honest (non-fabricated) content on the About page, so it's back in this dropdown.
+ * "Facilities & Gallery" stays a small 2-item dropdown to distinct pages.
  */
 export function getMainNavEntries(dict: Dictionary): NavEntry[] {
   return [
@@ -30,10 +30,11 @@ export function getMainNavEntries(dict: Dictionary): NavEntry[] {
     {
       label: dict.nav.aboutCompany,
       items: [
-        { href: "/about#who-we-are", label: dict.nav.aboutCompanyProfile },
-        { href: "/production-process", label: dict.nav.aboutWhatWeDo },
-        { href: "/about#legal-certificate", label: dict.nav.aboutLegalCertificate },
-        { href: "/facilities", label: dict.nav.aboutFactory },
+        { href: "/about#company", label: dict.nav.aboutCompanyProfile },
+        { href: "/about#team", label: dict.nav.aboutTeam },
+        { href: "/about#what-we-do", label: dict.nav.aboutWhatWeDo },
+        { href: "/about#legal", label: dict.nav.aboutLegalCertificate },
+        { href: "/about#factory", label: dict.nav.aboutFactory },
       ],
     },
     // "Our Products" is populated with real product data by the caller (Header needs live

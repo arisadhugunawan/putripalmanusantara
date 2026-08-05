@@ -8,6 +8,7 @@ export interface Dictionary {
     home: string;
     aboutCompany: string;
     aboutCompanyProfile: string;
+    aboutTeam: string;
     aboutWhatWeDo: string;
     aboutLegalCertificate: string;
     aboutFactory: string;

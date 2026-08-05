@@ -7,6 +7,7 @@ const dictionary: Dictionary = {
     home: "首页",
     aboutCompany: "关于公司",
     aboutCompanyProfile: "CV. Putri Palma Nusantara",
+    aboutTeam: "PPN 团队",
     aboutWhatWeDo: "我们的业务",
     aboutLegalCertificate: "法律与认证",
     aboutFactory: "工厂",

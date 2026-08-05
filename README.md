@@ -209,7 +209,19 @@ Permintaan terpisah setelah Phase 8 selesai: header/navigasi premium bergaya per
 2. **Artikel di navigasi** — "News" di menu utama, menggantikan larangan eksplisit FR-ART-04.
 3. **Bahasa** — 5 bahasa non-Inggris ditambahkan, menggantikan `01-prd.md` §5.2 (konten publik hanya Inggris).
 
-**Keputusan konten jujur** — dropdown "About Company" awalnya minta 5 item, tapi "PPN Team" **dihapus** karena tidak ada data staf sungguhan di CMS mana pun (fabrikasi nama/foto staf melanggar aturan proyek soal data dummy). 4 item lain dipetakan ke halaman nyata yang paling relevan: `About Us#who-we-are`, `Production Process` (untuk "What We Do?"), `About Us#legal-certificate` (section baru, jujur menyatakan sertifikasi menyusul — sama seperti pola placeholder Hero video), `Facilities` (untuk "Factory"). "Facilities & Gallery" diimplementasikan sebagai satu trigger nav dengan dropdown 2 item, bukan menggabung dua halaman yang sudah substansial.
+**Keputusan konten jujur (revisi)** — dropdown "About Company" awalnya minta 5 item, tapi "PPN Team" sempat **dihapus** karena tidak ada data staf sungguhan (fabrikasi nama/foto staf melanggar aturan proyek soal data dummy), dengan "What We Do?"/"Factory" dipetakan ke halaman terpisah (`Production Process`/`Facilities`). Permintaan lanjutan (lihat bagian "Navigasi In-Page Halaman About" di bawah) meminta ke-5 item ini jadi section di DALAM satu halaman About — jadi "PPN Team" **dikembalikan**, tapi tetap dengan konten jujur (deskripsi tim secara umum, tanpa nama/foto fiktif), dan "What We Do?"/"Factory" sekarang jadi section asli di About (bukan lagi tautan keluar), dengan "Factory" menampilkan nama fasilitas asli dari CMS (bukan teks statis). "Facilities & Gallery" di header tetap dropdown 2 item ke halaman terpisah seperti semula.
+
+### Navigasi In-Page Halaman About
+
+Permintaan lanjutan: bukan lagi dropdown/halaman terpisah, tapi satu halaman About dengan 5 section (`#company`, `#team`, `#what-we-do`, `#legal`, `#factory`) dan navigasi sidebar sticky yang smooth-scroll ke section terkait — gaya situs korporat internasional (Cargill/Olam-style).
+
+- **Desktop/tablet** — sidebar kiri `position: sticky`, berhenti otomatis begitu mencapai batas kontainer dua-kolom (tidak perlu JS khusus — CTA "Ready to work with us?" sengaja diletakkan **di luar** kontainer sticky, jadi sidebar tidak pernah menimpa footer).
+- **Mobile** — sidebar berubah jadi tab horizontal yang bisa di-scroll/swipe, sticky di atas; tab aktif otomatis ikut ter-scroll ke posisi terlihat saat section berganti.
+- **Active state** — dilacak dengan `IntersectionObserver` (bukan `scroll` event listener, sesuai instruksi performa), dengan `rootMargin` yang membuat pita deteksi tipis tepat di bawah header sticky.
+- **Smooth scroll** — animasi kustom berbasis `requestAnimationFrame` (bukan `scrollIntoView` native) karena butuh durasi tetap (600ms) dan offset yang presisi menghindari section title tertutup header; otomatis dilewati (langsung lompat) untuk pengguna dengan `prefers-reduced-motion`. Setiap section juga punya `scroll-mt-24` (CSS) supaya navigasi native via link `/about#team` dari halaman lain (mis. dropdown header) tetap mendapat offset yang sama.
+- **Animasi kemunculan** — fade-up sekali per section via `IntersectionObserver` terpisah, transform+opacity saja (compositor-friendly, tidak memicu layout reflow).
+
+Diverifikasi langsung di browser: klik tiap item nav → scroll ke section yang benar dengan offset yang tidak menutupi judul; scroll manual → highlight aktif berpindah sesuai section yang terlihat; sidebar berhenti tepat sebelum CTA, tidak menimpa; tab mobile scroll horizontal + auto-center saat section aktif berganti; navigasi lintas-halaman dari dropdown header (`/en#legal` dari Home) mendarat di posisi yang benar. Lighthouse halaman About: Performance 99, Accessibility/Best Practices/SEO 100 — tidak ada regresi dari perombakan ini.
 
 ### Arsitektur i18n
 

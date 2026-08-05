@@ -7,6 +7,7 @@ const dictionary: Dictionary = {
     home: "Trang chủ",
     aboutCompany: "Về công ty",
     aboutCompanyProfile: "CV. Putri Palma Nusantara",
+    aboutTeam: "Đội Ngũ PPN",
     aboutWhatWeDo: "Chúng tôi làm gì?",
     aboutLegalCertificate: "Pháp lý & Chứng nhận",
     aboutFactory: "Nhà máy",
