@@ -179,6 +179,28 @@ Diaudit dengan Lighthouse CLI (`npx lighthouse`) terhadap **production build** (
 - Lighthouse dengan metode default (`--throttling-method=simulate`, Lantern) sempat melaporkan LCP 3.3s (skor Performance 92) pada Home, padahal semua metrik lain sempurna (FCP 0.8s, TBT 0ms, server response 10ms, dan seluruh network request nyata selesai dalam ~264ms). Diverifikasi ulang dengan `--throttling-method=devtools` (replay trace asli, bukan estimasi graph) menghasilkan LCP 1.5s dan Performance 100 — mengonfirmasi bahwa skor 92 sebelumnya adalah artefak simulasi Lantern yang salah mengestimasi banyaknya chunk JS granular hasil Turbopack (~15+ chunk kecil terpisah untuk satu halaman), bukan masalah performa nyata bagi pengguna.
 - Chunk polyfill Next.js (`4561u0v7ysn3r.js`, ~72KB, flagged 40% unused oleh audit `unused-javascript`) adalah polyfill legacy-browser standar bawaan Next.js (`trimStart`, `Array.prototype.flat`, dll.), bukan kode aplikasi — dikontrol oleh `browserslist`/target build Next.js, tidak diubah karena tidak ada kebutuhan bisnis yang jelas untuk menjatuhkan dukungan browser lama.
 
+## QA & Verifikasi
+
+Verifikasi akhir terhadap seluruh acceptance criteria di `01-prd.md` §14 dan `02-requirements.md` §4, dilakukan dengan membaca ulang setiap requirement table (FR-HOME, FR-ABOUT, FR-PROD, FR-PROC, FR-FAC, FR-GAL, FR-CONTACT, FR-QUOTE, FR-ART, FR-FAQ, FR-CMS, NFR-*) lalu memverifikasi tiap item terhadap kode/API/DB yang sudah berjalan (bukan hanya membaca kode secara statis):
+
+- **Navigasi utama** — dikonfirmasi lewat `Header.tsx`: persis 7 item (Home, About Us, Products, Production Process, Facilities, Gallery, Contact Us), sesuai `01-prd.md` §14; Artikel **tidak** ada di nav utama sesuai FR-ART-04.
+- **Urutan section Homepage** — dikonfirmasi cocok dengan urutan final di `02-requirements.md` §1.1.
+- **5 titik akses Request Quotation** (FR-QUOTE-01) — diverifikasi via `curl` terhadap HTML hasil render sungguhan: Hero Home, Section Request Quotation Home, halaman detail produk, Footer (semua halaman), dan halaman Hubungi Kami — seluruhnya mengandung form/tautan ke `#request-quotation`.
+- **8 tahap Proses Produksi** (FR-PROC-01) — dikonfirmasi urut: Farmer → Receiving → Sorting → Quality Control → Packing → Storage → Stuffing → Export.
+- **Tidak ada fitur Out of Scope** — di-grep di seluruh `apps/web/src` dan `apps/api/src` untuk istilah ERP/inventory/tracking/traceability/CocoTrace/marketplace/checkout/CRM/chatbot; satu-satunya kecocokan adalah kelas utility Tailwind `tracking-wide` (letter-spacing), bukan fitur tracking. Model Prisma (16 model) juga ditinjau ulang — seluruhnya memetakan langsung ke entitas in-scope (produk, artikel, galeri, fasilitas, quotation, dsb.), tidak ada tabel ERP/CRM.
+- **`alt_text` wajib diisi** (NFR-SEO-06/NFR-A11Y-03) — dikonfirmasi `NOT NULL` di level skema Prisma (`Media.altText`), bukan hanya validasi form.
+- **Rate limiting** (NFR-SEC-01) — dikonfirmasi `ThrottlerModule` terpasang global di `app.module.ts` (100 request/menit per klien).
+- **Anti-spam form publik** (NFR-SEC-02) — honeypot (`website` field) dikonfirmasi lewat unit test baru (lihat di bawah).
+
+**Tes otomatis untuk endpoint kritis** (`apps/api/src/**/*.spec.ts`, dijalankan dengan `npm test --workspace=api`):
+
+- `quotations.service.spec.ts` — submission dengan honeypot terisi ditolak sebelum menyentuh DB/email; `product_id` yang tidak ada ditolak; submission valid tersimpan **dan** memicu notifikasi email; nilai field yang mengandung tag HTML di-escape sebelum masuk ke email (regresi untuk bug HTML-injection yang diperbaiki di Phase 2).
+- `auth.service.spec.ts` — login dengan email yang tidak terdaftar ditolak; login dengan password salah ditolak; login valid mengeluarkan JWT dan memperbarui `lastLoginAt`.
+
+Semua 8 test lolos (`3 suites, 8 tests passed`). Cakupan ini sengaja dibatasi ke dua endpoint dengan risiko tertinggi (submission form publik & autentikasi admin) sesuai instruksi awal ("uji dasar untuk endpoint-endpoint kritis"), bukan cakupan penuh seluruh API.
+
+**Hasil:** tidak ditemukan requirement yang belum terimplementasi atau bertentangan dengan `01-prd.md` selama QA pass ini.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -191,7 +213,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Phase 5 — Admin CMS Panel
 - [x] Phase 6 — SEO Technical
 - [x] Phase 7 — Performance Optimization
-- [ ] Phase 8 — QA & Verifikasi
+- [x] Phase 8 — QA & Verifikasi
 
 ## Batasan Scope (Wajib Dipatuhi)
 
