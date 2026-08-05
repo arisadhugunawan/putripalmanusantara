@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     "CV Putri Palma Nusantara exports Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber to buyers across Asia, the Middle East, and Europe.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sora.variable} ${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>

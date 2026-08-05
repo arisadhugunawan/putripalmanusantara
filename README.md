@@ -102,7 +102,27 @@ Design tokens (`docs/03-design.md` §2–§4) hidup sebagai CSS custom propertie
 
 Komponen dasar di `packages/ui-components` (dikonsumsi `apps/web` via `transpilePackages`, sumber TSX langsung tanpa build step terpisah): `Button` (3 varian), `Card`, `Input`/`Textarea`/`Label`/`FieldError`, `Accordion` (single-open, ikon plus/minus animasi), `Badge`, `Container`, `Section`. Seluruh komponen menghormati `prefers-reduced-motion` (global CSS rule) dan target sentuh 44×44px minimum.
 
-Diverifikasi visual di browser (desktop & mobile viewport) — lihat halaman showcase sementara di `apps/web/src/app/page.tsx` (akan digantikan Homepage asli di Phase 4).
+Diverifikasi visual di browser (desktop & mobile viewport) — halaman showcase sementara sudah digantikan Homepage asli di Phase 4.
+
+## Halaman Publik
+
+Seluruh 8 halaman publik (`docs/02-requirements.md` §1, urutan prioritas di master prompt) sudah dibangun di `apps/web/src/app/(public)`:
+
+- **Home** — 11 section sesuai urutan final `docs/03-design.md` §9.1 (Hero → Statistik → Tentang Kami → Mengapa Memilih PPN → Produk Unggulan → Proses Produksi → Fasilitas → Galeri → Insight & Artikel → FAQ → Request Quotation)
+- **Produk** — listing (`/products`) & detail (`/products/[slug]`, SSG dari `generateStaticParams`) dengan gallery+lightbox, spesifikasi, packaging, application, download PDF, form quotation ter-prefill
+- **Proses Produksi** — timeline 8 tahap penuh (horizontal di desktop, vertikal di mobile)
+- **Fasilitas** — grid fasilitas + Drone Gallery terpisah (FR-FAC-03)
+- **Galeri** — filter kategori client-side (halaman tetap statis/ISR) + lightbox
+- **Tentang Kami**, **Hubungi Kami** (form + info kontak + Google Maps embed), **Artikel** (listing berpaginasi + detail, tidak ada di menu utama sesuai FR-ART-04)
+- **404 custom** on-brand dengan CTA kembali ke Produk/Home
+
+Infrastruktur bersama: `lib/api.ts` (server-only, fetch dengan ISR `revalidate: 3600` sesuai `docs/06-architecture.md` §4), `lib/api-client.ts` (client-safe untuk form submission), `app/api/revalidate/route.ts` (menerima webhook on-demand revalidation dari backend), `Header`/`Footer` (route group `(public)`), `QuotationForm`/`ContactForm` (honeypot + validasi client & server), `SafeImage` (placeholder on-brand saat media belum ada — tidak pernah broken image, sesuai `docs/07-user-flow.md` §9).
+
+Diverifikasi end-to-end di browser dengan API live: navigasi semua halaman, submit quotation form sungguhan (tersimpan di DB, terkonfirmasi via query langsung), accordion FAQ, lightbox galeri, dan 404 (diverifikasi via `curl` — response 404 asli dengan halaman custom).
+
+**Bug nyata yang ditemukan & diperbaiki selama verifikasi:**
+1. `StatCounter` memformat angka dengan locale `undefined` (browser locale) → menghasilkan `1.200+` alih-alih `1,200+`; dipaksa ke `en-US` karena konten publik berbahasa Inggris
+2. `QuotationForm`/`ContactForm` membaca `event.currentTarget` **setelah** `await` — di React, `currentTarget` di-null-kan begitu dispatch event sinkron selesai, jadi form gagal reset & masuk ke error state meski submission ke backend sudah berhasil (201 Created). Diperbaiki dengan menangkap referensi form sebelum `await`.
 
 ## Status Pembangunan
 
@@ -112,7 +132,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Phase 1 — Database (Prisma schema sesuai `docs/04-database.md`)
 - [x] Phase 2 — Backend API (`docs/05-api.md`)
 - [x] Phase 3 — Design System (`docs/03-design.md`)
-- [ ] Phase 4 — Halaman Publik
+- [x] Phase 4 — Halaman Publik
 - [ ] Phase 5 — Admin CMS Panel
 - [ ] Phase 6 — SEO Technical
 - [ ] Phase 7 — Performance Optimization
