@@ -60,6 +60,9 @@ model Media {
   facilitiesAsCover    Facility[]                     @relation("FacilityCoverImage")
   facilityGalleryItems FacilityGalleryImage[]
   productionSteps      ProductionStep[]
+  heroSlidesAsDesktop  HeroSlide[]                    @relation("HeroSlideDesktopImage")
+  heroSlidesAsMobile   HeroSlide[]                    @relation("HeroSlideMobileImage")
+  partnerLogos         PartnerLogo[]
 
   @@index([fileType])
   @@map("media")
@@ -270,6 +273,95 @@ model HomepageStatistic {
   translations Json?
 
   @@map("homepage_statistics")
+}
+
+// ── 3.11a HeroSlide (Post-Launch) ────────────────────────────────────────
+// Homepage hero carousel — fully admin-managed; zero rows is a valid state (public site
+// falls back to a single static slide, see apps/web HeroSlider.tsx).
+model HeroSlide {
+  id              String    @id @default(cuid())
+  desktopImageId  String?   @map("desktop_image_id")
+  desktopImage    Media?    @relation("HeroSlideDesktopImage", fields: [desktopImageId], references: [id])
+  mobileImageId   String?   @map("mobile_image_id")
+  mobileImage     Media?    @relation("HeroSlideMobileImage", fields: [mobileImageId], references: [id])
+  heading         String
+  subheading      String
+  button1Text     String?   @map("button_1_text")
+  button1Link     String?   @map("button_1_link")
+  button2Text     String?   @map("button_2_text")
+  button2Link     String?   @map("button_2_link")
+  order           Int       @default(0)
+  enabled         Boolean   @default(true)
+  publishDate     DateTime? @map("publish_date")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for heading/subheading/button1Text/button2Text.
+  translations    Json?
+
+  @@map("hero_slides")
+}
+
+// ── 3.11b PartnerLogo (Post-Launch) ──────────────────────────────────────
+// Trusted-partners marquee — zero rows is a valid, honest state (no real partnership URLs
+// or institution names are seeded; see README "Homepage Hero + Partner + Decorative...").
+enum PartnerLogoCategory {
+  government
+  certification
+  logistics
+  association
+  bank
+  other
+}
+
+model PartnerLogo {
+  id           String              @id @default(cuid())
+  logoId       String              @map("logo_id")
+  logo         Media               @relation(fields: [logoId], references: [id])
+  partnerName  String              @map("partner_name")
+  websiteUrl   String?             @map("website_url")
+  category     PartnerLogoCategory @default(other)
+  order        Int                 @default(0)
+  enabled      Boolean             @default(true)
+  /// i18n — non-English overrides for partnerName.
+  translations Json?
+
+  @@map("partner_logos")
+}
+
+// ── 3.11c DecorativeGraphic (Post-Launch) ────────────────────────────────
+// Low-opacity watermark line-art (built-in SVG variants, not uploaded photos). `page`
+// scopes an element to a route (only "home" is rendered today — see README for why the
+// brief's site-wide placement plan was narrowed to the Homepage).
+enum DecorativeGraphicVariant {
+  leaf_outline
+  coconut_cross_section
+  ship_outline
+  compass
+  world_map_outline
+  palm_leaf
+  coconut_tree_silhouette
+}
+
+enum DecorativeGraphicPlacement {
+  hero_behind_content
+  top_left
+  top_right
+  bottom_left
+  bottom_right
+  center_background
+}
+
+model DecorativeGraphic {
+  id        String                     @id @default(cuid())
+  page      String                     @default("home")
+  variant   DecorativeGraphicVariant
+  placement DecorativeGraphicPlacement
+  opacity   Float                      @default(0.06)
+  scale     Float                      @default(1)
+  order     Int                        @default(0)
+  enabled   Boolean                    @default(true)
+
+  @@map("decorative_graphics")
 }
 
 // ── 3.12 FAQ ─────────────────────────────────────────────────────────────

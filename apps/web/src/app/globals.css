@@ -95,6 +95,14 @@
   /* Above-the-fold hero fade-in (Contact page) — reduced-motion is already neutralized
      globally below via the animation-duration override. */
   --animate-fade-in-up: fade-in-up 700ms ease-out both;
+
+  /* Homepage hero slider background zoom (Ken Burns) — duration matches the slide autoplay
+     delay so the zoom completes right as the next slide takes over. */
+  --animate-ken-burns: ken-burns 6000ms ease-out forwards;
+
+  /* Trusted-partners infinite marquee — track is the logo list duplicated once, so a 50%
+     translateX loops seamlessly. */
+  --animate-marquee: marquee 32s linear infinite;
 }
 
 @keyframes fade-in-up {
@@ -105,6 +113,24 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes ken-burns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
 

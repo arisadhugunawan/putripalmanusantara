@@ -10,4 +10,19 @@ export class HomepageController {
   findStatistics(@Query('locale') locale?: string) {
     return this.homepageService.findStatistics(resolveLocale(locale));
   }
+
+  @Get('hero-slides')
+  findHeroSlides(@Query('locale') locale?: string) {
+    return this.homepageService.findHeroSlides(resolveLocale(locale), true);
+  }
+
+  @Get('partner-logos')
+  findPartnerLogos(@Query('locale') locale?: string) {
+    return this.homepageService.findPartnerLogos(resolveLocale(locale), true);
+  }
+
+  @Get('decorative-graphics')
+  findDecorativeGraphics(@Query('page') page?: string) {
+    return this.homepageService.findDecorativeGraphics(page, true);
+  }
 }

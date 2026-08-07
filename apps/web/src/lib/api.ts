@@ -3,12 +3,15 @@ import type {
   ApiResponse,
   ArticleDetail,
   ArticleSummary,
+  DecorativeGraphic,
   Facility,
   Faq,
   GalleryCategory,
   GalleryItem,
+  HeroSlide,
   HomepageStatistic,
   PaginationMeta,
+  PartnerLogo,
   ProductDetail,
   ProductSummary,
   ProductionStep,
@@ -114,5 +117,22 @@ export async function getFaqs(locale?: string): Promise<Faq[]> {
 
 export async function getPublicSettings(locale?: string): Promise<PublicSiteSettings> {
   const json = await request<PublicSiteSettings>(withLocale("/settings/public", locale));
+  return json.data;
+}
+
+export async function getHeroSlides(locale?: string): Promise<HeroSlide[]> {
+  const json = await request<HeroSlide[]>(withLocale("/homepage/hero-slides", locale));
+  return json.data;
+}
+
+export async function getPartnerLogos(locale?: string): Promise<PartnerLogo[]> {
+  const json = await request<PartnerLogo[]>(withLocale("/homepage/partner-logos", locale));
+  return json.data;
+}
+
+export async function getDecorativeGraphics(page: string, locale?: string): Promise<DecorativeGraphic[]> {
+  const json = await request<DecorativeGraphic[]>(
+    withLocale(`/homepage/decorative-graphics?page=${encodeURIComponent(page)}`, locale),
+  );
   return json.data;
 }

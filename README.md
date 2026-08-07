@@ -313,6 +313,34 @@ Permintaan lanjutan kelima: rombak **hanya** halaman Contact menjadi tampilan pr
 
 **Diverifikasi di browser**: hero gelap tampil terpusat dengan breadcrumb, subjudul, dan fade-in di desktop maupun mobile (satu kolom, tanpa scroll horizontal); panel kiri menampilkan data kontak asli (email, telepon, alamat, jam operasional) dengan kartu yang naik saat hover, plus ikon WhatsApp meski belum ada ikon media sosial lain (empty state jujur); peta Google Maps + tombol "View on Google Maps" tampil dengan sudut membulat dan bayangan; form kanan memvalidasi semua field wajib termasuk checkbox consent baru (`Please agree to the Privacy Policy to continue.`) sebelum mengirim; dua kartu quick-contact (WhatsApp, Email) tampil, kartu Catalogue tersembunyi karena belum ada URL; Footer di bawahnya tidak berubah. `git diff` kosong pada Header, Footer, Homepage, About, Products, Facilities, News, dan `QuotationForm.tsx`/`ContactForm.tsx`. `tsc --noEmit` dan `eslint` bersih di kedua workspace.
 
+## Homepage Premium — Hero Slider, Partner Logos, Elemen Dekoratif (Post-Launch)
+
+Permintaan lanjutan keenam dan terbesar sejauh ini: rombak **hanya Homepage** menjadi hero slider layar-penuh yang sepenuhnya dikelola dari Admin CMS, marquee logo mitra, dan sistem elemen dekoratif watermark — tiga modul CMS baru dari nol (skema Prisma + API + Admin CRUD + komponen publik). Header, Footer, About, Products, Facilities, News, dan Contact **tidak disentuh**.
+
+### Dua penyelesaian scope (diputuskan sendiri, didokumentasikan di sini)
+
+1. **Konflik di dalam brief itu sendiri**: bagian "Decorative Background Elements" secara eksplisit meminta elemen dekoratif tersebar di About/Products/Facilities/Production/News/Contact/Footer — tetapi bagian "IMPORTANT" yang sama meminta "Do NOT redesign: About Company, Products, Facilities, News, Contact, Footer. Only redesign the Homepage." Instruksi scope-boundary diprioritaskan (konsisten dengan seluruh sesi post-launch ini): sistem dekoratif dibangun agar dapat diperluas ke halaman lain (field `page` pada model, default `"home"`), tetapi **hanya benar-benar dirender di Homepage** untuk saat ini.
+2. **Logo mitra/institusi pemerintah tidak dikarang** — brief secara eksplisit meminta slot untuk Kementerian Perdagangan, Barantin, LPEI, Bea Cukai, Kementan, INSW, KADIN, dll. Menampilkan logo institusi pemerintah di situs publik menyiratkan hubungan/pengesahan resmi yang sungguh ada — klaim yang jauh lebih serius daripada perkiraan angka MOQ, dan saya tidak punya cara memverifikasi kerja sama semacam itu. Modul **Logo Mitra dibangun penuh (CRUD, kategori, marquee)**, tetapi **tidak diisi data apa pun** — bagian "Trusted Partners" otomatis tersembunyi sampai admin menambahkan logo yang kerja samanya benar-benar terkonfirmasi.
+
+### Tiga modul CMS baru (skema additive, tanpa mengubah tabel yang ada)
+
+- **`HeroSlide`** — gambar desktop/mobile (opsional), heading, sub-heading, 2 tombol CTA (teks+tautan), urutan, aktif/nonaktif, tanggal terbit. Endpoint publik memfilter `enabled=true` dan `publish_date` (kosong atau sudah lewat). Satu baris dari data nyata Homepage lama (heading/CTA yang sama persis seperti sebelumnya) di-seed agar situs tidak "kosong" pasca-migrasi — **tanpa gambar** (mengikuti aturan "tanpa foto stok generik" yang sama sejak Fase 4); `HeroSlider.tsx` merender fallback placeholder honest (`SafeImage`) sampai admin mengunggah foto asli.
+- **`PartnerLogo`** — logo (upload media wajib), nama mitra, URL website, kategori (government/certification/logistics/association/bank/other), urutan, aktif/nonaktif. **Sengaja tidak di-seed** (lihat poin scope #2 di atas).
+- **`DecorativeGraphic`** — bukan upload foto, melainkan field `variant` yang memilih salah satu dari 7 ilustrasi line-art monokrom yang saya buat sendiri (leaf outline, coconut cross-section, ship outline, compass, world map outline, palm leaf, coconut tree silhouette) — pilihan desain generik (seperti memilih warna aksen), bukan klaim data bisnis, sehingga aman untuk saya susun langsung tanpa melanggar aturan "tidak boleh mengarang". Field `placement` (posisi terkontrol, bukan koordinat piksel bebas — lebih aman/mudah dirawat), `opacity` (dibatasi maksimal 0.1 sesuai brief), `scale`, `enabled`. Dua baris contoh di-seed (leaf di belakang hero, world-map di pojok) sebagai pilihan desain awal yang bisa diubah/dihapus admin kapan saja.
+
+Ketiga modul ini digabung ke `HomepageModule`/`/admin/homepage` yang sudah ada (bukan route admin baru) — konsisten dengan pola: Statistik, FAQ, dan Produk Unggulan Homepage sudah dikelola dari satu halaman yang sama.
+
+### Komponen publik baru
+
+- **`HeroSlider.tsx`** — 1 slide: statis tanpa kontrol carousel. ≥2 slide: [Embla Carousel](https://www.embla-carousel.com/) (autoplay 6 detik, infinite loop, swipe, pause-on-hover desktop, navigasi keyboard panah kiri/kanan, titik indikator, tombol panah) + efek Ken Burns (zoom halus CSS `transform: scale`, di-restart setiap slide aktif berganti via React key remount) pada gambar slide yang sedang aktif saja (bukan semua slide sekaligus, demi performa).
+- **`PartnerMarquee.tsx`** — marquee CSS murni (bukan loop JS), logo digandakan sekali untuk translateX 50% yang mulus, grayscale→warna asli + scale halus saat hover, pause saat hover via `animation-play-state`. Tidak dirender sama sekali jika tidak ada logo aktif.
+- **`components/decorative/`** — `DecorativeSvgs.tsx` (7 ilustrasi) + `DecorativeGraphics.tsx` (renderer: posisi berdasarkan `placement`, fade-in via `IntersectionObserver`, parallax halus ≤18px murni `transform` via satu scroll listener ber-`requestAnimationFrame`, `pointer-events-none`+`aria-hidden` karena murni dekoratif). Prop `tone="light"|"dark"` mengatur warna guratan SVG agar tetap terlihat di atas hero gelap maupun bagian terang lain.
+- **Schema.org LocalBusiness** ditambahkan ke Homepage lewat `localBusinessJsonLd()` yang sama yang sudah dibangun untuk halaman Contact — dari data Settings asli, bukan diduplikasi.
+
+**Bug nyata ditemukan & diperbaiki saat membangun**: percobaan pertama merender `<DecorativeGraphics>` sebagai anak langsung `<main>` (`position: absolute inset-0`) — karena `<main>` tidak punya tinggi eksplisit, elemen dekoratif akan meregang setinggi SELURUH halaman dan "hero_behind_content" akan berakhir di tengah tinggi total halaman (kira-kira di sekitar section FAQ), bukan di belakang hero. Diperbaiki dengan memindahkan render ke dalam elemen `<section>` hero sendiri (punya `min-height` eksplisit + `position: relative`).
+
+**Diverifikasi**: `tsc --noEmit`, `eslint` (skrip lint asli proyek, bukan lint mentah pada folder `prisma/` yang memang di luar cakupan lint proyek), dan **build produksi penuh** (`next build`) semuanya bersih di kedua workspace, 108 halaman berhasil digenerate. CRUD Hero Slide/Partner Logo/Elemen Dekoratif diuji end-to-end langsung di Admin (login asli, tambah/hapus elemen dekoratif, dikonfirmasi lewat panggilan API langsung sebelum dan sesudah). Homepage diverifikasi di browser desktop dan mobile (375px, tanpa scroll horizontal, tombol CTA lebar penuh di mobile). `git diff` kosong pada Header, Footer, About, Products, Facilities, News, dan Contact.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -334,6 +362,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Language Switcher Pill + Hapus "Request Quotation" dari Header
 - [x] Post-Launch — Footer Premium 5-Kolom (Company/Products/Quick Link/Contact)
 - [x] Post-Launch — Halaman Contact Premium (Hero, Info, Peta, Form, Quick Contact)
+- [x] Post-Launch — Homepage: Hero Slider CMS + Partner Logos CMS + Elemen Dekoratif CMS
 
 ## Batasan Scope (Wajib Dipatuhi)
 

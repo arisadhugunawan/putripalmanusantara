@@ -2,6 +2,9 @@
 // render during development. Numeric/copy values are illustrative placeholders — the client
 // replaces them via the Admin CMS (Phase 5) before launch. No Media records are seeded: real
 // photos/videos must come from PPN, per docs/01-prd.md §13 (no generic stock imagery).
+// Partner Logos (Post-Launch) are deliberately left empty for the same reason — displaying
+// a government/institution logo implies a real confirmed relationship, which no one has
+// confirmed; the admin adds real ones once PPN confirms them.
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
@@ -290,6 +293,43 @@ async function seedArticles() {
   }
 }
 
+async function seedHeroSlides() {
+  const count = await prisma.heroSlide.count();
+  if (count > 0) return;
+
+  // Same copy as the pre-redesign static Hero — real content, not a placeholder — so the
+  // live site keeps its current heading/CTAs until the admin adds real slide photos. No
+  // image is set (desktop/mobile), matching the "no stock imagery" rule applied throughout
+  // this project: HeroSlider.tsx renders SafeImage's honest placeholder until then.
+  await prisma.heroSlide.create({
+    data: {
+      heading: "Reliable coconut exports, from farm to your factory floor.",
+      subheading:
+        "Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber — sourced, processed, and shipped with consistent quality for buyers across Asia, the Middle East, and Europe.",
+      button1Text: "Request Quotation",
+      button1Link: "#request-quotation",
+      button2Text: "View Products",
+      button2Link: "/products",
+      order: 1,
+      enabled: true,
+    },
+  });
+}
+
+async function seedDecorativeGraphics() {
+  const count = await prisma.decorativeGraphic.count();
+  if (count > 0) return;
+
+  // Decorative design choice, not fabricated business data — two tasteful low-opacity
+  // line-art watermarks on the Homepage; the admin can add/adjust/disable more via CMS.
+  await prisma.decorativeGraphic.createMany({
+    data: [
+      { page: "home", variant: "leaf_outline", placement: "hero_behind_content", opacity: 0.06, scale: 1.4, order: 1 },
+      { page: "home", variant: "world_map_outline", placement: "bottom_right", opacity: 0.05, scale: 1, order: 2 },
+    ],
+  });
+}
+
 async function main() {
   await seedAdmin();
   await seedSiteSettings();
@@ -299,6 +339,8 @@ async function main() {
   await seedFacilities();
   await seedProducts();
   await seedArticles();
+  await seedHeroSlides();
+  await seedDecorativeGraphics();
   console.log("Seed complete.");
 }
 

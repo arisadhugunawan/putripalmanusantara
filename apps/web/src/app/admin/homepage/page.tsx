@@ -1,18 +1,35 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { Faq, HomepageStatistic, ProductDetail } from "@ppn/shared-types";
+import type {
+  DecorativeGraphic,
+  DecorativeGraphicPlacement,
+  DecorativeGraphicVariant,
+  Faq,
+  HeroSlide,
+  HomepageStatistic,
+  PartnerLogo,
+  PartnerLogoCategory,
+  ProductDetail,
+} from "@ppn/shared-types";
+import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { MediaUploadField } from "@/components/admin/MediaUploadField";
 
-// FR-CMS-06 — statistik, FAQ, produk unggulan.
+// FR-CMS-06 — statistik, FAQ, produk unggulan. Hero Slides/Partner Logos/Decorative
+// Graphics (Post-Launch) live here too since they're all Homepage content, matching this
+// page's existing pattern rather than growing the admin sidebar with new top-level routes.
 export default function AdminHomepagePage() {
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
       <h1 className="text-h2 text-neutral-900">Homepage</h1>
+      <HeroSlideEditor />
+      <PartnerLogoEditor />
       <StatisticsEditor />
       <FaqEditor />
       <FeaturedProductsEditor />
+      <DecorativeGraphicEditor />
     </div>
   );
 }
@@ -211,7 +228,7 @@ function FeaturedProductsEditor() {
   }
 
   return (
-    <Card className="mt-6 mb-10">
+    <Card className="mt-6">
       <h2 className="text-h3 text-neutral-900">Produk Unggulan</h2>
       <div className="mt-4 flex flex-col gap-2">
         {products?.map((product) => (
@@ -226,6 +243,537 @@ function FeaturedProductsEditor() {
           </label>
         ))}
       </div>
+    </Card>
+  );
+}
+
+function HeroSlideEditor() {
+  const [slides, setSlides] = useState<HeroSlide[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    const data = await adminApi.get<HeroSlide[]>("/admin/homepage/hero-slides");
+    setSlides(data);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount; load() sets state only inside its own async body, not synchronously in this effect
+    void load();
+  }, []);
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setError(null);
+    try {
+      await adminApi.post("/admin/homepage/hero-slides", {
+        heading: formData.get("heading"),
+        subheading: formData.get("subheading"),
+        order: slides?.length ?? 0,
+        enabled: true,
+      });
+      event.currentTarget.reset();
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : "Gagal menambah slide.");
+    }
+  }
+
+  async function handleUpdate(id: string, patch: Record<string, unknown>) {
+    await adminApi.put(`/admin/homepage/hero-slides/${id}`, patch);
+    await load();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Hapus hero slide ini?")) return;
+    await adminApi.delete(`/admin/homepage/hero-slides/${id}`);
+    await load();
+  }
+
+  return (
+    <Card className="mt-6">
+      <h2 className="text-h3 text-neutral-900">Hero Slider</h2>
+      <p className="mt-1 text-small text-neutral-600">
+        Ditampilkan sebagai slider penuh layar di beranda. Satu slide tampil statis tanpa
+        kontrol slider; dua atau lebih baru mengaktifkan autoplay, panah, dan indikator.
+      </p>
+
+      <div className="mt-4 flex flex-col gap-6">
+        {slides?.map((slide) => (
+          <div key={slide.id} className="rounded-field border border-neutral-200 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <Badge variant={slide.enabled ? "primary" : "neutral"}>
+                {slide.enabled ? "Aktif" : "Nonaktif"}
+              </Badge>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-small text-neutral-600">
+                  <input
+                    type="checkbox"
+                    checked={slide.enabled}
+                    onChange={(e) => void handleUpdate(slide.id, { enabled: e.target.checked })}
+                    className="h-4 w-4"
+                  />
+                  Aktifkan
+                </label>
+                <button type="button" onClick={() => void handleDelete(slide.id)} className="text-small text-red-600 underline">
+                  Hapus
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MediaUploadField
+                label="Gambar Desktop"
+                media={slide.desktop_image}
+                onChange={(media) => void handleUpdate(slide.id, { desktop_image_id: media.id })}
+              />
+              <MediaUploadField
+                label="Gambar Mobile (opsional)"
+                media={slide.mobile_image}
+                onChange={(media) => void handleUpdate(slide.id, { mobile_image_id: media.id })}
+              />
+            </div>
+
+            <div className="mt-3">
+              <Label htmlFor={`heading-${slide.id}`} className="text-small">
+                Heading
+              </Label>
+              <Input
+                id={`heading-${slide.id}`}
+                defaultValue={slide.heading}
+                onBlur={(e) => void handleUpdate(slide.id, { heading: e.target.value })}
+              />
+            </div>
+            <div className="mt-3">
+              <Label htmlFor={`subheading-${slide.id}`} className="text-small">
+                Sub Heading
+              </Label>
+              <Textarea
+                id={`subheading-${slide.id}`}
+                defaultValue={slide.subheading}
+                rows={2}
+                onBlur={(e) => void handleUpdate(slide.id, { subheading: e.target.value })}
+              />
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-small">Tombol 1 — Teks</Label>
+                <Input
+                  defaultValue={slide.button_1_text ?? ""}
+                  placeholder="Request Quotation"
+                  onBlur={(e) => void handleUpdate(slide.id, { button_1_text: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-small">Tombol 1 — Tautan</Label>
+                <Input
+                  defaultValue={slide.button_1_link ?? ""}
+                  placeholder="#request-quotation"
+                  onBlur={(e) => void handleUpdate(slide.id, { button_1_link: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-small">Tombol 2 — Teks</Label>
+                <Input
+                  defaultValue={slide.button_2_text ?? ""}
+                  placeholder="View Products"
+                  onBlur={(e) => void handleUpdate(slide.id, { button_2_text: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-small">Tombol 2 — Tautan</Label>
+                <Input
+                  defaultValue={slide.button_2_link ?? ""}
+                  placeholder="/products"
+                  onBlur={(e) => void handleUpdate(slide.id, { button_2_link: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-small">Urutan</Label>
+                <Input
+                  type="number"
+                  defaultValue={slide.order}
+                  onBlur={(e) => void handleUpdate(slide.id, { order: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label className="text-small">Tanggal Terbit (opsional)</Label>
+                <Input
+                  type="date"
+                  defaultValue={slide.publish_date?.slice(0, 10) ?? ""}
+                  onBlur={(e) => void handleUpdate(slide.id, { publish_date: e.target.value || undefined })}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-3 border-t border-neutral-200 pt-4">
+        <p className="text-small font-medium text-neutral-900">Tambah Slide Baru</p>
+        <div>
+          <Label htmlFor="new-slide-heading">Heading</Label>
+          <Input id="new-slide-heading" name="heading" required />
+        </div>
+        <div>
+          <Label htmlFor="new-slide-subheading">Sub Heading</Label>
+          <Textarea id="new-slide-subheading" name="subheading" rows={2} required />
+        </div>
+        {error && <p className="text-small text-red-600">{error}</p>}
+        <Button type="submit" className="w-fit">
+          Tambah Slide
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+const PARTNER_CATEGORIES: { value: PartnerLogoCategory; label: string }[] = [
+  { value: "government", label: "Pemerintah" },
+  { value: "certification", label: "Sertifikasi" },
+  { value: "logistics", label: "Logistik" },
+  { value: "association", label: "Asosiasi" },
+  { value: "bank", label: "Bank" },
+  { value: "other", label: "Lainnya" },
+];
+
+function PartnerLogoEditor() {
+  const [logos, setLogos] = useState<PartnerLogo[] | null>(null);
+  const [newLogoMediaId, setNewLogoMediaId] = useState<string | null>(null);
+  const [newLogoPreview, setNewLogoPreview] = useState<{ file_url: string; alt_text: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    const data = await adminApi.get<PartnerLogo[]>("/admin/homepage/partner-logos");
+    setLogos(data);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount; load() sets state only inside its own async body, not synchronously in this effect
+    void load();
+  }, []);
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    if (!newLogoMediaId) {
+      setError("Unggah logo terlebih dahulu.");
+      return;
+    }
+    const formData = new FormData(event.currentTarget);
+    try {
+      await adminApi.post("/admin/homepage/partner-logos", {
+        logo_id: newLogoMediaId,
+        partner_name: formData.get("partner_name"),
+        category: formData.get("category"),
+        website_url: formData.get("website_url") || undefined,
+        order: logos?.length ?? 0,
+        enabled: true,
+      });
+      event.currentTarget.reset();
+      setNewLogoMediaId(null);
+      setNewLogoPreview(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : "Gagal menambah logo mitra.");
+    }
+  }
+
+  async function handleUpdate(id: string, patch: Record<string, unknown>) {
+    await adminApi.put(`/admin/homepage/partner-logos/${id}`, patch);
+    await load();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Hapus logo mitra ini?")) return;
+    await adminApi.delete(`/admin/homepage/partner-logos/${id}`);
+    await load();
+  }
+
+  return (
+    <Card className="mt-6">
+      <h2 className="text-h3 text-neutral-900">Logo Mitra & Institusi</h2>
+      <p className="mt-1 text-small text-neutral-600">
+        Ditampilkan sebagai marquee berjalan di beranda. Kosong secara default — tambahkan
+        hanya logo mitra/institusi yang kerja samanya sudah benar-benar dikonfirmasi.
+      </p>
+
+      <div className="mt-4 flex flex-col gap-3">
+        {logos?.map((logo) => (
+          <div key={logo.id} className="flex flex-wrap items-center gap-3 rounded-field border border-neutral-200 p-3">
+            <div className="relative h-12 w-24 shrink-0 overflow-hidden rounded-field border border-neutral-200 bg-white">
+              <Image src={logo.logo.file_url} alt={logo.logo.alt_text} fill className="object-contain p-1" />
+            </div>
+            <Input
+              className="max-w-[180px]"
+              defaultValue={logo.partner_name}
+              onBlur={(e) => void handleUpdate(logo.id, { partner_name: e.target.value })}
+            />
+            <select
+              defaultValue={logo.category}
+              onChange={(e) => void handleUpdate(logo.id, { category: e.target.value })}
+              className="rounded-field border border-neutral-300 px-3 py-2 text-small"
+            >
+              {PARTNER_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <Input
+              className="max-w-[200px]"
+              placeholder="https://..."
+              defaultValue={logo.website_url ?? ""}
+              onBlur={(e) => void handleUpdate(logo.id, { website_url: e.target.value })}
+            />
+            <label className="flex items-center gap-2 text-small text-neutral-600">
+              <input
+                type="checkbox"
+                checked={logo.enabled}
+                onChange={(e) => void handleUpdate(logo.id, { enabled: e.target.checked })}
+                className="h-4 w-4"
+              />
+              Aktif
+            </label>
+            <button type="button" onClick={() => void handleDelete(logo.id)} className="ml-auto text-small text-red-600 underline">
+              Hapus
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-3 border-t border-neutral-200 pt-4">
+        <p className="text-small font-medium text-neutral-900">Tambah Logo Mitra</p>
+        <MediaUploadField
+          label="Logo (PNG/SVG transparan disarankan)"
+          media={
+            newLogoPreview
+              ? {
+                  id: newLogoMediaId!,
+                  file_url: newLogoPreview.file_url,
+                  file_type: "image",
+                  alt_text: newLogoPreview.alt_text,
+                  width: null,
+                  height: null,
+                  uploaded_at: new Date().toISOString(),
+                }
+              : null
+          }
+          onChange={(media) => {
+            setNewLogoMediaId(media.id);
+            setNewLogoPreview({ file_url: media.file_url, alt_text: media.alt_text });
+          }}
+        />
+        <div>
+          <Label htmlFor="new-logo-name">Nama Mitra/Institusi</Label>
+          <Input id="new-logo-name" name="partner_name" required />
+        </div>
+        <div>
+          <Label htmlFor="new-logo-category">Kategori</Label>
+          <select
+            id="new-logo-category"
+            name="category"
+            defaultValue="other"
+            className="w-full rounded-field border border-neutral-300 px-4 py-2.5 text-body"
+          >
+            {PARTNER_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="new-logo-url">URL Website (opsional)</Label>
+          <Input id="new-logo-url" name="website_url" placeholder="https://..." />
+        </div>
+        {error && <p className="text-small text-red-600">{error}</p>}
+        <Button type="submit" className="w-fit">
+          Tambah Logo
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+const DECORATIVE_VARIANTS: { value: DecorativeGraphicVariant; label: string }[] = [
+  { value: "leaf_outline", label: "Leaf Outline" },
+  { value: "coconut_cross_section", label: "Coconut Cross-Section" },
+  { value: "ship_outline", label: "Ship Outline" },
+  { value: "compass", label: "Compass" },
+  { value: "world_map_outline", label: "World Map Outline" },
+  { value: "palm_leaf", label: "Palm Leaf" },
+  { value: "coconut_tree_silhouette", label: "Coconut Tree Silhouette" },
+];
+
+const DECORATIVE_PLACEMENTS: { value: DecorativeGraphicPlacement; label: string }[] = [
+  { value: "hero_behind_content", label: "Di Belakang Konten Hero" },
+  { value: "center_background", label: "Tengah Latar Belakang" },
+  { value: "top_left", label: "Kiri Atas" },
+  { value: "top_right", label: "Kanan Atas" },
+  { value: "bottom_left", label: "Kiri Bawah" },
+  { value: "bottom_right", label: "Kanan Bawah" },
+];
+
+function DecorativeGraphicEditor() {
+  const [graphics, setGraphics] = useState<DecorativeGraphic[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    const data = await adminApi.get<DecorativeGraphic[]>("/admin/homepage/decorative-graphics");
+    setGraphics(data);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount; load() sets state only inside its own async body, not synchronously in this effect
+    void load();
+  }, []);
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setError(null);
+    try {
+      await adminApi.post("/admin/homepage/decorative-graphics", {
+        variant: formData.get("variant"),
+        placement: formData.get("placement"),
+        opacity: Number(formData.get("opacity")),
+        scale: Number(formData.get("scale")),
+        order: graphics?.length ?? 0,
+        enabled: true,
+      });
+      event.currentTarget.reset();
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : "Gagal menambah elemen dekoratif.");
+    }
+  }
+
+  async function handleUpdate(id: string, patch: Record<string, unknown>) {
+    await adminApi.put(`/admin/homepage/decorative-graphics/${id}`, patch);
+    await load();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Hapus elemen dekoratif ini?")) return;
+    await adminApi.delete(`/admin/homepage/decorative-graphics/${id}`);
+    await load();
+  }
+
+  return (
+    <Card className="mt-6 mb-10">
+      <h2 className="text-h3 text-neutral-900">Elemen Dekoratif (Watermark)</h2>
+      <p className="mt-1 text-small text-neutral-600">
+        Ilustrasi garis (line-art) transparan beropasitas rendah untuk aksen visual di
+        beranda. Saat ini hanya dirender di halaman beranda (page = &ldquo;home&rdquo;).
+      </p>
+
+      <div className="mt-4 flex flex-col gap-3">
+        {graphics?.map((graphic) => (
+          <div key={graphic.id} className="flex flex-wrap items-center gap-3 rounded-field border border-neutral-200 p-3">
+            <select
+              defaultValue={graphic.variant}
+              onChange={(e) => void handleUpdate(graphic.id, { variant: e.target.value })}
+              className="rounded-field border border-neutral-300 px-3 py-2 text-small"
+            >
+              {DECORATIVE_VARIANTS.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+            <select
+              defaultValue={graphic.placement}
+              onChange={(e) => void handleUpdate(graphic.id, { placement: e.target.value })}
+              className="rounded-field border border-neutral-300 px-3 py-2 text-small"
+            >
+              {DECORATIVE_PLACEMENTS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-1 text-small text-neutral-600">
+              Opasitas
+              <input
+                type="number"
+                min={0}
+                max={0.1}
+                step={0.01}
+                defaultValue={graphic.opacity}
+                onBlur={(e) => void handleUpdate(graphic.id, { opacity: Number(e.target.value) })}
+                className="w-16 rounded-field border border-neutral-300 px-2 py-1"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-small text-neutral-600">
+              Skala
+              <input
+                type="number"
+                min={0.5}
+                max={2}
+                step={0.1}
+                defaultValue={graphic.scale}
+                onBlur={(e) => void handleUpdate(graphic.id, { scale: Number(e.target.value) })}
+                className="w-16 rounded-field border border-neutral-300 px-2 py-1"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-small text-neutral-600">
+              <input
+                type="checkbox"
+                checked={graphic.enabled}
+                onChange={(e) => void handleUpdate(graphic.id, { enabled: e.target.checked })}
+                className="h-4 w-4"
+              />
+              Aktif
+            </label>
+            <button type="button" onClick={() => void handleDelete(graphic.id)} className="ml-auto text-small text-red-600 underline">
+              Hapus
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleCreate} className="mt-4 flex flex-wrap items-end gap-3 border-t border-neutral-200 pt-4">
+        <div>
+          <Label htmlFor="new-decor-variant" className="text-small">
+            Ilustrasi
+          </Label>
+          <select id="new-decor-variant" name="variant" className="rounded-field border border-neutral-300 px-3 py-2.5 text-body">
+            {DECORATIVE_VARIANTS.map((v) => (
+              <option key={v.value} value={v.value}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="new-decor-placement" className="text-small">
+            Posisi
+          </Label>
+          <select id="new-decor-placement" name="placement" className="rounded-field border border-neutral-300 px-3 py-2.5 text-body">
+            {DECORATIVE_PLACEMENTS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="new-decor-opacity" className="text-small">
+            Opasitas
+          </Label>
+          <Input id="new-decor-opacity" name="opacity" type="number" min={0} max={0.1} step={0.01} defaultValue={0.06} className="w-20" />
+        </div>
+        <div>
+          <Label htmlFor="new-decor-scale" className="text-small">
+            Skala
+          </Label>
+          <Input id="new-decor-scale" name="scale" type="number" min={0.5} max={2} step={0.1} defaultValue={1} className="w-20" />
+        </div>
+        <Button type="submit">Tambah</Button>
+      </form>
+      {error && <p className="mt-2 text-small text-red-600">{error}</p>}
     </Card>
   );
 }
