@@ -31,7 +31,10 @@ const dictionary: Dictionary = {
   footer: {
     tagline: "ผู้ส่งออกผลิตภัณฑ์จากมะพร้าวของอินโดนีเซียสำหรับผู้ซื้อทั่วเอเชีย ตะวันออกกลาง และยุโรป",
     navigationHeading: "เมนูนำทาง",
-    contactHeading: "ติดต่อ",
+    companyHeading: "บริษัท",
+    productsHeading: "ผลิตภัณฑ์",
+    quickLinkHeading: "ลิงก์ด่วน",
+    contactHeading: "ติดต่อเรา",
     quoteHeading: "ขอใบเสนอราคา",
     quoteBody: "พร้อมนำเข้าแล้วหรือยัง? บอกเราว่าคุณต้องการอะไร แล้วทีมงานของเราจะตอบกลับโดยเร็ว",
     quoteCta: "ขอใบเสนอราคา →",

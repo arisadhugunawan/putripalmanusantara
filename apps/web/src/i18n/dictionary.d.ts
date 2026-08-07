@@ -32,6 +32,9 @@ export interface Dictionary {
   footer: {
     tagline: string;
     navigationHeading: string;
+    companyHeading: string;
+    productsHeading: string;
+    quickLinkHeading: string;
     contactHeading: string;
     quoteHeading: string;
     quoteBody: string;

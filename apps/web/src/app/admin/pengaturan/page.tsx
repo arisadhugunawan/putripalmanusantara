@@ -9,6 +9,7 @@ const GROUP_LABEL: Record<string, string> = {
   general: "Umum",
   contact: "Kontak",
   seo: "SEO",
+  social: "Media Sosial",
 };
 
 // FR-CMS-09 — data perusahaan, kontak, SEO default.

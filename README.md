@@ -288,6 +288,18 @@ Permintaan lanjutan ketiga: (1) ubah tombol bahasa (globe icon) menjadi pill ber
 
 **Diverifikasi di browser**: pill bahasa tampil identik di desktop dan mobile (bendera+EN+chevron), dropdown terbuka menampilkan 6 bahasa dengan centang pada bahasa aktif, tombol Request Quotation sudah tidak ada di nav bar desktop maupun drawer mobile, tombol Request Quotation di Hero/CTA halaman lain tetap ada dan berfungsi normal. `tsc --noEmit` dan `eslint` bersih.
 
+## Footer Premium 5-Kolom (Post-Launch)
+
+Permintaan lanjutan keempat: rombak Footer menjadi tampilan gelap premium 5-kolom (logo+sosial media, Company, Products, Quick Link, Contact Us) terinspirasi footer sebuah situs kompetitor yang ditunjukkan pengguna — **warna disesuaikan dengan palet PPN** (hijau/putih di atas latar gelap `neutral-900`, bukan foto tekstur arang + emas dari referensi).
+
+- **Tidak ada foto latar belakang ditambahkan** — referensi memakai foto tekstur produk arang sebagai latar footer; PPN tidak punya aset foto semacam itu dan menambahkan foto generik akan melanggar aturan proyek "tidak ada gambar stok generik" (sudah ditegakkan sejak Fase 4). Sebagai gantinya dipakai warna solid `neutral-900` (hijau-gelap, bagian dari skema warna PPN yang sudah ada) — pola "footer gelap premium di atas situs bertema terang" yang juga umum dipakai situs B2B sekelas Cargill/Olam.
+- **4 kolom link dipetakan ke halaman PPN yang sungguh ada** (bukan meniru struktur navigasi Djavacoal apa adanya): kolom "Company" → bagian-bagian About Company (Profil, Tim, Legal & Sertifikat, Pabrik) + Gallery; kolom "Products" → 4 produk asli diambil live dari API (`getProducts`), bukan daftar statis; kolom "Quick Link" → 6 bagian halaman Facilities yang sudah dibangun (Production Process, Shipment Terms, MOQ & Payment Terms, Packaging Options, FAQ) + News — memakai label kamus i18n yang sudah ada dari fitur dropdown Facilities sebelumnya, nyaris tanpa key baru.
+- **Ikon media sosial: tidak ada tautan dikarang** — referensi menampilkan 4 ikon (Facebook/Instagram/LinkedIn/TikTok), tapi PPN belum pernah memberikan URL media sosial sungguhan di mana pun dalam proyek ini. Ditambahkan 4 key `SiteSetting` opsional baru (`social_facebook`, `social_instagram`, `social_linkedin`, `social_tiktok`, group `social`, diekspos lewat `PUBLIC_KEYS` di `settings.service.ts` — tanpa migrasi skema, memakai tabel key-value fleksibel yang sudah ada) dan Admin > Pengaturan sudah mendukung menambah key baru apa pun lewat form "Tambah Pengaturan Baru" yang sudah ada. Footer hanya menampilkan ikon untuk platform yang benar-benar diisi — honest empty state, bukan tautan `#` palsu.
+- **Kolom Contact Us memakai data nyata** (alamat, telepon, WhatsApp, email dari `getPublicSettings`) dengan ikon — tidak ada data dikarang.
+- **Kolom "Get a Quote" dihapus dari footer** untuk mengikuti struktur referensi 4-kolom apa adanya; CTA Request Quotation tetap ada di Hero, halaman Facilities, About, dan Contact — hanya dihapus dari footer dan header (konsisten dengan permintaan sebelumnya).
+
+**Diverifikasi di browser**: footer gelap 5-kolom tampil benar di desktop (grid 5 kolom) dan mobile (stack 1 kolom, urutan tetap terbaca); data Company/Products/Quick Link/Contact Us semuanya nyata dan tertaut benar; ikon sosial media tidak tampil karena belum ada URL diisi (empty state jujur, sesuai desain); bar hak cipta bawah solid hijau tua dengan teks putih di tengah. `tsc --noEmit` dan `eslint` bersih di kedua workspace (`api`, `web`).
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -307,6 +319,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Halaman Facilities Satu-Halaman (6 Bagian) + Menu Nav Baru
 - [x] Post-Launch — Dropdown Facilities di Header + Redesain Drawer Mobile
 - [x] Post-Launch — Language Switcher Pill + Hapus "Request Quotation" dari Header
+- [x] Post-Launch — Footer Premium 5-Kolom (Company/Products/Quick Link/Contact)
 
 ## Batasan Scope (Wajib Dipatuhi)
 

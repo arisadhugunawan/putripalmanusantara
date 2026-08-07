@@ -29,7 +29,10 @@ const dictionary: Dictionary = {
   footer: {
     tagline: "Indonesian exporter of coconut-derived products for buyers across Asia, the Middle East, and Europe.",
     navigationHeading: "Navigation",
-    contactHeading: "Contact",
+    companyHeading: "Company",
+    productsHeading: "Products",
+    quickLinkHeading: "Quick Link",
+    contactHeading: "Contact Us",
     quoteHeading: "Get a Quote",
     quoteBody: "Ready to import? Tell us what you need and our team will respond promptly.",
     quoteCta: "Request Quotation →",

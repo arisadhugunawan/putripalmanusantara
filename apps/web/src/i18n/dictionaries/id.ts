@@ -31,7 +31,10 @@ const dictionary: Dictionary = {
   footer: {
     tagline: "Eksportir produk turunan kelapa asal Indonesia untuk pembeli di Asia, Timur Tengah, dan Eropa.",
     navigationHeading: "Navigasi",
-    contactHeading: "Kontak",
+    companyHeading: "Perusahaan",
+    productsHeading: "Produk",
+    quickLinkHeading: "Tautan Cepat",
+    contactHeading: "Hubungi Kami",
     quoteHeading: "Dapatkan Penawaran",
     quoteBody: "Siap untuk mengimpor? Beri tahu kami kebutuhan Anda dan tim kami akan segera merespons.",
     quoteCta: "Ajukan Penawaran →",

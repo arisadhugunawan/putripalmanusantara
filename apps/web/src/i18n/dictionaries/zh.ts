@@ -31,7 +31,10 @@ const dictionary: Dictionary = {
   footer: {
     tagline: "印度尼西亚椰子衍生产品出口商，服务亚洲、中东和欧洲的买家。",
     navigationHeading: "导航",
-    contactHeading: "联系方式",
+    companyHeading: "公司",
+    productsHeading: "产品",
+    quickLinkHeading: "快速链接",
+    contactHeading: "联系我们",
     quoteHeading: "获取报价",
     quoteBody: "准备好进口了吗？告诉我们您的需求，我们的团队将尽快回复。",
     quoteCta: "索取报价 →",

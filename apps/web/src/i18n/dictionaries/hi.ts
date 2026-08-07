@@ -31,7 +31,10 @@ const dictionary: Dictionary = {
   footer: {
     tagline: "एशिया, मध्य पूर्व और यूरोप के खरीदारों के लिए नारियल उत्पादों का इंडोनेशियाई निर्यातक।",
     navigationHeading: "नेविगेशन",
-    contactHeading: "संपर्क",
+    companyHeading: "कंपनी",
+    productsHeading: "उत्पाद",
+    quickLinkHeading: "त्वरित लिंक",
+    contactHeading: "हमसे संपर्क करें",
     quoteHeading: "कोटेशन प्राप्त करें",
     quoteBody: "आयात करने के लिए तैयार हैं? हमें बताएं कि आपको क्या चाहिए और हमारी टीम शीघ्र ही जवाब देगी।",
     quoteCta: "कोटेशन प्राप्त करें →",

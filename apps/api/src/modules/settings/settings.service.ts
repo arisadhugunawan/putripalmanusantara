@@ -14,6 +14,12 @@ const PUBLIC_KEYS = [
   'operating_hours',
   'default_meta_title',
   'default_meta_description',
+  // Footer social links — optional; the footer only renders an icon when the client has
+  // added the corresponding URL via Admin > Pengaturan, no fabricated placeholder handles.
+  'social_facebook',
+  'social_instagram',
+  'social_linkedin',
+  'social_tiktok',
 ];
 
 @Injectable()

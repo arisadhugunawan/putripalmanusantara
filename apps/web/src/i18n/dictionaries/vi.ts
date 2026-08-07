@@ -31,7 +31,10 @@ const dictionary: Dictionary = {
   footer: {
     tagline: "Nhà xuất khẩu các sản phẩm từ dừa của Indonesia cho khách hàng khắp châu Á, Trung Đông và châu Âu.",
     navigationHeading: "Điều hướng",
-    contactHeading: "Liên hệ",
+    companyHeading: "Công Ty",
+    productsHeading: "Sản Phẩm",
+    quickLinkHeading: "Liên Kết Nhanh",
+    contactHeading: "Liên Hệ Với Chúng Tôi",
     quoteHeading: "Nhận báo giá",
     quoteBody: "Sẵn sàng nhập khẩu? Cho chúng tôi biết bạn cần gì và đội ngũ của chúng tôi sẽ phản hồi nhanh chóng.",
     quoteCta: "Yêu cầu báo giá →",
