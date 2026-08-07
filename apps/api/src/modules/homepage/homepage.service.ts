@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE, type HomepageStatistic } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { UpdateAboutPreviewDto } from './dto/about-preview.dto';
 import type {
   CreateDecorativeGraphicDto,
   UpdateDecorativeGraphicDto,
@@ -11,17 +12,27 @@ import type {
   CreateHeroSlideDto,
   UpdateHeroSlideDto,
 } from './dto/hero-slide.dto';
+import type {
+  CreateHighlightDto,
+  UpdateHighlightDto,
+} from './dto/highlight.dto';
 import type { ReplaceHomepageStatisticsDto } from './dto/homepage-statistic.dto';
 import type {
   CreatePartnerLogoDto,
   UpdatePartnerLogoDto,
 } from './dto/partner-logo.dto';
+import { toAboutPreview } from './about-preview.mapper';
 import { toDecorativeGraphic } from './decorative-graphic.mapper';
 import { toHeroSlide } from './hero-slide.mapper';
+import { toHighlight } from './highlight.mapper';
 import { toPartnerLogo } from './partner-logo.mapper';
 
 const HERO_SLIDE_INCLUDE = { desktopImage: true, mobileImage: true } as const;
 const PARTNER_LOGO_INCLUDE = { logo: true } as const;
+const ABOUT_PREVIEW_INCLUDE = {
+  videoMedia: true,
+  videoThumbnail: true,
+} as const;
 
 @Injectable()
 export class HomepageService {
@@ -259,5 +270,101 @@ export class HomepageService {
     });
     if (!graphic)
       throw new ApiException('NOT_FOUND', 'Decorative graphic not found.', 404);
+  }
+
+  // ── About Preview (Post-Launch, singleton) ─────────────────────────────
+
+  private async getOrCreateAboutPreview() {
+    const existing = await this.prisma.homepageAboutPreview.findFirst({
+      include: ABOUT_PREVIEW_INCLUDE,
+    });
+    if (existing) return existing;
+    return this.prisma.homepageAboutPreview.create({
+      data: {},
+      include: ABOUT_PREVIEW_INCLUDE,
+    });
+  }
+
+  async findAboutPreview(locale: string = DEFAULT_LOCALE) {
+    const entry = await this.getOrCreateAboutPreview();
+    return toAboutPreview(entry, locale);
+  }
+
+  async updateAboutPreview(dto: UpdateAboutPreviewDto) {
+    const existing = await this.getOrCreateAboutPreview();
+    const updated = await this.prisma.homepageAboutPreview.update({
+      where: { id: existing.id },
+      data: {
+        label: dto.label,
+        heading: dto.heading,
+        paragraph1: dto.paragraph_1,
+        paragraph2: dto.paragraph_2,
+        paragraph3: dto.paragraph_3,
+        ctaText: dto.cta_text,
+        ctaLink: dto.cta_link,
+        videoSource: dto.video_source as never,
+        videoUrl: dto.video_url,
+        videoMediaId: dto.video_media_id,
+        videoThumbnailId: dto.video_thumbnail_id,
+        enabled: dto.enabled,
+        translations: dto.translations,
+      },
+      include: ABOUT_PREVIEW_INCLUDE,
+    });
+    return toAboutPreview(updated);
+  }
+
+  // ── Highlights (Post-Launch) ────────────────────────────────────────────
+
+  async findHighlights(locale?: string, publicOnly = false) {
+    const highlights = await this.prisma.homepageHighlight.findMany({
+      where: publicOnly ? { enabled: true } : undefined,
+      orderBy: { order: 'asc' },
+    });
+    return highlights.map((highlight) => toHighlight(highlight, locale));
+  }
+
+  async createHighlight(dto: CreateHighlightDto) {
+    const highlight = await this.prisma.homepageHighlight.create({
+      data: {
+        icon: (dto.icon as never) ?? 'quality',
+        title: dto.title,
+        description: dto.description,
+        order: dto.order ?? 0,
+        enabled: dto.enabled ?? true,
+        translations: dto.translations,
+      },
+    });
+    return toHighlight(highlight);
+  }
+
+  async updateHighlight(id: string, dto: UpdateHighlightDto) {
+    await this.assertHighlightExists(id);
+    const highlight = await this.prisma.homepageHighlight.update({
+      where: { id },
+      data: {
+        icon: dto.icon as never,
+        title: dto.title,
+        description: dto.description,
+        order: dto.order,
+        enabled: dto.enabled,
+        translations: dto.translations,
+      },
+    });
+    return toHighlight(highlight);
+  }
+
+  async removeHighlight(id: string) {
+    await this.assertHighlightExists(id);
+    await this.prisma.homepageHighlight.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  private async assertHighlightExists(id: string) {
+    const highlight = await this.prisma.homepageHighlight.findUnique({
+      where: { id },
+    });
+    if (!highlight)
+      throw new ApiException('NOT_FOUND', 'Highlight not found.', 404);
   }
 }

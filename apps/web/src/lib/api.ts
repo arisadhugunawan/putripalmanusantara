@@ -9,6 +9,8 @@ import type {
   GalleryCategory,
   GalleryItem,
   HeroSlide,
+  HomepageAboutPreview,
+  HomepageHighlight,
   HomepageStatistic,
   PaginationMeta,
   PartnerLogo,
@@ -134,5 +136,15 @@ export async function getDecorativeGraphics(page: string, locale?: string): Prom
   const json = await request<DecorativeGraphic[]>(
     withLocale(`/homepage/decorative-graphics?page=${encodeURIComponent(page)}`, locale),
   );
+  return json.data;
+}
+
+export async function getAboutPreview(locale?: string): Promise<HomepageAboutPreview> {
+  const json = await request<HomepageAboutPreview>(withLocale("/homepage/about-preview", locale));
+  return json.data;
+}
+
+export async function getHighlights(locale?: string): Promise<HomepageHighlight[]> {
+  const json = await request<HomepageHighlight[]>(withLocale("/homepage/highlights", locale));
   return json.data;
 }

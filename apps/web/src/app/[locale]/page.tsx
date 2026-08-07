@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import {
+  getAboutPreview,
   getDecorativeGraphics,
   getFacilities,
   getFaqs,
   getFeaturedProducts,
   getGallery,
   getHeroSlides,
+  getHighlights,
   getHomepageStatistics,
   getLatestArticles,
   getPartnerLogos,
@@ -13,7 +15,7 @@ import {
   getProducts,
   getPublicSettings,
 } from "@/lib/api";
-import { AboutSummarySection } from "@/components/home/AboutSummarySection";
+import { AboutPreviewSection } from "@/components/home/AboutPreviewSection";
 import { ArticlesSection } from "@/components/home/ArticlesSection";
 import { FacilitiesPreview } from "@/components/home/FacilitiesPreview";
 import { FaqSection } from "@/components/home/FaqSection";
@@ -57,6 +59,9 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     heroSlides,
     partnerLogos,
     decorativeGraphics,
+    aboutPreviewGraphics,
+    aboutPreview,
+    highlights,
     settings,
   ] = await Promise.all([
     getHomepageStatistics(locale),
@@ -70,6 +75,9 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     getHeroSlides(locale),
     getPartnerLogos(locale),
     getDecorativeGraphics("home"),
+    getDecorativeGraphics("home-about-preview"),
+    getAboutPreview(locale),
+    getHighlights(locale),
     getPublicSettings(locale).catch(() => null),
   ]);
 
@@ -81,8 +89,8 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
 
       <HeroSlider slides={heroSlides} decorativeGraphics={decorativeGraphics} />
       <PartnerMarquee logos={partnerLogos} />
+      <AboutPreviewSection preview={aboutPreview} highlights={highlights} decorativeGraphics={aboutPreviewGraphics} />
       <StatisticsSection statistics={statistics} />
-      <AboutSummarySection />
       <WhyChooseUsSection />
       <FeaturedProductsSection products={featuredProducts} />
       <ProductionProcessPreview steps={productionSteps} />

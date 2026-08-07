@@ -63,6 +63,8 @@ model Media {
   heroSlidesAsDesktop  HeroSlide[]                    @relation("HeroSlideDesktopImage")
   heroSlidesAsMobile   HeroSlide[]                    @relation("HeroSlideMobileImage")
   partnerLogos         PartnerLogo[]
+  aboutPreviewVideos   HomepageAboutPreview[]          @relation("AboutPreviewVideoMedia")
+  aboutPreviewThumbs   HomepageAboutPreview[]          @relation("AboutPreviewVideoThumbnail")
 
   @@index([fileType])
   @@map("media")
@@ -340,6 +342,7 @@ enum DecorativeGraphicVariant {
   world_map_outline
   palm_leaf
   coconut_tree_silhouette
+  container_outline
 }
 
 enum DecorativeGraphicPlacement {
@@ -362,6 +365,67 @@ model DecorativeGraphic {
   enabled   Boolean                    @default(true)
 
   @@map("decorative_graphics")
+}
+
+// ── 3.11d HomepageAboutPreview (Post-Launch) ─────────────────────────────
+// Singleton content block — the "About Company Preview" homepage section (intro copy +
+// video). Service does get-or-create against a single well-known id, matching how the rest
+// of the CMS avoids a dedicated "singleton" primitive. No video is seeded (video_source
+// "none"): no real company video exists yet, so the section shows an honest placeholder
+// until the admin adds one (see README — same rule as the Hero's un-supplied photos).
+enum HomepageVideoSource {
+  none
+  youtube
+  vimeo
+  upload
+}
+
+model HomepageAboutPreview {
+  id                String              @id @default(cuid())
+  label             String              @default("About CV. Putri Palma Nusantara")
+  heading           String              @default("Premium Indonesian Coconut Exporter")
+  paragraph1        String              @default("")
+  paragraph2        String              @default("")
+  paragraph3        String              @default("")
+  ctaText           String              @default("Get to Know Us") @map("cta_text")
+  ctaLink           String              @default("/about") @map("cta_link")
+  videoSource       HomepageVideoSource @default(none) @map("video_source")
+  videoUrl          String?             @map("video_url")
+  videoMediaId      String?             @map("video_media_id")
+  videoMedia        Media?              @relation("AboutPreviewVideoMedia", fields: [videoMediaId], references: [id])
+  videoThumbnailId  String?             @map("video_thumbnail_id")
+  videoThumbnail    Media?              @relation("AboutPreviewVideoThumbnail", fields: [videoThumbnailId], references: [id])
+  enabled           Boolean             @default(true)
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for label/heading/paragraph1-3/ctaText.
+  translations      Json?
+
+  @@map("homepage_about_preview")
+}
+
+// ── 3.11e HomepageHighlight (Post-Launch) ────────────────────────────────
+// The About Preview section's 4 "highlight" cards — a real list, unlike the singleton
+// above, so it follows the normal per-item CRUD pattern (Facility/HeroSlide, etc.).
+enum HomepageHighlightIcon {
+  quality
+  sustainability
+  partnership
+  service
+  globe
+  award
+}
+
+model HomepageHighlight {
+  id           String                @id @default(cuid())
+  icon         HomepageHighlightIcon @default(quality)
+  title        String
+  description  String
+  order        Int                   @default(0)
+  enabled      Boolean               @default(true)
+  /// i18n — non-English overrides for title/description.
+  translations Json?
+
+  @@map("homepage_highlights")
 }
 
 // ── 3.12 FAQ ─────────────────────────────────────────────────────────────

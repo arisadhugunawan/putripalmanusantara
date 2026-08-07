@@ -14,6 +14,7 @@ export const DECORATIVE_SVGS: Record<DecorativeGraphicVariant, (props: { classNa
   world_map_outline: WorldMapOutline,
   palm_leaf: PalmLeaf,
   coconut_tree_silhouette: CoconutTreeSilhouette,
+  container_outline: ContainerOutline,
 };
 
 const STROKE = { stroke: "currentColor", strokeWidth: 1, fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -45,6 +46,17 @@ function ShipOutline({ className }: { className?: string }) {
       <path d="M30 110h180l-20 35H50l-20-35Z" {...STROKE} />
       <path d="M55 110V70h130v40M75 70V45h20v25M115 70V35h20v35M155 70V50h20v20" {...STROKE} />
       <path d="M10 130c15 8 30 8 45 0s30-8 45 0 30 8 45 0 30-8 45 0 30 8 45 0" {...STROKE} />
+    </svg>
+  );
+}
+
+function ContainerOutline({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 200 140" className={className} aria-hidden="true">
+      <rect x="15" y="30" width="170" height="80" rx="4" {...STROKE} />
+      <path d="M15 50h170M15 70h170M15 90h170" {...STROKE} strokeDasharray="1 8" />
+      <path d="M45 30v80M100 30v80M155 30v80" {...STROKE} strokeDasharray="1 8" />
+      <rect x="30" y="42" width="24" height="16" rx="1" {...STROKE} />
     </svg>
   );
 }

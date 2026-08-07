@@ -341,6 +341,22 @@ Ketiga modul ini digabung ke `HomepageModule`/`/admin/homepage` yang sudah ada (
 
 **Diverifikasi**: `tsc --noEmit`, `eslint` (skrip lint asli proyek, bukan lint mentah pada folder `prisma/` yang memang di luar cakupan lint proyek), dan **build produksi penuh** (`next build`) semuanya bersih di kedua workspace, 108 halaman berhasil digenerate. CRUD Hero Slide/Partner Logo/Elemen Dekoratif diuji end-to-end langsung di Admin (login asli, tambah/hapus elemen dekoratif, dikonfirmasi lewat panggilan API langsung sebelum dan sesudah). Homepage diverifikasi di browser desktop dan mobile (375px, tanpa scroll horizontal, tombol CTA lebar penuh di mobile). `git diff` kosong pada Header, Footer, About, Products, Facilities, News, dan Contact.
 
+## Homepage: Section "About Company Preview" (Post-Launch)
+
+Permintaan lanjutan ketujuh: tambah satu section baru di Homepage — perkenalan perusahaan dua kolom (teks + video) dengan 4 kartu keunggulan — tampil tepat setelah Hero Slider dan Partner Logo Carousel, sepenuhnya dikelola dari Admin CMS. Header, Hero Slider, Partner Logo Carousel, Products, Facilities, News, Contact, dan Footer **tidak disentuh**.
+
+- **Mengganti `AboutSummarySection.tsx` lama**, bukan menambah section baru berdampingan — komponen lama itu memang duduk persis di posisi yang diminta brief ini, jadi mengganti isinya adalah "membuat section ini" yang sebenarnya diminta (pola yang sama seperti `Hero.tsx` → `HeroSlider.tsx` sebelumnya). File lama dihapus karena sudah 100% tidak terpakai.
+- **Dua model CMS baru**: `HomepageAboutPreview` (singleton — get-or-create terhadap satu baris, bukan daftar, karena section ini memang cuma satu; field: label, heading, 3 paragraf, teks+tautan CTA, sumber video, aktif/nonaktif) dan `HomepageHighlight` (daftar 4 kartu: ikon, judul, deskripsi, urutan, aktif/nonaktif) — keduanya digabung ke `HomepageModule`/Admin > Homepage yang sudah ada, konsisten dengan pola Hero Slide/Partner Logo/Elemen Dekoratif sebelumnya.
+- **Konten paragraf memakai deskripsi perusahaan asli yang sama** dengan yang sudah dipakai di halaman About Company (`/about#company`) — bukan teks placeholder baru yang dikarang, meski brief secara eksplisit mengizinkan placeholder ("Use placeholder content. The administrator will replace the text later."). Memakai deskripsi asli yang sudah ada mencegah dua bagian situs saling bertentangan ceritanya, dan tetap 100% dapat diedit admin kapan saja.
+- **Tautan CTA diarahkan ke `/about` (rute asli situs), bukan `/about-company`** seperti disebut di brief — situs ini tidak pernah punya rute `/about-company`; mengikuti brief secara harfiah akan menghasilkan tautan 404. Field tetap dapat diedit admin.
+- **Video: tidak ada video dikarang** — `video_source` default `"none"` (state asli, karena PPN belum punya video perusahaan), dan `CompanyVideo.tsx` menampilkan placeholder honest yang sama (`SafeImage` dengan `media=null`) seperti pola "belum ada foto/video" yang konsisten dipakai sejak Fase 4. Ketika admin nanti mengisi URL YouTube/Vimeo atau mengunggah file, komponen otomatis menampilkan facade thumbnail + tombol play (klik baru memuat iframe — hemat performa) atau `<video>` native untuk file unggahan.
+- **6 ikon highlight card bawaan** (quality, sustainability, partnership, service, globe, award) sebagai SVG line-art kecil yang sudah dibuat — admin memilih dari dropdown, tidak perlu upload ikon.
+- **Elemen dekoratif section ini memakai infrastruktur yang sama dari fitur Homepage sebelumnya**, tanpa perubahan skema — cukup memanggil `getDecorativeGraphics("home-about-preview")` (nilai `page` baru, field itu memang string bebas) supaya watermark section ini tidak berbagi/berebut slot dengan watermark Hero. Dua baris contoh (palm leaf pojok kanan atas, container outline pojok kiri bawah) di-seed sebagai titik awal yang bisa diubah admin. Satu varian ilustrasi baru ditambahkan (`container_outline`, sesuai daftar brief), varian lain reuse dari fitur Hero.
+
+**Bug nyata ditemukan & diperbaiki**: percobaan pertama menyusun 2-kolom (blok teks+highlight+CTA sebagai satu unit kiri, video sebagai unit kanan) dengan `order-1`/`order-2` pada level grid-item — hasilnya di mobile, video selalu tampil PALING BAWAH (setelah highlight cards & CTA), padahal brief eksplisit meminta urutan mobile: Intro → Video → Highlights → CTA. `order-*` Tailwind hanya bisa mengurutkan antar grid-item, bukan konten DI DALAM satu grid-item. Diperbaiki dengan memecah jadi 3 grid-item terpisah (Intro, Video, Highlights+CTA) yang di mobile otomatis mengikuti urutan dokumen (sudah benar), dan di desktop diberi `lg:col-start`/`lg:row-start`/`lg:row-span` eksplisit supaya video tetap menjadi satu kolom kanan yang membentang penuh di sebelah teks+highlight kiri.
+
+**Diverifikasi**: `tsc --noEmit`, lint (skrip proyek asli), dan **build produksi penuh** bersih di kedua workspace (108 halaman). Urutan DOM mobile dikonfirmasi lewat pemeriksaan langsung di browser (Intro → Video placeholder → Highlights). `git diff` kosong pada Header, Hero Slider (`HeroSlider.tsx`), Partner Logo Carousel (`PartnerMarquee.tsx`), Products, Facilities, News, Contact, dan Footer.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -363,6 +379,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Footer Premium 5-Kolom (Company/Products/Quick Link/Contact)
 - [x] Post-Launch — Halaman Contact Premium (Hero, Info, Peta, Form, Quick Contact)
 - [x] Post-Launch — Homepage: Hero Slider CMS + Partner Logos CMS + Elemen Dekoratif CMS
+- [x] Post-Launch — Homepage: Section "About Company Preview" (Teks + Video + 4 Highlight)
 
 ## Batasan Scope (Wajib Dipatuhi)
 

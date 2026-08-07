@@ -64,7 +64,8 @@ export type DecorativeGraphicVariant =
   | "compass"
   | "world_map_outline"
   | "palm_leaf"
-  | "coconut_tree_silhouette";
+  | "coconut_tree_silhouette"
+  | "container_outline";
 
 export type DecorativeGraphicPlacement =
   | "hero_behind_content"
@@ -85,4 +86,39 @@ export interface DecorativeGraphic {
   scale: number;
   order: number;
   enabled: boolean;
+}
+
+export type HomepageVideoSource = "none" | "youtube" | "vimeo" | "upload";
+
+/** Homepage "About Company Preview" section content (Post-Launch) — a singleton, not a
+ * list. `video_source: "none"` (the seeded default) is a valid, honest state: no company
+ * video exists yet, so the section shows a placeholder until the admin adds one. */
+export interface HomepageAboutPreview {
+  id: string;
+  label: string;
+  heading: string;
+  paragraph_1: string;
+  paragraph_2: string;
+  paragraph_3: string;
+  cta_text: string;
+  cta_link: string;
+  video_source: HomepageVideoSource;
+  video_url: string | null;
+  video_media: Media | null;
+  video_thumbnail: Media | null;
+  enabled: boolean;
+  translations?: Translations | null;
+}
+
+export type HomepageHighlightIcon = "quality" | "sustainability" | "partnership" | "service" | "globe" | "award";
+
+/** One of the About Preview section's highlight cards (Post-Launch). */
+export interface HomepageHighlight {
+  id: string;
+  icon: HomepageHighlightIcon;
+  title: string;
+  description: string;
+  order: number;
+  enabled: boolean;
+  translations?: Translations | null;
 }

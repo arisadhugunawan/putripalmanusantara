@@ -25,4 +25,14 @@ export class HomepageController {
   findDecorativeGraphics(@Query('page') page?: string) {
     return this.homepageService.findDecorativeGraphics(page, true);
   }
+
+  @Get('about-preview')
+  findAboutPreview(@Query('locale') locale?: string) {
+    return this.homepageService.findAboutPreview(resolveLocale(locale));
+  }
+
+  @Get('highlights')
+  findHighlights(@Query('locale') locale?: string) {
+    return this.homepageService.findHighlights(resolveLocale(locale), true);
+  }
 }

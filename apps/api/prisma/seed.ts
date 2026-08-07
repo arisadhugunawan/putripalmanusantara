@@ -320,12 +320,76 @@ async function seedDecorativeGraphics() {
   const count = await prisma.decorativeGraphic.count();
   if (count > 0) return;
 
-  // Decorative design choice, not fabricated business data — two tasteful low-opacity
-  // line-art watermarks on the Homepage; the admin can add/adjust/disable more via CMS.
+  // Decorative design choice, not fabricated business data — tasteful low-opacity
+  // line-art watermarks; the admin can add/adjust/disable more via CMS. `page` doubles as a
+  // section key ("home" = Hero, "home-about-preview" = the About Preview section) so the
+  // two sections don't share/compete for the same watermark placements.
   await prisma.decorativeGraphic.createMany({
     data: [
       { page: "home", variant: "leaf_outline", placement: "hero_behind_content", opacity: 0.06, scale: 1.4, order: 1 },
       { page: "home", variant: "world_map_outline", placement: "bottom_right", opacity: 0.05, scale: 1, order: 2 },
+      { page: "home-about-preview", variant: "palm_leaf", placement: "top_right", opacity: 0.05, scale: 1.2, order: 1 },
+      { page: "home-about-preview", variant: "container_outline", placement: "bottom_left", opacity: 0.05, scale: 1, order: 2 },
+    ],
+  });
+}
+
+async function seedAboutPreview() {
+  const count = await prisma.homepageAboutPreview.count();
+  if (count > 0) return;
+
+  // Same real company description already used on the About page (docs/01-prd.md company
+  // profile) — not new placeholder copy, so the two sections never contradict each other.
+  // video_source stays "none": no company video exists yet, so the section shows an honest
+  // placeholder until the admin adds a real YouTube/Vimeo link or uploads a file.
+  await prisma.homepageAboutPreview.create({
+    data: {
+      label: "About CV. Putri Palma Nusantara",
+      heading: "Premium Indonesian Coconut Exporter",
+      paragraph1:
+        "CV Putri Palma Nusantara is an Indonesian exporter of coconut-derived products, connecting local coconut-producing regions with importers, distributors, wholesalers, food manufacturers, and trading companies across Asia, the Middle East, and Europe.",
+      paragraph2:
+        "We focus on four core product lines — Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber — supported by a consistent production process and dependable supply capacity.",
+      paragraph3:
+        "Our mission is to be a trusted, transparent supply partner for international buyers of coconut products, delivering consistent quality from sourcing through to export.",
+      ctaText: "Get to Know Us",
+      ctaLink: "/about",
+      videoSource: "none",
+      enabled: true,
+    },
+  });
+}
+
+async function seedHighlights() {
+  const count = await prisma.homepageHighlight.count();
+  if (count > 0) return;
+
+  await prisma.homepageHighlight.createMany({
+    data: [
+      {
+        icon: "quality",
+        title: "Export Quality Products",
+        description: "Every shipment passes quality checks before it leaves our facility.",
+        order: 1,
+      },
+      {
+        icon: "sustainability",
+        title: "Sustainable Supply Chain",
+        description: "Sourced responsibly from trusted local farming communities.",
+        order: 2,
+      },
+      {
+        icon: "partnership",
+        title: "Trusted International Partner",
+        description: "Serving buyers across Asia, the Middle East, and Europe.",
+        order: 3,
+      },
+      {
+        icon: "service",
+        title: "Professional Export Services",
+        description: "Clear communication and dependable support from quotation to shipment.",
+        order: 4,
+      },
     ],
   });
 }
@@ -341,6 +405,8 @@ async function main() {
   await seedArticles();
   await seedHeroSlides();
   await seedDecorativeGraphics();
+  await seedAboutPreview();
+  await seedHighlights();
   console.log("Seed complete.");
 }
 

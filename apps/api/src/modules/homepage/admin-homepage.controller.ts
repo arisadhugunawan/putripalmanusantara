@@ -10,11 +10,13 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RevalidationService } from '../../revalidation/revalidation.service';
+import { UpdateAboutPreviewDto } from './dto/about-preview.dto';
 import {
   CreateDecorativeGraphicDto,
   UpdateDecorativeGraphicDto,
 } from './dto/decorative-graphic.dto';
 import { CreateHeroSlideDto, UpdateHeroSlideDto } from './dto/hero-slide.dto';
+import { CreateHighlightDto, UpdateHighlightDto } from './dto/highlight.dto';
 import { ReplaceHomepageStatisticsDto } from './dto/homepage-statistic.dto';
 import {
   CreatePartnerLogoDto,
@@ -136,6 +138,51 @@ export class AdminHomepageController {
   @Delete('decorative-graphics/:id')
   async removeDecorativeGraphic(@Param('id') id: string) {
     const result = await this.homepageService.removeDecorativeGraphic(id);
+    await this.revalidation.revalidate(['/']);
+    return result;
+  }
+
+  // ── About Preview ───────────────────────────────────────────────────
+
+  @Get('about-preview')
+  findAboutPreview() {
+    return this.homepageService.findAboutPreview();
+  }
+
+  @Put('about-preview')
+  async updateAboutPreview(@Body() dto: UpdateAboutPreviewDto) {
+    const preview = await this.homepageService.updateAboutPreview(dto);
+    await this.revalidation.revalidate(['/']);
+    return preview;
+  }
+
+  // ── Highlights ──────────────────────────────────────────────────────
+
+  @Get('highlights')
+  findHighlights() {
+    return this.homepageService.findHighlights();
+  }
+
+  @Post('highlights')
+  async createHighlight(@Body() dto: CreateHighlightDto) {
+    const highlight = await this.homepageService.createHighlight(dto);
+    await this.revalidation.revalidate(['/']);
+    return highlight;
+  }
+
+  @Put('highlights/:id')
+  async updateHighlight(
+    @Param('id') id: string,
+    @Body() dto: UpdateHighlightDto,
+  ) {
+    const highlight = await this.homepageService.updateHighlight(id, dto);
+    await this.revalidation.revalidate(['/']);
+    return highlight;
+  }
+
+  @Delete('highlights/:id')
+  async removeHighlight(@Param('id') id: string) {
+    const result = await this.homepageService.removeHighlight(id);
     await this.revalidation.revalidate(['/']);
     return result;
   }
