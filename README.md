@@ -267,6 +267,17 @@ Permintaan lanjutan: tambah menu navigasi baru **Facilities** yang membuka satu 
 
 **Diverifikasi di browser**: sidebar desktop sticky dengan highlight bagian aktif berpindah benar saat navigasi klik maupun scroll; tab horizontal mobile sticky di bawah header dengan auto-scroll ke tab aktif; smooth scroll berfungsi dengan animasi custom (durasi ~600ms); accordion FAQ membuka/menutup dengan animasi halus; header desktop menampilkan "Facilities" dan "Gallery" sebagai dua menu datar terpisah; `git diff` kosong pada Header.tsx, Footer.tsx, Home, About, Products, dan Contact (kecuali `nav-config.ts` yang memang bagian dari permintaan ini). `tsc --noEmit` dan `eslint` bersih.
 
+## Facilities Dropdown + Mobile Nav Redesign (Post-Launch)
+
+Permintaan lanjutan kedua: (1) ubah "Facilities" di header dari tautan datar menjadi dropdown yang menautkan langsung ke 6 bagian in-page halaman Facilities (pola sama seperti dropdown "About Company"), dan (2) rombak drawer navigasi mobile menjadi overlay layar penuh dengan top bar sendiri (logo + tombol tutup), bagian Bahasa yang bisa dibuka/tutup, dan item aktif ditandai pill terisi — terinspirasi struktur mobile menu sebuah situs kompetitor yang ditunjukkan pengguna, **tanpa meniru warna hitam/emasnya** — tetap memakai palet hijau/putih PPN yang sudah ada di seluruh situs, konsisten dengan aturan yang sama yang berlaku sejak redesain katalog produk.
+
+- **Dropdown Facilities** — `nav-config.ts`: 6 item baru (`/facilities#facilities`, `#production-process`, `#moq-payment`, `#shipment-terms`, `#packaging-options`, `#faq`) ditambahkan sebagai `NavDropdownGroup`, memakai komponen `NavDropdown`/`MobileGroup` yang sudah ada tanpa perlu komponen baru. Label-labelnya baru di kamus i18n (`dictionary.d.ts` + 6 file locale) — machine-translated draft, sama seperti kebijakan M3 sebelumnya.
+- **Drawer mobile ditulis ulang total** (`MobileMenu.tsx`) — dari drawer sisi-kanan `max-w-sm` dengan grid bahasa selalu-terbuka di bagian bawah, menjadi overlay `inset-0` layar penuh dengan top bar sendiri (logo + tombol X), bagian "Language" collapsible (flag + centang untuk bahasa aktif, mengikuti pola accordion `grid-rows` yang sudah dipakai di seluruh situs), dan item nav aktif (mis. "Home" saat di beranda) ditandai pill hijau terisi.
+- **Bug nyata ditemukan & diperbaiki saat menulis ulang** — perbandingan "item aktif" (`pathname === item.href`) di seluruh nav mobile sebelumnya tidak pernah cocok karena `usePathname()` selalu menyertakan prefiks locale (`/en/...`) sedangkan `href` di `nav-config.ts` tidak (`/...`) — highlight pill/warna aktif sebelumnya diam-diam tidak pernah menyala. Ditambahkan helper `stripLocale()` untuk menormalkan perbandingan.
+- **Header desktop, Footer, Homepage, About, Products, Contact tidak disentuh** — hanya `nav-config.ts` (data), `dictionary.d.ts` + 6 file locale (label baru), dan `MobileMenu.tsx` (komponen mobile-only, `lg:hidden`) yang berubah.
+
+**Diverifikasi di browser**: dropdown desktop "Facilities" menampilkan 6 sub-item dengan label benar dan link ke anchor yang tepat; drawer mobile layar-penuh menampilkan top bar+X, bagian Language buka/tutup dengan centang pada bahasa aktif, pill hijau pada "Home", grup dropdown ("About Company"/"Our Products"/"Facilities") buka/tutup dengan chevron berputar, tombol tutup mengembalikan ke halaman di baliknya; tampilan desktop tidak berubah. `tsc --noEmit` dan `eslint` bersih.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -284,6 +295,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Navigasi In-Page Halaman About Company
 - [x] Post-Launch — Katalog Produk Premium (Listing + Detail 10 Bagian)
 - [x] Post-Launch — Halaman Facilities Satu-Halaman (6 Bagian) + Menu Nav Baru
+- [x] Post-Launch — Dropdown Facilities di Header + Redesain Drawer Mobile
 
 ## Batasan Scope (Wajib Dipatuhi)
 

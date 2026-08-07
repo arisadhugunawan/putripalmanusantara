@@ -22,9 +22,9 @@ export function isDropdown(entry: NavEntry): entry is NavDropdownGroup {
  * in-page sections (sticky nav + smooth scroll, see AboutNav.tsx) rather than separate
  * routes — see README "Internationalization & Header Redesign" section. "PPN Team" now has
  * honest (non-fabricated) content on the About page, so it's back in this dropdown.
- * "Facilities" and "Gallery" are flat top-level links (previously grouped under one
- * "Facilities & Gallery" dropdown) — see README "Facilities Page (Post-Launch)" section for
- * why Facilities was promoted to its own menu item.
+ * "Facilities" is a dropdown into the Facilities page's own in-page sections (same anchor
+ * pattern as "About Company" → AboutNav.tsx), and "Gallery" stays a separate flat top-level
+ * link — see README "Facilities Page (Post-Launch)" section.
  */
 export function getMainNavEntries(dict: Dictionary): NavEntry[] {
   return [
@@ -41,7 +41,17 @@ export function getMainNavEntries(dict: Dictionary): NavEntry[] {
     },
     // "Our Products" is populated with real product data by the caller (Header needs live
     // slugs from the CMS, not a hardcoded/possibly-stale list) — see Header.tsx.
-    { href: "/facilities", label: dict.nav.facilities },
+    {
+      label: dict.nav.facilities,
+      items: [
+        { href: "/facilities#facilities", label: dict.nav.facilitiesOverview },
+        { href: "/facilities#production-process", label: dict.nav.facilitiesProductionProcess },
+        { href: "/facilities#moq-payment", label: dict.nav.facilitiesMoqPayment },
+        { href: "/facilities#shipment-terms", label: dict.nav.facilitiesShipmentTerms },
+        { href: "/facilities#packaging-options", label: dict.nav.facilitiesPackagingOptions },
+        { href: "/facilities#faq", label: dict.nav.facilitiesFaq },
+      ],
+    },
     { href: "/gallery", label: dict.nav.gallery },
     { href: "/articles", label: dict.nav.news },
     { href: "/contact", label: dict.nav.contact },

@@ -15,6 +15,12 @@ export interface Dictionary {
     ourProducts: string;
     facilitiesAndGallery: string;
     facilities: string;
+    facilitiesOverview: string;
+    facilitiesProductionProcess: string;
+    facilitiesMoqPayment: string;
+    facilitiesShipmentTerms: string;
+    facilitiesPackagingOptions: string;
+    facilitiesFaq: string;
     gallery: string;
     news: string;
     contact: string;
