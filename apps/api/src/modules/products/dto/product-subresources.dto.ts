@@ -32,6 +32,10 @@ export class UpsertProductSpecificationDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsIn(['specification', 'export_info'])
+  group?: 'specification' | 'export_info';
 }
 
 export class UpsertProductDownloadDto {

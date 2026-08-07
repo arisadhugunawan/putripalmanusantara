@@ -82,6 +82,7 @@ export function toProductDetail(
         spec_key: specT.specKey,
         spec_value: specT.specValue,
         order: spec.order,
+        group: spec.group,
       };
     });
 

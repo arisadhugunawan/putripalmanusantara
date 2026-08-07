@@ -12,11 +12,17 @@ export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
 export type ContentStatus = "draft" | "published";
 
+/** "specification" = Section 5 physical/technical spec cards; "export_info" = Section 9
+ * commercial export-terms cards (MOQ, Incoterms, etc.) — same flexible key/value row shape,
+ * distinguished only by this field so no new model/CRUD surface was needed. */
+export type ProductSpecificationGroup = "specification" | "export_info";
+
 export interface ProductSpecification {
   id: string;
   spec_key: string;
   spec_value: string;
   order: number;
+  group: ProductSpecificationGroup;
 }
 
 export type ProductPackagingApplicationType = "packaging" | "application";

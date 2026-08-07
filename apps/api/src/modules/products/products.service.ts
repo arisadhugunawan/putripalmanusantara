@@ -104,6 +104,7 @@ export class ProductsService {
                 specKey: spec.spec_key,
                 specValue: spec.spec_value,
                 order: spec.order ?? index,
+                group: spec.group ?? 'specification',
               })),
             }
           : undefined,
@@ -195,6 +196,7 @@ export class ProductsService {
         specKey: dto.spec_key,
         specValue: dto.spec_value,
         order: dto.order ?? 0,
+        group: dto.group ?? 'specification',
       },
     });
   }
@@ -211,6 +213,7 @@ export class ProductsService {
         specKey: dto.spec_key,
         specValue: dto.spec_value,
         order: dto.order,
+        group: dto.group,
       },
     });
   }

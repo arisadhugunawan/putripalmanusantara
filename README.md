@@ -240,6 +240,21 @@ Diverifikasi langsung di browser: klik tiap item nav → scroll ke section yang 
 3. `transform-gpu` pada elemen `<header>` (untuk animasi hide/show saat scroll) membuat containing block baru bagi descendant `position: fixed` — drawer mobile yang saat itu dirender **di dalam** `<header>` jadi terpotong tingginya (77px, mengikuti tinggi header, bukan tinggi viewport). Ditemukan lewat inspeksi `getBoundingClientRect()` langsung, bukan tebakan. Diperbaiki dengan memindahkan `<MobileMenu>` menjadi sibling dari `<header>`, bukan child.
 4. Endpoint revalidasi on-demand (`/api/revalidate`) awalnya hanya me-revalidate path tanpa prefiks locale (mis. `/products/x`), padahal URL nyata sekarang berprefiks locale — diperbaiki agar setiap path yang dikirim backend di-expand ke 6 varian locale sekaligus.
 
+## Katalog Produk Premium (Post-Launch)
+
+Permintaan lanjutan: rombak total halaman detail produk (`/products/[slug]`) menjadi pengalaman katalog B2B premium — sidebar produk sticky + 10 bagian (Banner, Overview/slider+zoom, Quick Action, Deskripsi, Kartu Spesifikasi, Galeri, Kartu Kemasan, Kartu Aplikasi, Info Ekspor, Produk Terkait) — terinspirasi Cargill/Olam/Wilmar-style, **hanya** untuk sistem katalog produk. Header, Footer, Homepage, About Company, dan Contact **sengaja tidak disentuh** (dikonfirmasi lewat `git diff` kosong pada file-file tersebut setelah selesai).
+
+- **Kartu listing baru terpisah** — `ProductCatalogueCard.tsx` dibuat sebagai komponen baru, bukan mengubah `ProductCard.tsx` yang sudah ada, karena `ProductCard` juga dipakai Homepage (`FeaturedProductsSection`) yang eksplisit di luar scope permintaan ini. Mengubah `ProductCard` langsung akan ikut mengubah tampilan Homepage secara tidak sengaja.
+- **Skema tambahan (additive, non-breaking)** — kolom `group` (`specification` | `export_info`) ditambahkan ke `ProductSpecification` (migrasi `20260807061638_add_product_specification_group`) supaya Bagian 5 "Specifications" dan Bagian 9 "Export Information" bisa memakai tabel key-value yang sama (fleksibel, admin bisa menambah field apa saja) tanpa model/CRUD baru. Form admin "Spesifikasi" dapat selector grup baru.
+- **Bagian 9 "Export Information" sengaja kosong di data seed** — field seperti MOQ, Incoterms, Lead Time adalah klaim bisnis spesifik yang hanya pemilik bisnis yang tahu angka sebenarnya; bukan dibuat-buat. Section header otomatis tersembunyi jika belum ada data (state jujur, sama seperti pola Legal & Certificate/Hero video sebelumnya) — admin tinggal menambah "spesifikasi" dengan grup "Info Ekspor" lewat CMS kapan pun data asli tersedia.
+- **Bagian 7/8 (Packaging/Applications)** — sekarang benar-benar menampilkan `media` (foto) yang sebelumnya ada di data model tapi tidak pernah dirender; kalau admin belum unggah foto, tampil placeholder on-brand jujur (`SafeImage`), bukan gambar palsu. Ikon di kartu Aplikasi dipilih lewat pencocokan kata kunci pada judul asli dari CMS (murni kosmetik, teksnya tetap 100% data nyata) — bukan field baru yang perlu diisi admin.
+- **Lightbox baru, bukan refactor `GalleryGrid`** — `ProductImageViewer.tsx` (hero + thumbnail + zoom) dibuat sebagai komponen mandiri untuk Bagian 2, sengaja tidak me-refactor `GalleryGrid.tsx` yang sudah ada (dipakai juga oleh halaman Gallery umum) untuk menghindari risiko regresi di luar scope. Bagian 6 "Product Gallery" tetap memakai `GalleryGrid` apa adanya.
+- **Schema.org Product diperkaya** — `productJsonLd()` sekarang menyertakan seluruh galeri sebagai `image[]` dan spesifikasi sebagai `additionalProperty`; tidak ada `offers`/harga karena model bisnisnya berbasis permintaan penawaran, bukan harga publik (menambahkan harga palsu akan menyesatkan).
+
+**Diverifikasi end-to-end di browser** (bukan hanya lolos build): navigasi sidebar antar produk berfungsi (highlight aktif berpindah benar), tombol WhatsApp Inquiry berisi pesan pra-isi dengan nama produk asli + nomor perusahaan asli dari Pengaturan, tombol Request Quotation scroll ke form yang benar, kartu Related Products menampilkan 3 produk lain yang sebenarnya, tampilan mobile (tab horizontal sticky) dan desktop (sidebar sticky) sama-sama diverifikasi via screenshot nyata, Homepage/Header/Footer/About/Contact dikonfirmasi tidak berubah lewat `git diff` kosong.
+
+**Bug nyata ditemukan & diperbaiki:** audit Lighthouse aksesibilitas menemukan `heading-order` gagal (kartu memakai `<h4>` langsung setelah `<h2>` seksi, melompati `<h3>`, dan kartu produk di halaman listing memakai `<h3>` langsung setelah `<h1>` halaman) — diperbaiki dengan menyesuaikan level heading semantik di `PackagingCards`, `ApplicationCards`, `RelatedProducts`, dan `ProductCatalogueCard` (ukuran visual/CSS tidak berubah, hanya tag semantiknya). Skor akhir: Lighthouse 100/100/100/100 di halaman detail produk dan listing.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -254,6 +269,8 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Phase 7 — Performance Optimization
 - [x] Phase 8 — QA & Verifikasi
 - [x] Post-Launch — Internasionalisasi (6 bahasa) & Revisi Header
+- [x] Post-Launch — Navigasi In-Page Halaman About Company
+- [x] Post-Launch — Katalog Produk Premium (Listing + Detail 10 Bagian)
 
 ## Batasan Scope (Wajib Dipatuhi)
 

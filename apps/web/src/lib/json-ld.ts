@@ -32,17 +32,29 @@ export function breadcrumbJsonLd(items: BreadcrumbLdItem[], locale: string) {
   };
 }
 
-/** NFR-SEO-01 — Product schema on detail pages. */
+/** NFR-SEO-01 — Product schema on detail pages. Includes the full gallery as `image[]`
+ * and every specification (both card groups) as `additionalProperty` — no `offers`/price,
+ * since this is a quotation-based B2B exporter with no public pricing to report. */
 export function productJsonLd(product: ProductDetail, locale: string) {
+  const images = [
+    product.cover_image?.file_url,
+    ...product.gallery.map((item) => item.media.file_url),
+  ].filter((url): url is string => Boolean(url));
+
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
     description: product.short_description,
     category: product.category,
-    image: product.cover_image?.file_url,
+    image: images.length > 0 ? images : undefined,
     url: `${SITE_URL}/${locale}/products/${product.slug}`,
     brand: { "@type": "Brand", name: SITE_NAME },
+    additionalProperty: product.specifications.map((spec) => ({
+      "@type": "PropertyValue",
+      name: spec.spec_key,
+      value: spec.spec_value,
+    })),
   };
 }
 

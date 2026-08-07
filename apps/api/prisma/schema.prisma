@@ -113,6 +113,14 @@ model ProductGalleryImage {
   @@map("product_gallery")
 }
 
+/// Distinguishes physical/technical spec cards from commercial export-terms cards on the
+/// product detail page (Section 5 "Specifications" vs Section 9 "Export Information") —
+/// both stored in the same flexible key/value table rather than a new model.
+enum ProductSpecificationGroup {
+  specification
+  export_info
+}
+
 model ProductSpecification {
   id        String  @id @default(cuid())
   productId String  @map("product_id")
@@ -120,6 +128,7 @@ model ProductSpecification {
   specKey   String  @map("spec_key")
   specValue String  @map("spec_value")
   order     Int     @default(0)
+  group     ProductSpecificationGroup @default(specification)
   /// i18n — non-English overrides for specKey/specValue.
   translations Json?
 

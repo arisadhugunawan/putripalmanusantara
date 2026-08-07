@@ -286,61 +286,108 @@ function ProductSpecificationsSection({
 }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
+  const [group, setGroup] = useState<"specification" | "export_info">("specification");
 
   async function handleAdd() {
     if (!key.trim() || !value.trim()) return;
     await adminApi.post(`/admin/products/${productId}/specifications`, {
       spec_key: key,
       spec_value: value,
+      group,
     });
     setKey("");
     setValue("");
     onChange();
   }
 
+  async function handleDelete(specId: string) {
+    await adminApi.delete(`/admin/products/${productId}/specifications/${specId}`);
+    onChange();
+  }
+
+  const specRows = specifications.filter((spec) => spec.group !== "export_info");
+  const exportInfoRows = specifications.filter((spec) => spec.group === "export_info");
+
   return (
     <Card className="mt-6">
-      <h2 className="text-h3 text-neutral-900">Spesifikasi</h2>
-      <table className="mt-4 w-full text-body">
-        <tbody>
-          {specifications.map((spec) => (
-            <tr key={spec.id} className="border-b border-neutral-100">
-              <td className="py-2 pr-4 font-medium text-neutral-900">{spec.spec_key}</td>
-              <td className="py-2 pr-4 text-neutral-600">{spec.spec_value}</td>
-              <td className="py-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await adminApi.delete(`/admin/products/${productId}/specifications/${spec.id}`);
-                    onChange();
-                  }}
-                  className="text-small text-red-600 underline"
-                >
-                  Hapus
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <h2 className="text-h3 text-neutral-900">Spesifikasi & Info Ekspor</h2>
+      <p className="mt-1 text-small text-neutral-600">
+        &ldquo;Spesifikasi&rdquo; tampil di kartu spesifikasi produk (Bagian 5); &ldquo;Info
+        Ekspor&rdquo; tampil di kartu info ekspor terpisah (Bagian 9 — MOQ, Incoterms, dsb.) di
+        halaman produk publik.
+      </p>
+
+      <h3 className="mt-5 text-body font-medium text-neutral-900">Spesifikasi</h3>
+      <SpecTable rows={specRows} onDelete={handleDelete} />
+
+      <h3 className="mt-6 text-body font-medium text-neutral-900">Info Ekspor</h3>
+      <SpecTable rows={exportInfoRows} onDelete={handleDelete} />
+
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <div>
-          <Label htmlFor="spec-key" className="text-small">
-            Nama Spesifikasi
+          <Label htmlFor="spec-group" className="text-small">
+            Grup
           </Label>
-          <Input id="spec-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="mis. Moisture Content" />
+          <select
+            id="spec-group"
+            value={group}
+            onChange={(e) => setGroup(e.target.value as "specification" | "export_info")}
+            className="rounded-field border border-neutral-300 px-3 py-2 text-body"
+          >
+            <option value="specification">Spesifikasi</option>
+            <option value="export_info">Info Ekspor</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="spec-key" className="text-small">
+            Nama
+          </Label>
+          <Input id="spec-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="mis. Moisture Content / MOQ" />
         </div>
         <div>
           <Label htmlFor="spec-value" className="text-small">
             Nilai
           </Label>
-          <Input id="spec-value" value={value} onChange={(e) => setValue(e.target.value)} placeholder="mis. ≤ 6%" />
+          <Input id="spec-value" value={value} onChange={(e) => setValue(e.target.value)} placeholder="mis. ≤ 6% / 1 Container (20ft)" />
         </div>
         <Button type="button" variant="secondary" onClick={() => void handleAdd()}>
           Tambah
         </Button>
       </div>
     </Card>
+  );
+}
+
+function SpecTable({
+  rows,
+  onDelete,
+}: {
+  rows: ProductDetail["specifications"];
+  onDelete: (specId: string) => void;
+}) {
+  if (rows.length === 0) {
+    return <p className="mt-2 text-small text-neutral-500">Belum ada.</p>;
+  }
+  return (
+    <table className="mt-2 w-full text-body">
+      <tbody>
+        {rows.map((spec) => (
+          <tr key={spec.id} className="border-b border-neutral-100">
+            <td className="py-2 pr-4 font-medium text-neutral-900">{spec.spec_key}</td>
+            <td className="py-2 pr-4 text-neutral-600">{spec.spec_value}</td>
+            <td className="py-2">
+              <button
+                type="button"
+                onClick={() => onDelete(spec.id)}
+                className="text-small text-red-600 underline"
+              >
+                Hapus
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
