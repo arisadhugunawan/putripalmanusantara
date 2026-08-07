@@ -20,6 +20,9 @@ const PUBLIC_KEYS = [
   'social_instagram',
   'social_linkedin',
   'social_tiktok',
+  // Contact page "Download Company Catalogue" quick-contact card — optional; hidden until
+  // the client uploads a real PDF and adds its URL via Admin > Pengaturan.
+  'company_catalogue_url',
 ];
 
 @Injectable()

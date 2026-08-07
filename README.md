@@ -300,6 +300,19 @@ Permintaan lanjutan keempat: rombak Footer menjadi tampilan gelap premium 5-kolo
 
 **Diverifikasi di browser**: footer gelap 5-kolom tampil benar di desktop (grid 5 kolom) dan mobile (stack 1 kolom, urutan tetap terbaca); data Company/Products/Quick Link/Contact Us semuanya nyata dan tertaut benar; ikon sosial media tidak tampil karena belum ada URL diisi (empty state jujur, sesuai desain); bar hak cipta bawah solid hijau tua dengan teks putih di tengah. `tsc --noEmit` dan `eslint` bersih di kedua workspace (`api`, `web`).
 
+## Halaman Contact Premium (Post-Launch)
+
+Permintaan lanjutan kelima: rombak **hanya** halaman Contact menjadi tampilan premium B2B — hero gelap, panel info perusahaan + kartu kontak + peta, formulir inquiry lengkap, dan kartu quick-contact — terinspirasi referensi yang ditunjukkan pengguna, dengan palet PPN (hijau/putih), bukan warna referensi. Header, Footer, Homepage, About, Products, dan Facilities **tidak disentuh**.
+
+- **Hero gelap dibangun mandiri (`ContactHero.tsx`), bukan `PageHeader` yang dipakai semua halaman lain** — brief secara eksplisit meminta hero gelap khusus terpusat, berbeda dari banner terang standar situs. Tidak ada foto stok "gudang/kontainer/pabrik" ditambahkan — PPN tidak punya aset foto tersebut dan menyisipkan foto generik melanggar aturan proyek "tanpa gambar stok generik" yang sudah ditegakkan sejak Fase 4. Sebagai gantinya dipakai gradien gelap + glow yang sama persis dengan gaya Hero Homepage (dibangun ulang secara independen, bukan meng-import/mengubah `Hero.tsx` milik Homepage, supaya Homepage tidak ikut berubah).
+- **Formulir inquiry baru (`ContactInquiryForm.tsx`), bukan modifikasi `QuotationForm.tsx`** — brief meminta checkbox "I agree to the Privacy Policy" yang tidak diminta di titik pemakaian `QuotationForm` lain (Homepage, halaman produk, CTA Facilities); mengubah komponen bersama itu akan ikut mengubah semua halaman tersebut. Form baru ini adalah salinan independen dengan field yang sama (Nama, Perusahaan, Negara, Email, Telepon, Produk Diminati, Estimasi Kuantitas, Pesan) + checkbox consent, mengirim ke endpoint `quotation-requests` yang sama karena tombolnya memang "Request Quotation".
+- **Checkbox tidak menaut ke halaman "Privacy Policy" yang tidak ada** — proyek ini belum pernah punya halaman kebijakan privasi, dan menulis dokumen legalnya bukan wewenang saya. Teks checkbox diubah menjadi pernyataan persetujuan penggunaan data yang akurat, tanpa tautan palsu/mengarah ke diri sendiri.
+- **Kartu "Download Company Catalogue" hanya tampil jika ada filenya** — ditambahkan satu key `SiteSetting` opsional baru (`company_catalogue_url`, additive, tanpa migrasi) yang diekspos lewat `PUBLIC_KEYS`; kartu ini disembunyikan seluruhnya sampai admin mengunggah PDF katalog asli dan mengisi URL-nya lewat Admin > Pengaturan — tidak ada tautan unduhan mati.
+- **Ikon media sosial memakai key yang sama dengan Footer** (`social_facebook/instagram/linkedin/tiktok`, sudah ada sejak redesain Footer) — hanya tampil jika sungguh diisi.
+- **Schema.org LocalBusiness baru (`localBusinessJsonLd()`)** dibangun sepenuhnya dari data Settings asli (nama, email, telepon, alamat) — field yang belum diisi cukup dihilangkan dari objek, bukan diisi nilai palsu. Organization schema sudah ada global sejak awal (root layout), tidak perlu diduplikasi.
+
+**Diverifikasi di browser**: hero gelap tampil terpusat dengan breadcrumb, subjudul, dan fade-in di desktop maupun mobile (satu kolom, tanpa scroll horizontal); panel kiri menampilkan data kontak asli (email, telepon, alamat, jam operasional) dengan kartu yang naik saat hover, plus ikon WhatsApp meski belum ada ikon media sosial lain (empty state jujur); peta Google Maps + tombol "View on Google Maps" tampil dengan sudut membulat dan bayangan; form kanan memvalidasi semua field wajib termasuk checkbox consent baru (`Please agree to the Privacy Policy to continue.`) sebelum mengirim; dua kartu quick-contact (WhatsApp, Email) tampil, kartu Catalogue tersembunyi karena belum ada URL; Footer di bawahnya tidak berubah. `git diff` kosong pada Header, Footer, Homepage, About, Products, Facilities, News, dan `QuotationForm.tsx`/`ContactForm.tsx`. `tsc --noEmit` dan `eslint` bersih di kedua workspace.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -320,6 +333,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Dropdown Facilities di Header + Redesain Drawer Mobile
 - [x] Post-Launch — Language Switcher Pill + Hapus "Request Quotation" dari Header
 - [x] Post-Launch — Footer Premium 5-Kolom (Company/Products/Quick Link/Contact)
+- [x] Post-Launch — Halaman Contact Premium (Hero, Info, Peta, Form, Quick Contact)
 
 ## Batasan Scope (Wajib Dipatuhi)
 

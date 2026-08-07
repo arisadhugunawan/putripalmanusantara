@@ -1,4 +1,4 @@
-import type { ArticleDetail, Faq, ProductDetail } from "@ppn/shared-types";
+import type { ArticleDetail, Faq, ProductDetail, PublicSiteSettings } from "@ppn/shared-types";
 import { SITE_NAME, SITE_URL } from "./seo";
 
 /** NFR-SEO-01 — Organization schema, present on every page. */
@@ -10,6 +10,20 @@ export function organizationJsonLd() {
     url: SITE_URL,
     description:
       "Indonesian exporter of coconut-derived products: Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber.",
+  };
+}
+
+/** Contact page only — LocalBusiness schema built entirely from real Settings data (address,
+ * phone, email); fields with no value on file are simply omitted, never fabricated. */
+export function localBusinessJsonLd(settings: PublicSiteSettings | null, locale: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: settings?.company_name ?? SITE_NAME,
+    url: `${SITE_URL}/${locale}/contact`,
+    email: settings?.contact_email,
+    telephone: settings?.contact_phone,
+    address: settings?.address ? { "@type": "PostalAddress", streetAddress: settings.address } : undefined,
   };
 }
 
