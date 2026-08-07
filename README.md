@@ -255,6 +255,18 @@ Permintaan lanjutan: rombak total halaman detail produk (`/products/[slug]`) men
 
 **Bug nyata ditemukan & diperbaiki:** audit Lighthouse aksesibilitas menemukan `heading-order` gagal (kartu memakai `<h4>` langsung setelah `<h2>` seksi, melompati `<h3>`, dan kartu produk di halaman listing memakai `<h3>` langsung setelah `<h1>` halaman) — diperbaiki dengan menyesuaikan level heading semantik di `PackagingCards`, `ApplicationCards`, `RelatedProducts`, dan `ProductCatalogueCard` (ukuran visual/CSS tidak berubah, hanya tag semantiknya). Skor akhir: Lighthouse 100/100/100/100 di halaman detail produk dan listing.
 
+## Halaman Facilities Satu-Halaman (Post-Launch)
+
+Permintaan lanjutan: tambah menu navigasi baru **Facilities** yang membuka satu halaman (`/facilities`) dengan sidebar sticky (mobile: tab horizontal) berisi 6 bagian — Facilities, Production Process, MOQ & Payment Terms, Shipment Terms, Packaging Options, FAQ — menggunakan pola in-page nav + smooth scroll + `IntersectionObserver` yang sama seperti halaman About Company. Header, Footer, Homepage, About Company, Products, dan Contact **sengaja tidak disentuh secara langsung** kecuali satu perubahan navigasi yang memang diminta secara eksplisit di bawah.
+
+- **Nav baru mandiri, bukan reuse `AboutNav`** — `FacilitiesNav.tsx` adalah salinan independen dari pola sticky-nav/smooth-scroll `AboutNav.tsx` (bukan import langsung), supaya halaman About Company (termasuk `aria-label`-nya) tidak ikut berubah sedikit pun akibat perubahan apa pun di masa depan pada Facilities. Konsisten dengan pola isolasi yang sama dipakai saat membangun `ProductSidebarNav` terpisah dari komponen About.
+- **Perubahan header nav (satu-satunya perubahan di luar halaman Facilities itu sendiri, dan memang diminta eksplisit oleh brief ini)** — dropdown "Facilities & Gallery" dipecah menjadi dua tautan datar sejajar "Facilities" dan "Gallery" di `nav-config.ts`, supaya "Facilities" tampil sebagai menu utama tersendiri (sesuai permintaan) tanpa menghilangkan akses ke Gallery. Header.tsx, Footer.tsx, dan seluruh halaman lain tidak diubah.
+- **Tidak ada data terkait MOQ/pembayaran/pengiriman yang dikarang** — FAQ yang sudah ada di CMS sejak awal (`seed.ts`) secara eksplisit sudah menyatakan "MOQ varies by product... submit a Request Quotation" dan "Lead time depends on... quotation request", bukan angka tetap. Mengikuti keputusan bisnis yang sudah ada ini, kartu-kartu di bagian "MOQ & Payment Terms" dan "Shipment Terms" berisi kebijakan umum/negotiable (mis. "Payment Terms: L/C, T/T, atau dinegosiasikan", "Port of Loading: pelabuhan terdekat dari fasilitas kami di Cilacap") yang selalu diarahkan ke tombol Request Quotation untuk angka pastinya — bukan MOQ/harga/lead time spesifik yang belum pernah dikonfirmasi klien. Satu-satunya angka yang ditampilkan (Production Capacity) diambil langsung dari data `HomepageStatistic` yang sudah ada, bukan angka baru.
+- **Packaging Options memakai data paket asli per produk** — bukan daftar generik "Mesh Bag/PP Bag/Bulk" yang dikarang, section ini mengambil field `packaging` asli tiap produk (Admin > Produk > Packaging, sudah ada sejak Fase 5) lewat `getProductBySlug` untuk keempat produk lalu digabung jadi kartu, masing-masing menampilkan produk aslinya ("Suitable for Semi Husked Coconut", dst).
+- **Facilities, Production Process, dan FAQ memakai komponen & data CMS yang sudah ada apa adanya** — `FacilityGrid`, `ProductionTimeline`, dan `Accordion` (dari `getFacilities`, `getProductionSteps`, `getFaqs`) di-import langsung tanpa modifikasi, konsisten dengan pola reuse yang sudah dipakai di redesain katalog produk.
+
+**Diverifikasi di browser**: sidebar desktop sticky dengan highlight bagian aktif berpindah benar saat navigasi klik maupun scroll; tab horizontal mobile sticky di bawah header dengan auto-scroll ke tab aktif; smooth scroll berfungsi dengan animasi custom (durasi ~600ms); accordion FAQ membuka/menutup dengan animasi halus; header desktop menampilkan "Facilities" dan "Gallery" sebagai dua menu datar terpisah; `git diff` kosong pada Header.tsx, Footer.tsx, Home, About, Products, dan Contact (kecuali `nav-config.ts` yang memang bagian dari permintaan ini). `tsc --noEmit` dan `eslint` bersih.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -271,6 +283,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Internasionalisasi (6 bahasa) & Revisi Header
 - [x] Post-Launch — Navigasi In-Page Halaman About Company
 - [x] Post-Launch — Katalog Produk Premium (Listing + Detail 10 Bagian)
+- [x] Post-Launch — Halaman Facilities Satu-Halaman (6 Bagian) + Menu Nav Baru
 
 ## Batasan Scope (Wajib Dipatuhi)
 
