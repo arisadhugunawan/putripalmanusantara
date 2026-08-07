@@ -1,7 +1,7 @@
 "use client";
 
 import type { Locale, ProductSummary } from "@ppn/shared-types";
-import { buttonVariants, cn } from "@ppn/ui-components";
+import { cn } from "@ppn/ui-components";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@/i18n/Link";
@@ -124,9 +124,6 @@ export function Header({
 
           <div className="hidden items-center gap-2 lg:flex">
             <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
-            <Link href="/#request-quotation" className={buttonVariants("primary", "sm")}>
-              {dictionary.nav.requestQuotation}
-            </Link>
           </div>
 
           <div className="flex items-center gap-1 lg:hidden">

@@ -13,6 +13,9 @@ function replaceLocaleInPath(pathname: string, nextLocale: Locale) {
   return segments.join("/") || `/${nextLocale}`;
 }
 
+/** Pill trigger (flag + language code + chevron) opening a flag/name list with a check on
+ * the active locale — PPN's own green/white palette, not the dark/gold reference it was
+ * modeled on (see README "Facilities Dropdown + Mobile Nav Redesign" for the branding rule). */
 export function LanguageSwitcher({ locale, label }: { locale: Locale; label: string }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,51 +57,74 @@ export function LanguageSwitcher({ locale, label }: { locale: Locale; label: str
         aria-expanded={open}
         aria-label={label}
         onClick={() => setOpen((value) => !value)}
-        className="flex h-10 w-10 items-center justify-center rounded-field text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+        className={cn(
+          "flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-body font-medium transition-colors",
+          open
+            ? "border-primary-600 bg-primary-50 text-neutral-900"
+            : "border-primary-500 text-neutral-900 hover:bg-primary-50",
+        )}
       >
-        <GlobeIcon />
+        <span aria-hidden="true">{LOCALE_LABELS[locale].flag}</span>
+        {locale.toUpperCase()}
+        <ChevronIcon open={open} />
       </button>
 
       <div
         role="menu"
         aria-label={label}
         className={cn(
-          "absolute right-0 z-50 mt-2 grid w-48 origin-top-right overflow-hidden rounded-card border border-neutral-200 bg-white shadow-card-hover transition-all duration-200 ease-out",
+          "absolute right-0 z-50 mt-2 grid w-52 origin-top-right overflow-hidden rounded-card border border-neutral-200 bg-white shadow-card-hover transition-all duration-200 ease-out",
           open ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0",
         )}
       >
-        <div className="overflow-hidden py-2">
-          {SUPPORTED_LOCALES.map((code) => (
-            <button
-              key={code}
-              type="button"
-              role="menuitem"
-              onClick={() => selectLocale(code)}
-              className={cn(
-                "flex w-full items-center gap-3 px-4 py-2 text-left text-body transition-colors hover:bg-neutral-100",
-                code === locale ? "font-medium text-neutral-900" : "text-neutral-600",
-              )}
-            >
-              <span aria-hidden="true">{LOCALE_LABELS[code].flag}</span>
-              {LOCALE_LABELS[code].name}
-            </button>
-          ))}
+        <div className="overflow-hidden p-2">
+          {SUPPORTED_LOCALES.map((code) => {
+            const isActive = code === locale;
+            return (
+              <button
+                key={code}
+                type="button"
+                role="menuitem"
+                onClick={() => selectLocale(code)}
+                className={cn(
+                  "flex w-full items-center justify-between gap-3 rounded-field px-3 py-2.5 text-left text-body transition-colors",
+                  isActive
+                    ? "bg-primary-500 font-medium text-neutral-900"
+                    : "text-neutral-700 hover:bg-neutral-100",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <span aria-hidden="true">{LOCALE_LABELS[code].flag}</span>
+                  {LOCALE_LABELS[code].name}
+                </span>
+                {isActive && <CheckIcon />}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-function GlobeIcon() {
+function ChevronIcon({ open }: { open: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M3 12h18M12 3c2.5 2.5 3.75 5.5 3.75 9S14.5 18.5 12 21c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
+    <svg
+      viewBox="0 0 12 12"
+      width="10"
+      height="10"
+      aria-hidden="true"
+      className={cn("shrink-0 transition-transform duration-200", open && "rotate-180")}
+    >
+      <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" className="shrink-0 text-neutral-900">
+      <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

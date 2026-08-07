@@ -278,6 +278,16 @@ Permintaan lanjutan kedua: (1) ubah "Facilities" di header dari tautan datar men
 
 **Diverifikasi di browser**: dropdown desktop "Facilities" menampilkan 6 sub-item dengan label benar dan link ke anchor yang tepat; drawer mobile layar-penuh menampilkan top bar+X, bagian Language buka/tutup dengan centang pada bahasa aktif, pill hijau pada "Home", grup dropdown ("About Company"/"Our Products"/"Facilities") buka/tutup dengan chevron berputar, tombol tutup mengembalikan ke halaman di baliknya; tampilan desktop tidak berubah. `tsc --noEmit` dan `eslint` bersih.
 
+## Language Switcher Pill + Penghapusan "Request Quotation" dari Header (Post-Launch)
+
+Permintaan lanjutan ketiga: (1) ubah tombol bahasa (globe icon) menjadi pill berisi bendera + kode bahasa (mis. "EN") + chevron, dengan dropdown bendera+nama+centang pada bahasa aktif — terinspirasi tampilan pill bahasa sebuah situs kompetitor yang ditunjukkan pengguna, tetap dengan warna hijau/putih PPN (bukan oranye/hitam referensi), dan (2) hapus tombol "Request Quotation" dari header/drawer navigasi di semua perangkat.
+
+- **`LanguageSwitcher.tsx` ditulis ulang** — tombol sebelumnya ikon globe polos (`h-10 w-10`) menjadi pill `rounded-full border-2 border-primary-500` berisi bendera + `locale.toUpperCase()` + chevron yang berputar saat terbuka; item dropdown menampilkan bendera+nama lengkap, item aktif mendapat isian solid `bg-primary-500` + ikon centang (bukan sekadar teks tebal seperti sebelumnya). Komponen ini dipakai identik di top bar desktop maupun mobile (satu komponen, satu perubahan berlaku di semua perangkat).
+- **Tombol "Request Quotation" dihapus dari Header.tsx (baris nav desktop) dan MobileMenu.tsx (CTA di bawah drawer)** — CTA yang sama di tempat lain (Hero homepage, Facilities page, About page, dsb.) **tidak disentuh**, karena itu konten halaman, bukan bagian header. Import `buttonVariants` yang jadi tidak terpakai di kedua file dibersihkan.
+- Tidak ada perubahan pada Footer, Homepage, About, Products, halaman Facilities, atau Contact — hanya 3 file layout (`Header.tsx`, `MobileMenu.tsx`, `LanguageSwitcher.tsx`) yang berubah.
+
+**Diverifikasi di browser**: pill bahasa tampil identik di desktop dan mobile (bendera+EN+chevron), dropdown terbuka menampilkan 6 bahasa dengan centang pada bahasa aktif, tombol Request Quotation sudah tidak ada di nav bar desktop maupun drawer mobile, tombol Request Quotation di Hero/CTA halaman lain tetap ada dan berfungsi normal. `tsc --noEmit` dan `eslint` bersih.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -296,6 +306,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Katalog Produk Premium (Listing + Detail 10 Bagian)
 - [x] Post-Launch — Halaman Facilities Satu-Halaman (6 Bagian) + Menu Nav Baru
 - [x] Post-Launch — Dropdown Facilities di Header + Redesain Drawer Mobile
+- [x] Post-Launch — Language Switcher Pill + Hapus "Request Quotation" dari Header
 
 ## Batasan Scope (Wajib Dipatuhi)
 
