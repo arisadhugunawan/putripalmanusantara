@@ -19,16 +19,28 @@ export interface Faq {
 
 /** Homepage hero carousel slide (Post-Launch). Zero slides is valid — the public site
  * falls back to a single static slide. */
+export type HeroButtonStyle = "primary" | "secondary";
+export type HeroTextAlignment = "left" | "center" | "right";
+
 export interface HeroSlide {
   id: string;
   desktop_image: Media | null;
   mobile_image: Media | null;
+  eyebrow_text: string | null;
   heading: string;
   subheading: string;
+  description: string | null;
   button_1_text: string | null;
   button_1_link: string | null;
+  button_1_enabled: boolean;
+  button_1_style: HeroButtonStyle;
   button_2_text: string | null;
   button_2_link: string | null;
+  button_2_enabled: boolean;
+  button_2_style: HeroButtonStyle;
+  text_alignment: HeroTextAlignment;
+  /** 0-100 (%) — darkness of the scrim between the background image and the text. */
+  overlay_opacity: number;
   order: number;
   enabled: boolean;
   publish_date: string | null;

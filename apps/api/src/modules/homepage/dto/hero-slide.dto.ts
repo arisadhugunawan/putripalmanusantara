@@ -3,12 +3,18 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
+  IsIn,
   IsInt,
   IsObject,
   IsOptional,
   IsString,
+  Max,
+  Min,
   MinLength,
 } from 'class-validator';
+
+const BUTTON_STYLES = ['primary', 'secondary'];
+const TEXT_ALIGNMENTS = ['left', 'center', 'right'];
 
 export class CreateHeroSlideDto {
   @IsOptional()
@@ -18,6 +24,10 @@ export class CreateHeroSlideDto {
   @IsOptional()
   @IsString()
   mobile_image_id?: string;
+
+  @IsOptional()
+  @IsString()
+  eyebrow_text?: string;
 
   @IsString()
   @MinLength(1)
@@ -29,11 +39,23 @@ export class CreateHeroSlideDto {
 
   @IsOptional()
   @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
   button_1_text?: string;
 
   @IsOptional()
   @IsString()
   button_1_link?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  button_1_enabled?: boolean;
+
+  @IsOptional()
+  @IsIn(BUTTON_STYLES)
+  button_1_style?: string;
 
   @IsOptional()
   @IsString()
@@ -42,6 +64,25 @@ export class CreateHeroSlideDto {
   @IsOptional()
   @IsString()
   button_2_link?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  button_2_enabled?: boolean;
+
+  @IsOptional()
+  @IsIn(BUTTON_STYLES)
+  button_2_style?: string;
+
+  @IsOptional()
+  @IsIn(TEXT_ALIGNMENTS)
+  text_alignment?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  overlay_opacity?: number;
 
   @IsOptional()
   @Type(() => Number)
@@ -72,11 +113,19 @@ export class UpdateHeroSlideDto {
 
   @IsOptional()
   @IsString()
+  eyebrow_text?: string;
+
+  @IsOptional()
+  @IsString()
   heading?: string;
 
   @IsOptional()
   @IsString()
   subheading?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @IsOptional()
   @IsString()
@@ -87,12 +136,39 @@ export class UpdateHeroSlideDto {
   button_1_link?: string;
 
   @IsOptional()
+  @IsBoolean()
+  button_1_enabled?: boolean;
+
+  @IsOptional()
+  @IsIn(BUTTON_STYLES)
+  button_1_style?: string;
+
+  @IsOptional()
   @IsString()
   button_2_text?: string;
 
   @IsOptional()
   @IsString()
   button_2_link?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  button_2_enabled?: boolean;
+
+  @IsOptional()
+  @IsIn(BUTTON_STYLES)
+  button_2_style?: string;
+
+  @IsOptional()
+  @IsIn(TEXT_ALIGNMENTS)
+  text_alignment?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  overlay_opacity?: number;
 
   @IsOptional()
   @Type(() => Number)

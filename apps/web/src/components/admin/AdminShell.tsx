@@ -4,6 +4,7 @@ import { cn } from "@ppn/ui-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/admin/auth-context";
+import { ToastProvider } from "./Toast";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", exact: true },
@@ -22,6 +23,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
+    <ToastProvider>
     <div className="flex min-h-screen bg-neutral-100">
       <aside className="hidden w-64 shrink-0 flex-col border-r border-neutral-200 bg-white p-6 lg:flex">
         <Link href="/admin" className="text-h3 font-heading font-bold text-neutral-900">
@@ -64,5 +66,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-6 lg:p-10">{children}</main>
       </div>
     </div>
+    </ToastProvider>
   );
 }

@@ -10,10 +10,15 @@ interface MediaUploadFieldProps {
   label: string;
   media: Media | null;
   onChange: (media: Media) => void;
+  /** Client-side size cap (e.g. hero images: 5MB) — checked before the upload request is
+   * even made, on top of whatever limit the server enforces. */
+  maxSizeBytes?: number;
+  /** Optional helper text under the field, e.g. "Rekomendasi: 1920×1080px". */
+  hint?: string;
 }
 
 /** Direct upload-and-attach — POST /admin/media then store the returned id (FR-CMS-03/05/08). */
-export function MediaUploadField({ label, media, onChange }: MediaUploadFieldProps) {
+export function MediaUploadField({ label, media, onChange, maxSizeBytes, hint }: MediaUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [altText, setAltText] = useState(media?.alt_text ?? "");
@@ -22,17 +27,25 @@ export function MediaUploadField({ label, media, onChange }: MediaUploadFieldPro
   async function handleFileChange() {
     const file = fileInputRef.current?.files?.[0];
     if (!file) return;
-    if (!altText.trim()) {
-      setError("Isi teks alternatif (alt text) sebelum unggah gambar.");
+
+    if (maxSizeBytes && file.size > maxSizeBytes) {
+      setError(`Gambar terlalu besar. Maksimum ${(maxSizeBytes / (1024 * 1024)).toFixed(0)}MB.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+
+    // Alt text is mandatory server-side (NFR-SEO-06/A11Y-03), but the admin shouldn't have
+    // to stop and type one just to upload a file — derive a reasonable default from the
+    // file name (editable afterwards) so picking a file is the only step required.
+    const derivedAltText = altText.trim() || file.name.replace(/\.[^./]+$/, "").replace(/[-_]+/g, " ").trim() || "Gambar";
+    if (!altText.trim()) setAltText(derivedAltText);
 
     setUploading(true);
     setError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("alt_text", altText);
+      formData.append("alt_text", derivedAltText);
       const uploaded = await adminApi.post<Media>("/admin/media", formData);
       onChange(uploaded);
     } catch (err) {
@@ -72,6 +85,7 @@ export function MediaUploadField({ label, media, onChange }: MediaUploadFieldPro
           className="text-small"
         />
       </div>
+      {hint && <p className="mt-1 text-small text-neutral-500">{hint}</p>}
       {uploading && <p className="mt-1 text-small text-neutral-600">Mengunggah...</p>}
       {error && <p className="mt-1 text-small text-red-600">{error}</p>}
     </div>

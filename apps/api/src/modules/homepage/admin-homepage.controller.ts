@@ -85,6 +85,13 @@ export class AdminHomepageController {
     return result;
   }
 
+  @Post('hero-slides/:id/duplicate')
+  async duplicateHeroSlide(@Param('id') id: string) {
+    const slide = await this.homepageService.duplicateHeroSlide(id);
+    await this.revalidation.revalidate(['/']);
+    return slide;
+  }
+
   // ── Partner Logos ───────────────────────────────────────────────────
 
   @Get('partner-logos')

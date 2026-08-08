@@ -112,12 +112,20 @@ export class HomepageService {
       data: {
         desktopImageId: dto.desktop_image_id,
         mobileImageId: dto.mobile_image_id,
+        eyebrowText: dto.eyebrow_text,
         heading: dto.heading,
         subheading: dto.subheading,
+        description: dto.description,
         button1Text: dto.button_1_text,
         button1Link: dto.button_1_link,
+        button1Enabled: dto.button_1_enabled ?? true,
+        button1Style: (dto.button_1_style as never) ?? 'primary',
         button2Text: dto.button_2_text,
         button2Link: dto.button_2_link,
+        button2Enabled: dto.button_2_enabled ?? true,
+        button2Style: (dto.button_2_style as never) ?? 'secondary',
+        textAlignment: (dto.text_alignment as never) ?? 'center',
+        overlayOpacity: dto.overlay_opacity ?? 35,
         order: dto.order ?? 0,
         enabled: dto.enabled ?? true,
         publishDate: dto.publish_date,
@@ -135,12 +143,20 @@ export class HomepageService {
       data: {
         desktopImageId: dto.desktop_image_id,
         mobileImageId: dto.mobile_image_id,
+        eyebrowText: dto.eyebrow_text,
         heading: dto.heading,
         subheading: dto.subheading,
+        description: dto.description,
         button1Text: dto.button_1_text,
         button1Link: dto.button_1_link,
+        button1Enabled: dto.button_1_enabled,
+        button1Style: dto.button_1_style as never,
         button2Text: dto.button_2_text,
         button2Link: dto.button_2_link,
+        button2Enabled: dto.button_2_enabled,
+        button2Style: dto.button_2_style as never,
+        textAlignment: dto.text_alignment as never,
+        overlayOpacity: dto.overlay_opacity,
         order: dto.order,
         enabled: dto.enabled,
         publishDate: dto.publish_date,
@@ -155,6 +171,42 @@ export class HomepageService {
     await this.assertHeroSlideExists(id);
     await this.prisma.heroSlide.delete({ where: { id } });
     return { deleted: true };
+  }
+
+  /** Clones every field except id/timestamps — new slide is inactive by default so
+   * duplicating for a quick variant never accidentally goes live on the Homepage. */
+  async duplicateHeroSlide(id: string) {
+    const source = await this.prisma.heroSlide.findUnique({ where: { id } });
+    if (!source)
+      throw new ApiException('NOT_FOUND', 'Hero slide not found.', 404);
+
+    const count = await this.prisma.heroSlide.count();
+    const slide = await this.prisma.heroSlide.create({
+      data: {
+        desktopImageId: source.desktopImageId,
+        mobileImageId: source.mobileImageId,
+        eyebrowText: source.eyebrowText,
+        heading: `${source.heading} — Copy`,
+        subheading: source.subheading,
+        description: source.description,
+        button1Text: source.button1Text,
+        button1Link: source.button1Link,
+        button1Enabled: source.button1Enabled,
+        button1Style: source.button1Style,
+        button2Text: source.button2Text,
+        button2Link: source.button2Link,
+        button2Enabled: source.button2Enabled,
+        button2Style: source.button2Style,
+        textAlignment: source.textAlignment,
+        overlayOpacity: source.overlayOpacity,
+        order: count,
+        enabled: false,
+        publishDate: source.publishDate,
+        translations: source.translations as never,
+      },
+      include: HERO_SLIDE_INCLUDE,
+    });
+    return toHeroSlide(slide);
   }
 
   private async assertHeroSlideExists(id: string) {

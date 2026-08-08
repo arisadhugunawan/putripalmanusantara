@@ -277,27 +277,48 @@ model HomepageStatistic {
   @@map("homepage_statistics")
 }
 
+enum HeroButtonStyle {
+  primary
+  secondary
+}
+
+enum HeroTextAlignment {
+  left
+  center
+  right
+}
+
 // ── 3.11a HeroSlide (Post-Launch) ────────────────────────────────────────
-// Homepage hero carousel — fully admin-managed; zero rows is a valid state (public site
-// falls back to a single static slide, see apps/web HeroSlider.tsx).
+// Homepage hero carousel — fully admin-managed; zero enabled rows is a valid state (public
+// site falls back to a static branded section with no CMS dependency, see
+// apps/web HeroSlider.tsx's HeroFallback).
 model HeroSlide {
   id              String    @id @default(cuid())
   desktopImageId  String?   @map("desktop_image_id")
   desktopImage    Media?    @relation("HeroSlideDesktopImage", fields: [desktopImageId], references: [id])
   mobileImageId   String?   @map("mobile_image_id")
   mobileImage     Media?    @relation("HeroSlideMobileImage", fields: [mobileImageId], references: [id])
+  eyebrowText     String?   @map("eyebrow_text")
   heading         String
   subheading      String
-  button1Text     String?   @map("button_1_text")
-  button1Link     String?   @map("button_1_link")
-  button2Text     String?   @map("button_2_text")
-  button2Link     String?   @map("button_2_link")
+  description     String?
+  button1Text     String?         @map("button_1_text")
+  button1Link     String?         @map("button_1_link")
+  button1Enabled  Boolean         @default(true) @map("button_1_enabled")
+  button1Style    HeroButtonStyle @default(primary) @map("button_1_style")
+  button2Text     String?         @map("button_2_text")
+  button2Link     String?         @map("button_2_link")
+  button2Enabled  Boolean         @default(true) @map("button_2_enabled")
+  button2Style    HeroButtonStyle @default(secondary) @map("button_2_style")
+  textAlignment   HeroTextAlignment @default(center) @map("text_alignment")
+  /// 0–100 (%) — darkness of the scrim between the background image and the text.
+  overlayOpacity  Int       @default(35) @map("overlay_opacity")
   order           Int       @default(0)
   enabled         Boolean   @default(true)
   publishDate     DateTime? @map("publish_date")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
-  /// i18n — non-English overrides for heading/subheading/button1Text/button2Text.
+  /// i18n — non-English overrides for eyebrowText/heading/subheading/description/button1Text/button2Text.
   translations    Json?
 
   @@map("hero_slides")

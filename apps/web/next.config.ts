@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.r2.dev" },
       { protocol: "https", hostname: "**.amazonaws.com" },
     ],
+    // Next 16.0.0 added SSRF protection that blocks optimizing images whose hostname
+    // resolves to a loopback/private IP — `localhost` always does, so it broke every
+    // media preview under the local storage driver above. Safe here: remotePatterns
+    // only ever allows that one fixed dev host plus specific production CDN domains,
+    // never attacker-controlled input.
+    dangerouslyAllowLocalIP: true,
   },
 };
 
