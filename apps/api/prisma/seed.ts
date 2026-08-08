@@ -330,6 +330,7 @@ async function seedDecorativeGraphics() {
       { page: "home", variant: "world_map_outline", placement: "bottom_right", opacity: 0.05, scale: 1, order: 2 },
       { page: "home-about-preview", variant: "palm_leaf", placement: "top_right", opacity: 0.05, scale: 1.2, order: 1 },
       { page: "home-about-preview", variant: "container_outline", placement: "bottom_left", opacity: 0.05, scale: 1, order: 2 },
+      { page: "home-partners", variant: "coconut_cross_section", placement: "center_background", opacity: 0.04, scale: 1.6, order: 1 },
     ],
   });
 }
@@ -394,6 +395,27 @@ async function seedHighlights() {
   });
 }
 
+async function seedPartnersSection() {
+  const count = await prisma.homepagePartnersSection.count();
+  if (count > 0) return;
+
+  // Title/subtitle copy is taken verbatim from the client's own brief — real specified
+  // content, not placeholder text. No PartnerLogo rows are seeded here: the brief itself
+  // is explicit that government/institution logos must never be invented or substituted
+  // with unofficial versions — "If an official downloadable logo is unavailable, DO NOT
+  // create a fake logo. Instead, create an admin placeholder." The carousel below simply
+  // stays hidden (see PartnerMarquee.tsx) until the admin uploads real, officially-sourced
+  // logo files — this seed only prepares the section chrome around it.
+  await prisma.homepagePartnersSection.create({
+    data: {
+      title: "TRUSTED INSTITUTIONS & PARTNERS",
+      subtitle: "Supporting our commitment to quality, compliance, and reliable international trade.",
+      marqueeDurationSeconds: 40,
+      enabled: true,
+    },
+  });
+}
+
 async function main() {
   await seedAdmin();
   await seedSiteSettings();
@@ -407,6 +429,7 @@ async function main() {
   await seedDecorativeGraphics();
   await seedAboutPreview();
   await seedHighlights();
+  await seedPartnersSection();
   console.log("Seed complete.");
 }
 

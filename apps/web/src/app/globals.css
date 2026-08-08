@@ -101,8 +101,10 @@
   --animate-ken-burns: ken-burns 6000ms ease-out forwards;
 
   /* Trusted-partners infinite marquee — track is the logo list duplicated once, so a 50%
-     translateX loops seamlessly. */
-  --animate-marquee: marquee 32s linear infinite;
+     translateX loops seamlessly. Duration reads a --marquee-duration custom property set
+     inline per-instance (admin-configurable speed), falling back to the brief's
+     recommended 40s. */
+  --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
 }
 
 @keyframes fade-in-up {
@@ -127,10 +129,10 @@
 
 @keyframes marquee {
   from {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 

@@ -36,23 +36,47 @@ export interface HeroSlide {
   translations?: Translations | null;
 }
 
-export type PartnerLogoCategory =
-  | "government"
-  | "certification"
-  | "logistics"
-  | "association"
-  | "bank"
-  | "other";
+/** Free-text, not a fixed union — the admin can add categories beyond this suggested list
+ * (a Prisma enum can't be extended without a migration, so the column is a plain string). */
+export type PartnerLogoCategory = string;
+
+export const PARTNER_LOGO_SUGGESTED_CATEGORIES = [
+  "Government Institution",
+  "Export & Trade",
+  "Agriculture",
+  "Certification",
+  "Financial Institution",
+  "Logistics",
+  "Business Association",
+  "Strategic Partner",
+  "Other",
+] as const;
 
 /** Trusted-partners marquee logo (Post-Launch). Zero logos is valid — no real
- * partnership/institution names are fabricated ahead of client confirmation. */
+ * partnership/institution names or logo files are fabricated ahead of client confirmation. */
 export interface PartnerLogo {
   id: string;
   logo: Media;
   partner_name: string;
+  description: string | null;
   website_url: string | null;
+  open_in_new_tab: boolean;
+  /** Falls back to partner_name when empty — see PartnerMarquee.tsx. */
+  alt_text: string | null;
   category: PartnerLogoCategory;
   order: number;
+  enabled: boolean;
+  featured: boolean;
+  translations?: Translations | null;
+}
+
+/** Homepage "Trusted Institutions & Partners" section content (Post-Launch) — a singleton,
+ * like HomepageAboutPreview. */
+export interface HomepagePartnersSection {
+  id: string;
+  title: string;
+  subtitle: string;
+  marquee_duration_seconds: number;
   enabled: boolean;
   translations?: Translations | null;
 }

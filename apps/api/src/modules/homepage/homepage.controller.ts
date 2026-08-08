@@ -35,4 +35,9 @@ export class HomepageController {
   findHighlights(@Query('locale') locale?: string) {
     return this.homepageService.findHighlights(resolveLocale(locale), true);
   }
+
+  @Get('partners-section')
+  findPartnersSection(@Query('locale') locale?: string) {
+    return this.homepageService.findPartnersSection(resolveLocale(locale));
+  }
 }

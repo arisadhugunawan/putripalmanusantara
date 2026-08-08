@@ -22,6 +22,7 @@ import {
   CreatePartnerLogoDto,
   UpdatePartnerLogoDto,
 } from './dto/partner-logo.dto';
+import { UpdatePartnersSectionDto } from './dto/partners-section.dto';
 import { HomepageService } from './homepage.service';
 
 @Controller('api/v1/admin/homepage')
@@ -185,5 +186,19 @@ export class AdminHomepageController {
     const result = await this.homepageService.removeHighlight(id);
     await this.revalidation.revalidate(['/']);
     return result;
+  }
+
+  // ── Partners Section ────────────────────────────────────────────────
+
+  @Get('partners-section')
+  findPartnersSection() {
+    return this.homepageService.findPartnersSection();
+  }
+
+  @Put('partners-section')
+  async updatePartnersSection(@Body() dto: UpdatePartnersSectionDto) {
+    const section = await this.homepageService.updatePartnersSection(dto);
+    await this.revalidation.revalidate(['/']);
+    return section;
   }
 }

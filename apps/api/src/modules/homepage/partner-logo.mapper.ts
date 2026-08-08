@@ -27,15 +27,22 @@ export function toPartnerLogo(
   entry: PartnerLogoWithRelations,
   locale: string = DEFAULT_LOCALE,
 ): SharedPartnerLogo {
-  const t = translate(entry, entry.translations, locale, ['partnerName']);
+  const t = translate(entry, entry.translations, locale, [
+    'partnerName',
+    'description',
+  ]);
   return {
     id: entry.id,
     logo: toMedia(entry.logo),
     partner_name: t.partnerName,
+    description: t.description,
     website_url: entry.websiteUrl,
+    open_in_new_tab: entry.openInNewTab,
+    alt_text: entry.altText,
     category: entry.category,
     order: entry.order,
     enabled: entry.enabled,
+    featured: entry.featured,
     translations: entry.translations as SharedPartnerLogo['translations'],
   };
 }

@@ -2,23 +2,14 @@ import type { TranslationsInput } from '../../../common/dto/translations.dto';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsIn,
   IsInt,
   IsObject,
   IsOptional,
   IsString,
   IsUrl,
+  MaxLength,
   MinLength,
 } from 'class-validator';
-
-const CATEGORIES = [
-  'government',
-  'certification',
-  'logistics',
-  'association',
-  'bank',
-  'other',
-];
 
 export class CreatePartnerLogoDto {
   @IsString()
@@ -30,11 +21,26 @@ export class CreatePartnerLogoDto {
   partner_name!: string;
 
   @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
   @IsUrl()
   website_url?: string;
 
   @IsOptional()
-  @IsIn(CATEGORIES)
+  @IsBoolean()
+  open_in_new_tab?: boolean;
+
+  @IsOptional()
+  @IsString()
+  alt_text?: string;
+
+  // Free-text, not IsIn against a fixed list — the brief explicitly asks for
+  // admin-extensible categories (see PARTNER_LOGO_SUGGESTED_CATEGORIES in shared-types).
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
   category?: string;
 
   @IsOptional()
@@ -45,6 +51,10 @@ export class CreatePartnerLogoDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  featured?: boolean;
 
   @IsOptional()
   @IsObject()
@@ -61,11 +71,24 @@ export class UpdatePartnerLogoDto {
   partner_name?: string;
 
   @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
   @IsUrl()
   website_url?: string;
 
   @IsOptional()
-  @IsIn(CATEGORIES)
+  @IsBoolean()
+  open_in_new_tab?: boolean;
+
+  @IsOptional()
+  @IsString()
+  alt_text?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
   category?: string;
 
   @IsOptional()
@@ -76,6 +99,10 @@ export class UpdatePartnerLogoDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  featured?: boolean;
 
   @IsOptional()
   @IsObject()

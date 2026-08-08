@@ -304,30 +304,45 @@ model HeroSlide {
 }
 
 // ── 3.11b PartnerLogo (Post-Launch) ──────────────────────────────────────
-// Trusted-partners marquee — zero rows is a valid, honest state (no real partnership URLs
-// or institution names are seeded; see README "Homepage Hero + Partner + Decorative...").
-enum PartnerLogoCategory {
-  government
-  certification
-  logistics
-  association
-  bank
-  other
-}
-
+// Trusted-partners marquee — zero rows is a valid, honest state (no real partnership URLs,
+// institution names, or logo files are seeded — see README "Trusted Institutions & Partners
+// Section Upgrade"). `category` is a free-text field, not an enum: the brief explicitly asks
+// for admin-extensible categories, which a Prisma enum can't do without a migration.
 model PartnerLogo {
-  id           String              @id @default(cuid())
-  logoId       String              @map("logo_id")
-  logo         Media               @relation(fields: [logoId], references: [id])
-  partnerName  String              @map("partner_name")
-  websiteUrl   String?             @map("website_url")
-  category     PartnerLogoCategory @default(other)
-  order        Int                 @default(0)
-  enabled      Boolean             @default(true)
-  /// i18n — non-English overrides for partnerName.
+  id           String   @id @default(cuid())
+  logoId       String   @map("logo_id")
+  logo         Media    @relation(fields: [logoId], references: [id])
+  partnerName  String   @map("partner_name")
+  description  String?
+  websiteUrl   String?  @map("website_url")
+  openInNewTab Boolean  @default(true) @map("open_in_new_tab")
+  altText      String?  @map("alt_text")
+  category     String   @default("Other")
+  order        Int      @default(0)
+  enabled      Boolean  @default(true)
+  featured     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for partnerName/description.
   translations Json?
 
   @@map("partner_logos")
+}
+
+// ── 3.11f HomepagePartnersSection (Post-Launch) ──────────────────────────
+// Singleton — the "Trusted Institutions & Partners" section's own title/subtitle/marquee
+// speed, editable independently of the individual logos.
+model HomepagePartnersSection {
+  id                     String   @id @default(cuid())
+  title                  String   @default("TRUSTED INSTITUTIONS & PARTNERS")
+  subtitle               String   @default("Supporting our commitment to quality, compliance, and reliable international trade.")
+  marqueeDurationSeconds Int      @default(40) @map("marquee_duration_seconds")
+  enabled                Boolean  @default(true)
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/subtitle.
+  translations           Json?
+
+  @@map("homepage_partners_section")
 }
 
 // ── 3.11c DecorativeGraphic (Post-Launch) ────────────────────────────────

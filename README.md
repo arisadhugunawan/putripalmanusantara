@@ -357,6 +357,24 @@ Permintaan lanjutan ketujuh: tambah satu section baru di Homepage — perkenalan
 
 **Diverifikasi**: `tsc --noEmit`, lint (skrip proyek asli), dan **build produksi penuh** bersih di kedua workspace (108 halaman). Urutan DOM mobile dikonfirmasi lewat pemeriksaan langsung di browser (Intro → Video placeholder → Highlights). `git diff` kosong pada Header, Hero Slider (`HeroSlider.tsx`), Partner Logo Carousel (`PartnerMarquee.tsx`), Products, Facilities, News, Contact, dan Footer.
 
+## Peningkatan Section "Trusted Institutions & Partners" (Post-Launch)
+
+Permintaan lanjutan kedelapan: perluas fitur marquee logo mitra (dibangun di task Homepage sebelumnya) menjadi versi premium — judul/subjudul/kecepatan yang bisa diedit admin, kartu logo konsisten, fallback gambar rusak, grid statis saat `prefers-reduced-motion`, kategori yang bisa diperluas admin, dan field per-logo yang lebih lengkap. Hanya section Partner Logo/Trusted Institutions, Admin Partner Management, dan komponen database/API pendukungnya yang diubah — Header, Hero Slider, About Preview, Products, Facilities, News, Contact, dan Footer **tidak disentuh**.
+
+- **Kategori diubah dari Prisma enum menjadi teks bebas** — brief eksplisit meminta "Admin can create additional categories," yang tidak mungkin dilakukan dengan enum Prisma tetap (perlu migrasi setiap kali ada kategori baru). Kolom `category` sekarang `String` biasa dengan 9 kategori yang disarankan sebagai `datalist`/starting point (`PARTNER_LOGO_SUGGESTED_CATEGORIES` di shared-types) — admin bisa mengetik kategori apa saja.
+- **"Aktif" dan "Featured" adalah dua saklar independen** — sesuai kalimat brief yang eksplisit ("Only Active logos appear" DAN terpisah "Featured logos appear on the Homepage carousel. Non-featured logos remain available in Admin Panel but do not appear"). Ditafsirkan sebagai: sebuah logo tampil di beranda hanya jika **keduanya** benar. Ini memberi admin kendali menyimpan data logo tanpa langsung menampilkannya.
+- **Tetap tidak ada logo institusi pemerintah yang dikarang** — brief sendiri secara eksplisit meminta ini ("Do not invent logos... If an official downloadable logo is unavailable, DO NOT create a fake logo. Instead, create an admin placeholder"). Tidak ada baris `PartnerLogo` di-seed sama sekali; section otomatis tersembunyi sampai admin sungguh mengunggah aset logo resmi. Hanya field-field section (judul/subjudul/kecepatan) yang di-seed, karena itu murni teks brief yang sudah diberikan secara eksplisit, bukan data institusi.
+- **Kecepatan marquee dapat dikonfigurasi admin** — model singleton baru `HomepagePartnersSection` (pola sama seperti `HomepageAboutPreview`) menyimpan judul, subjudul, dan `marqueeDurationSeconds` (15–90, default 40 sesuai rekomendasi brief). Diterapkan ke CSS lewat custom property `--marquee-duration` yang di-set inline per instance — animasi keyframe tetap satu definisi global.
+- **Kartu logo konsisten + fallback gambar rusak** — setiap logo kini dibungkus kartu (tinggi tetap, border tipis, padding, `object-contain`, tidak pernah crop/stretch) lewat komponen client baru `PartnerLogoTile.tsx` yang menangani `onError` pada gambar dan beralih ke fallback teks nama mitra — carousel tidak pernah rusak karena satu logo gagal dimuat.
+- **Grid statis saat reduced-motion — tanpa JavaScript** — dua markup (marquee animasi + grid statis) dirender sekaligus di server, ditampilkan salin satu lewat varian Tailwind `motion-safe:`/`motion-reduce:` (memetakan langsung ke media query `prefers-reduced-motion`). Grid statis memakai daftar logo asli (tidak digandakan), sedangkan marquee memakai daftar yang digandakan sekali untuk loop mulus — dikonfirmasi lewat pemeriksaan DOM langsung selama verifikasi.
+- **Field baru per logo**: `description`, `alt_text` (fallback ke nama mitra bila kosong), `open_in_new_tab`, `featured` — semuanya additive di migrasi Prisma yang sama.
+- **`translate3d`/`will-change` untuk performa** — keyframe marquee diubah dari `translateX` ke `translate3d` (akselerasi GPU eksplisit), sesuai permintaan brief ("Avoid: top, left, margin-left, layout-triggering animations").
+- **Touch-drag manual pada mobile sengaja tidak ditambahkan** — brief menandainya sebagai opsional ("if possible") dan secara eksplisit memprioritaskan animasi berkelanjutan yang mulus tanpa reset/lompatan; menambah scroll manual di atas animasi transform yang berjalan berisiko membuat keduanya saling mengganggu (jank) — pengguna tetap bisa menonton logo lewat tanpa interaksi apa pun, sesuai perilaku inti yang diminta.
+
+**Ditemukan tapi sengaja tidak diperbaiki di task ini (dilaporkan terpisah)**: endpoint upload media (dipakai bersama oleh seluruh situs — produk, fasilitas, hero slide, dst., bukan spesifik ke fitur ini) menerima file SVG mentah tanpa sanitasi; SVG bisa berisi `<script>`/event handler yang berpotensi XSS tersimpan. Ini adalah masalah pra-eksisting (sejak Fase 5) di luar cakupan perubahan section Partner Logo, jadi dilaporkan sebagai task terpisah alih-alih ditambal langsung di tengah perubahan ini.
+
+**Diverifikasi**: `tsc --noEmit`, lint (skrip proyek asli, bersih di kedua workspace), dan **build produksi penuh** (108 halaman) bersih. Alur CRUD penuh diuji end-to-end lewat API sungguhan yang sudah diautentikasi di browser (unggah logo asli via `/admin/media`, buat `PartnerLogo`, tampil benar di beranda dengan kartu+tautan+`target="_blank"` yang benar, dikonfirmasi lewat `getComputedStyle` bahwa durasi animasi 40 detik terbaca dari config admin, grid reduced-motion memakai daftar tidak-digandakan, lalu dibersihkan lagi ke state kosong semula). Tidak ada overflow horizontal di 375px. `git diff` kosong pada Header, Hero Slider, About Preview, Products, Facilities, News, Contact, dan Footer.
+
 ## Status Pembangunan
 
 Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit untuk detail per fase):
@@ -380,6 +398,7 @@ Proyek dikerjakan bertahap mengikuti fase di bawah ini (lihat riwayat commit unt
 - [x] Post-Launch — Halaman Contact Premium (Hero, Info, Peta, Form, Quick Contact)
 - [x] Post-Launch — Homepage: Hero Slider CMS + Partner Logos CMS + Elemen Dekoratif CMS
 - [x] Post-Launch — Homepage: Section "About Company Preview" (Teks + Video + 4 Highlight)
+- [x] Post-Launch — Peningkatan Section "Trusted Institutions & Partners"
 
 ## Batasan Scope (Wajib Dipatuhi)
 

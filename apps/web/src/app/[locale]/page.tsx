@@ -11,6 +11,7 @@ import {
   getHomepageStatistics,
   getLatestArticles,
   getPartnerLogos,
+  getPartnersSection,
   getProductionSteps,
   getProducts,
   getPublicSettings,
@@ -58,8 +59,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     allProducts,
     heroSlides,
     partnerLogos,
+    partnersSection,
     decorativeGraphics,
     aboutPreviewGraphics,
+    partnersGraphics,
     aboutPreview,
     highlights,
     settings,
@@ -74,8 +77,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     getProducts(locale),
     getHeroSlides(locale),
     getPartnerLogos(locale),
+    getPartnersSection(locale),
     getDecorativeGraphics("home"),
     getDecorativeGraphics("home-about-preview"),
+    getDecorativeGraphics("home-partners"),
     getAboutPreview(locale),
     getHighlights(locale),
     getPublicSettings(locale).catch(() => null),
@@ -88,7 +93,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       <JsonLd data={localBusinessJsonLd(settings, locale)} />
 
       <HeroSlider slides={heroSlides} decorativeGraphics={decorativeGraphics} />
-      <PartnerMarquee logos={partnerLogos} />
+      <PartnerMarquee section={partnersSection} logos={partnerLogos} decorativeGraphics={partnersGraphics} />
       <AboutPreviewSection preview={aboutPreview} highlights={highlights} decorativeGraphics={aboutPreviewGraphics} />
       <StatisticsSection statistics={statistics} />
       <WhyChooseUsSection />

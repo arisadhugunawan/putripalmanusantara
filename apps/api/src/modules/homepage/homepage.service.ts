@@ -21,11 +21,13 @@ import type {
   CreatePartnerLogoDto,
   UpdatePartnerLogoDto,
 } from './dto/partner-logo.dto';
+import type { UpdatePartnersSectionDto } from './dto/partners-section.dto';
 import { toAboutPreview } from './about-preview.mapper';
 import { toDecorativeGraphic } from './decorative-graphic.mapper';
 import { toHeroSlide } from './hero-slide.mapper';
 import { toHighlight } from './highlight.mapper';
 import { toPartnerLogo } from './partner-logo.mapper';
+import { toPartnersSection } from './partners-section.mapper';
 
 const HERO_SLIDE_INCLUDE = { desktopImage: true, mobileImage: true } as const;
 const PARTNER_LOGO_INCLUDE = { logo: true } as const;
@@ -160,7 +162,10 @@ export class HomepageService {
 
   async findPartnerLogos(locale?: string, publicOnly = false) {
     const logos = await this.prisma.partnerLogo.findMany({
-      where: publicOnly ? { enabled: true } : undefined,
+      // "Featured" is a second, independent gate on top of "Active" — see the brief this
+      // shipped with: a logo can be Active (kept, editable) without being Featured
+      // (promoted to the Homepage carousel).
+      where: publicOnly ? { enabled: true, featured: true } : undefined,
       include: PARTNER_LOGO_INCLUDE,
       orderBy: { order: 'asc' },
     });
@@ -172,10 +177,14 @@ export class HomepageService {
       data: {
         logoId: dto.logo_id,
         partnerName: dto.partner_name,
+        description: dto.description,
         websiteUrl: dto.website_url,
-        category: (dto.category as never) ?? 'other',
+        openInNewTab: dto.open_in_new_tab ?? true,
+        altText: dto.alt_text,
+        category: dto.category ?? 'Other',
         order: dto.order ?? 0,
         enabled: dto.enabled ?? true,
+        featured: dto.featured ?? true,
         translations: dto.translations,
       },
       include: PARTNER_LOGO_INCLUDE,
@@ -190,10 +199,14 @@ export class HomepageService {
       data: {
         logoId: dto.logo_id,
         partnerName: dto.partner_name,
+        description: dto.description,
         websiteUrl: dto.website_url,
-        category: dto.category as never,
+        openInNewTab: dto.open_in_new_tab,
+        altText: dto.alt_text,
+        category: dto.category,
         order: dto.order,
         enabled: dto.enabled,
+        featured: dto.featured,
         translations: dto.translations,
       },
       include: PARTNER_LOGO_INCLUDE,
@@ -366,5 +379,33 @@ export class HomepageService {
     });
     if (!highlight)
       throw new ApiException('NOT_FOUND', 'Highlight not found.', 404);
+  }
+
+  // ── Partners Section (Post-Launch, singleton) ──────────────────────────
+
+  private async getOrCreatePartnersSection() {
+    const existing = await this.prisma.homepagePartnersSection.findFirst();
+    if (existing) return existing;
+    return this.prisma.homepagePartnersSection.create({ data: {} });
+  }
+
+  async findPartnersSection(locale: string = DEFAULT_LOCALE) {
+    const entry = await this.getOrCreatePartnersSection();
+    return toPartnersSection(entry, locale);
+  }
+
+  async updatePartnersSection(dto: UpdatePartnersSectionDto) {
+    const existing = await this.getOrCreatePartnersSection();
+    const updated = await this.prisma.homepagePartnersSection.update({
+      where: { id: existing.id },
+      data: {
+        title: dto.title,
+        subtitle: dto.subtitle,
+        marqueeDurationSeconds: dto.marquee_duration_seconds,
+        enabled: dto.enabled,
+        translations: dto.translations,
+      },
+    });
+    return toPartnersSection(updated);
   }
 }

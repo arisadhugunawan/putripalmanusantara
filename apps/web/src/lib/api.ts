@@ -11,6 +11,7 @@ import type {
   HeroSlide,
   HomepageAboutPreview,
   HomepageHighlight,
+  HomepagePartnersSection,
   HomepageStatistic,
   PaginationMeta,
   PartnerLogo,
@@ -146,5 +147,10 @@ export async function getAboutPreview(locale?: string): Promise<HomepageAboutPre
 
 export async function getHighlights(locale?: string): Promise<HomepageHighlight[]> {
   const json = await request<HomepageHighlight[]>(withLocale("/homepage/highlights", locale));
+  return json.data;
+}
+
+export async function getPartnersSection(locale?: string): Promise<HomepagePartnersSection> {
+  const json = await request<HomepagePartnersSection>(withLocale("/homepage/partners-section", locale));
   return json.data;
 }
