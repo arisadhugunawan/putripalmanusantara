@@ -568,16 +568,18 @@ function HeroSlideCard({
             label="Gambar Desktop"
             media={slide.desktop_image}
             maxSizeBytes={HERO_IMAGE_MAX_BYTES}
-            hint="Rekomendasi: 1920×1080px (16:9). Maksimum 5MB."
+            hint="Rekomendasi: 1920×1080px (16:9, cth. 1920×1080 atau 2400×1350). Maksimum 5MB."
             onChange={(media) => onUpdate({ desktop_image_id: media.id })}
+            onRemove={() => onUpdate({ desktop_image_id: null })}
           />
           <div>
             <MediaUploadField
               label="Gambar Mobile (opsional)"
               media={slide.mobile_image}
               maxSizeBytes={HERO_IMAGE_MAX_BYTES}
-              hint="Rekomendasi: 1080×1350px (potret). Maksimum 5MB."
+              hint="Rekomendasi: 1080×1350px (potret 4:5, cth. 1080×1350 atau 1080×1920). Maksimum 5MB."
               onChange={(media) => onUpdate({ mobile_image_id: media.id })}
+              onRemove={() => onUpdate({ mobile_image_id: null })}
             />
             {!slide.mobile_image && (
               <p className="mt-1 text-small text-neutral-500">

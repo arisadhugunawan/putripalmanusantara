@@ -15,10 +15,14 @@ interface MediaUploadFieldProps {
   maxSizeBytes?: number;
   /** Optional helper text under the field, e.g. "Rekomendasi: 1920×1080px". */
   hint?: string;
+  /** When provided, shows a "Hapus Gambar" button that clears the reference (sets it back
+   * to null) without requiring a replacement upload first — omit for fields where an image
+   * is mandatory (e.g. Partner Logo). */
+  onRemove?: () => void;
 }
 
 /** Direct upload-and-attach — POST /admin/media then store the returned id (FR-CMS-03/05/08). */
-export function MediaUploadField({ label, media, onChange, maxSizeBytes, hint }: MediaUploadFieldProps) {
+export function MediaUploadField({ label, media, onChange, maxSizeBytes, hint, onRemove }: MediaUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [altText, setAltText] = useState(media?.alt_text ?? "");
@@ -60,8 +64,19 @@ export function MediaUploadField({ label, media, onChange, maxSizeBytes, hint }:
     <div>
       <Label>{label}</Label>
       {media && media.file_type === "image" && (
-        <div className="relative mb-2 aspect-video w-full max-w-xs overflow-hidden rounded-field border border-neutral-200">
-          <Image src={media.file_url} alt={media.alt_text} fill className="object-cover" />
+        <div className="mb-2">
+          <div className="relative aspect-video w-full max-w-xs overflow-hidden rounded-field border border-neutral-200">
+            <Image src={media.file_url} alt={media.alt_text} fill className="object-cover" />
+          </div>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="mt-1 text-small text-red-600 underline"
+            >
+              Hapus Gambar
+            </button>
+          )}
         </div>
       )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
