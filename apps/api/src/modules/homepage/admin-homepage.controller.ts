@@ -23,6 +23,10 @@ import {
   UpdatePartnerLogoDto,
 } from './dto/partner-logo.dto';
 import { UpdatePartnersSectionDto } from './dto/partners-section.dto';
+import {
+  CreateWhyChooseUsDto,
+  UpdateWhyChooseUsDto,
+} from './dto/why-choose-us.dto';
 import { HomepageService } from './homepage.service';
 
 @Controller('api/v1/admin/homepage')
@@ -200,5 +204,36 @@ export class AdminHomepageController {
     const section = await this.homepageService.updatePartnersSection(dto);
     await this.revalidation.revalidate(['/']);
     return section;
+  }
+
+  // ── Why Choose Us ───────────────────────────────────────────────────
+
+  @Get('why-choose-us')
+  findWhyChooseUs() {
+    return this.homepageService.findWhyChooseUs();
+  }
+
+  @Post('why-choose-us')
+  async createWhyChooseUs(@Body() dto: CreateWhyChooseUsDto) {
+    const item = await this.homepageService.createWhyChooseUs(dto);
+    await this.revalidation.revalidate(['/']);
+    return item;
+  }
+
+  @Put('why-choose-us/:id')
+  async updateWhyChooseUs(
+    @Param('id') id: string,
+    @Body() dto: UpdateWhyChooseUsDto,
+  ) {
+    const item = await this.homepageService.updateWhyChooseUs(id, dto);
+    await this.revalidation.revalidate(['/']);
+    return item;
+  }
+
+  @Delete('why-choose-us/:id')
+  async removeWhyChooseUs(@Param('id') id: string) {
+    const result = await this.homepageService.removeWhyChooseUs(id);
+    await this.revalidation.revalidate(['/']);
+    return result;
   }
 }

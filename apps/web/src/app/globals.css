@@ -105,6 +105,12 @@
      inline per-instance (admin-configurable speed), falling back to the brief's
      recommended 40s. */
   --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
+
+  /* "Why Choose Us?" card click feedback — a single 450ms pulse/heartbeat, never looping
+     (triggered by adding the class on click, removed on animationend). transform + box-shadow
+     only, no layout properties. */
+  --animate-card-pulse: card-pulse 450ms ease-out;
+  --animate-icon-pulse: icon-pulse 450ms ease-out;
 }
 
 @keyframes fade-in-up {
@@ -133,6 +139,33 @@
   }
   to {
     transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes card-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: var(--shadow-card);
+  }
+  40% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 6px rgba(164, 220, 74, 0.28), var(--shadow-card-hover);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: var(--shadow-card);
+  }
+}
+
+@keyframes icon-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 

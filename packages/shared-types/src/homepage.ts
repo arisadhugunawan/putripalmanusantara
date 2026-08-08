@@ -146,3 +146,25 @@ export interface HomepageHighlight {
   enabled: boolean;
   translations?: Translations | null;
 }
+
+export type HomepageWhyChooseUsIcon =
+  | "quality"
+  | "supply"
+  | "export_ready"
+  | "consistency"
+  | "sustainability"
+  | "service"
+  | "pricing"
+  | "delivery";
+
+/** One "Why Choose Us?" card (Post-Launch) — icon + short title only, no description by
+ * design. `enabled`/`featured` are independent gates, same pattern as PartnerLogo. */
+export interface HomepageWhyChooseUs {
+  id: string;
+  icon: HomepageWhyChooseUsIcon;
+  title: string;
+  order: number;
+  enabled: boolean;
+  featured: boolean;
+  translations?: Translations | null;
+}

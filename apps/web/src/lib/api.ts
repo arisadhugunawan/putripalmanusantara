@@ -13,6 +13,7 @@ import type {
   HomepageHighlight,
   HomepagePartnersSection,
   HomepageStatistic,
+  HomepageWhyChooseUs,
   PaginationMeta,
   PartnerLogo,
   ProductDetail,
@@ -152,5 +153,10 @@ export async function getHighlights(locale?: string): Promise<HomepageHighlight[
 
 export async function getPartnersSection(locale?: string): Promise<HomepagePartnersSection> {
   const json = await request<HomepagePartnersSection>(withLocale("/homepage/partners-section", locale));
+  return json.data;
+}
+
+export async function getWhyChooseUs(locale?: string): Promise<HomepageWhyChooseUs[]> {
+  const json = await request<HomepageWhyChooseUs[]>(withLocale("/homepage/why-choose-us", locale));
   return json.data;
 }

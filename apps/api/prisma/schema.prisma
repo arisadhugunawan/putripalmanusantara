@@ -443,6 +443,35 @@ model HomepageHighlight {
   @@map("homepage_highlights")
 }
 
+// ── 3.11g HomepageWhyChooseUs (Post-Launch) ──────────────────────────────
+// "Why Choose Us?" section — icon + short title only, deliberately no description field
+// (the brief is explicit this section must never grow long-form copy). `enabled` and
+// `featured` are two independent gates, same interpretation as PartnerLogo: `enabled` keeps
+// the record on file/editable, `featured` is what actually publishes it to the Homepage.
+enum HomepageWhyChooseUsIcon {
+  quality
+  supply
+  export_ready
+  consistency
+  sustainability
+  service
+  pricing
+  delivery
+}
+
+model HomepageWhyChooseUs {
+  id           String                  @id @default(cuid())
+  icon         HomepageWhyChooseUsIcon @default(quality)
+  title        String
+  order        Int                     @default(0)
+  enabled      Boolean                 @default(true)
+  featured     Boolean                 @default(true)
+  /// i18n — non-English overrides for title.
+  translations Json?
+
+  @@map("homepage_why_choose_us")
+}
+
 // ── 3.12 FAQ ─────────────────────────────────────────────────────────────
 model Faq {
   id       String        @id @default(cuid())

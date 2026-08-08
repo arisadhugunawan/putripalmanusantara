@@ -15,6 +15,7 @@ import {
   getProductionSteps,
   getProducts,
   getPublicSettings,
+  getWhyChooseUs,
 } from "@/lib/api";
 import { AboutPreviewSection } from "@/components/home/AboutPreviewSection";
 import { ArticlesSection } from "@/components/home/ArticlesSection";
@@ -63,8 +64,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     decorativeGraphics,
     aboutPreviewGraphics,
     partnersGraphics,
+    whyChooseUsGraphics,
     aboutPreview,
     highlights,
+    whyChooseUs,
     settings,
   ] = await Promise.all([
     getHomepageStatistics(locale),
@@ -81,8 +84,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     getDecorativeGraphics("home"),
     getDecorativeGraphics("home-about-preview"),
     getDecorativeGraphics("home-partners"),
+    getDecorativeGraphics("home-why-choose-us"),
     getAboutPreview(locale),
     getHighlights(locale),
+    getWhyChooseUs(locale),
     getPublicSettings(locale).catch(() => null),
   ]);
 
@@ -96,7 +101,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       <PartnerMarquee section={partnersSection} logos={partnerLogos} decorativeGraphics={partnersGraphics} />
       <AboutPreviewSection preview={aboutPreview} highlights={highlights} decorativeGraphics={aboutPreviewGraphics} />
       <StatisticsSection statistics={statistics} />
-      <WhyChooseUsSection />
+      <WhyChooseUsSection items={whyChooseUs} decorativeGraphics={whyChooseUsGraphics} />
       <FeaturedProductsSection products={featuredProducts} />
       <ProductionProcessPreview steps={productionSteps} />
       <FacilitiesPreview facilities={facilities} />

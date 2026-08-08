@@ -22,12 +22,17 @@ import type {
   UpdatePartnerLogoDto,
 } from './dto/partner-logo.dto';
 import type { UpdatePartnersSectionDto } from './dto/partners-section.dto';
+import type {
+  CreateWhyChooseUsDto,
+  UpdateWhyChooseUsDto,
+} from './dto/why-choose-us.dto';
 import { toAboutPreview } from './about-preview.mapper';
 import { toDecorativeGraphic } from './decorative-graphic.mapper';
 import { toHeroSlide } from './hero-slide.mapper';
 import { toHighlight } from './highlight.mapper';
 import { toPartnerLogo } from './partner-logo.mapper';
 import { toPartnersSection } from './partners-section.mapper';
+import { toWhyChooseUs } from './why-choose-us.mapper';
 
 const HERO_SLIDE_INCLUDE = { desktopImage: true, mobileImage: true } as const;
 const PARTNER_LOGO_INCLUDE = { logo: true } as const;
@@ -407,5 +412,61 @@ export class HomepageService {
       },
     });
     return toPartnersSection(updated);
+  }
+
+  // ── Why Choose Us (Post-Launch) ─────────────────────────────────────────
+
+  async findWhyChooseUs(locale?: string, publicOnly = false) {
+    const items = await this.prisma.homepageWhyChooseUs.findMany({
+      // Same independent-gate pattern as PartnerLogo — "Active" keeps the record on file,
+      // "Featured" is what actually publishes it to the Homepage.
+      where: publicOnly ? { enabled: true, featured: true } : undefined,
+      orderBy: { order: 'asc' },
+    });
+    return items.map((item) => toWhyChooseUs(item, locale));
+  }
+
+  async createWhyChooseUs(dto: CreateWhyChooseUsDto) {
+    const item = await this.prisma.homepageWhyChooseUs.create({
+      data: {
+        icon: (dto.icon as never) ?? 'quality',
+        title: dto.title,
+        order: dto.order ?? 0,
+        enabled: dto.enabled ?? true,
+        featured: dto.featured ?? true,
+        translations: dto.translations,
+      },
+    });
+    return toWhyChooseUs(item);
+  }
+
+  async updateWhyChooseUs(id: string, dto: UpdateWhyChooseUsDto) {
+    await this.assertWhyChooseUsExists(id);
+    const item = await this.prisma.homepageWhyChooseUs.update({
+      where: { id },
+      data: {
+        icon: dto.icon as never,
+        title: dto.title,
+        order: dto.order,
+        enabled: dto.enabled,
+        featured: dto.featured,
+        translations: dto.translations,
+      },
+    });
+    return toWhyChooseUs(item);
+  }
+
+  async removeWhyChooseUs(id: string) {
+    await this.assertWhyChooseUsExists(id);
+    await this.prisma.homepageWhyChooseUs.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  private async assertWhyChooseUsExists(id: string) {
+    const item = await this.prisma.homepageWhyChooseUs.findUnique({
+      where: { id },
+    });
+    if (!item)
+      throw new ApiException('NOT_FOUND', 'Why Choose Us item not found.', 404);
   }
 }

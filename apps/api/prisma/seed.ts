@@ -331,6 +331,8 @@ async function seedDecorativeGraphics() {
       { page: "home-about-preview", variant: "palm_leaf", placement: "top_right", opacity: 0.05, scale: 1.2, order: 1 },
       { page: "home-about-preview", variant: "container_outline", placement: "bottom_left", opacity: 0.05, scale: 1, order: 2 },
       { page: "home-partners", variant: "coconut_cross_section", placement: "center_background", opacity: 0.04, scale: 1.6, order: 1 },
+      { page: "home-why-choose-us", variant: "coconut_tree_silhouette", placement: "top_right", opacity: 0.04, scale: 1.3, order: 1 },
+      { page: "home-why-choose-us", variant: "leaf_outline", placement: "bottom_left", opacity: 0.04, scale: 1.1, order: 2 },
     ],
   });
 }
@@ -416,6 +418,26 @@ async function seedPartnersSection() {
   });
 }
 
+async function seedWhyChooseUs() {
+  const count = await prisma.homepageWhyChooseUs.count();
+  if (count > 0) return;
+
+  // Exact 8 items from the brief, in the specified order — icon + short title only, no
+  // description field on this model by design (see WhyChooseUsSection.tsx).
+  await prisma.homepageWhyChooseUs.createMany({
+    data: [
+      { icon: "quality", title: "Premium Quality", order: 1 },
+      { icon: "supply", title: "Reliable Supply", order: 2 },
+      { icon: "export_ready", title: "Export Ready", order: 3 },
+      { icon: "consistency", title: "Consistent Quality", order: 4 },
+      { icon: "sustainability", title: "Sustainable Sourcing", order: 5 },
+      { icon: "service", title: "Professional Service", order: 6 },
+      { icon: "pricing", title: "Competitive Pricing", order: 7 },
+      { icon: "delivery", title: "On-Time Delivery", order: 8 },
+    ],
+  });
+}
+
 async function main() {
   await seedAdmin();
   await seedSiteSettings();
@@ -430,6 +452,7 @@ async function main() {
   await seedAboutPreview();
   await seedHighlights();
   await seedPartnersSection();
+  await seedWhyChooseUs();
   console.log("Seed complete.");
 }
 

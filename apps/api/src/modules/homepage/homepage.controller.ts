@@ -40,4 +40,9 @@ export class HomepageController {
   findPartnersSection(@Query('locale') locale?: string) {
     return this.homepageService.findPartnersSection(resolveLocale(locale));
   }
+
+  @Get('why-choose-us')
+  findWhyChooseUs(@Query('locale') locale?: string) {
+    return this.homepageService.findWhyChooseUs(resolveLocale(locale), true);
+  }
 }
