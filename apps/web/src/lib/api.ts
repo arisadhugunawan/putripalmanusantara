@@ -4,12 +4,14 @@ import type {
   ArticleDetail,
   ArticleSummary,
   DecorativeGraphic,
+  ExportDestination,
   Facility,
   Faq,
   GalleryCategory,
   GalleryItem,
   HeroSlide,
   HomepageAboutPreview,
+  HomepageExportReach,
   HomepageHighlight,
   HomepagePartnersSection,
   HomepageStatistic,
@@ -158,5 +160,15 @@ export async function getPartnersSection(locale?: string): Promise<HomepagePartn
 
 export async function getWhyChooseUs(locale?: string): Promise<HomepageWhyChooseUs[]> {
   const json = await request<HomepageWhyChooseUs[]>(withLocale("/homepage/why-choose-us", locale));
+  return json.data;
+}
+
+export async function getExportDestinations(locale?: string): Promise<ExportDestination[]> {
+  const json = await request<ExportDestination[]>(withLocale("/homepage/export-destinations", locale));
+  return json.data;
+}
+
+export async function getExportReachSection(locale?: string): Promise<HomepageExportReach> {
+  const json = await request<HomepageExportReach>(withLocale("/homepage/export-reach-section", locale));
   return json.data;
 }

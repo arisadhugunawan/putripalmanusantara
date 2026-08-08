@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { DEFAULT_LOCALE, type HomepageStatistic } from '@ppn/shared-types';
+import {
+  DEFAULT_LOCALE,
+  WORLD_COUNTRIES,
+  type HomepageStatistic,
+} from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -23,11 +27,18 @@ import type {
 } from './dto/partner-logo.dto';
 import type { UpdatePartnersSectionDto } from './dto/partners-section.dto';
 import type {
+  CreateExportDestinationDto,
+  UpdateExportDestinationDto,
+} from './dto/export-destination.dto';
+import type { UpdateExportReachSectionDto } from './dto/export-reach-section.dto';
+import type {
   CreateWhyChooseUsDto,
   UpdateWhyChooseUsDto,
 } from './dto/why-choose-us.dto';
 import { toAboutPreview } from './about-preview.mapper';
 import { toDecorativeGraphic } from './decorative-graphic.mapper';
+import { toExportDestination } from './export-destination.mapper';
+import { toExportReachSection } from './export-reach-section.mapper';
 import { toHeroSlide } from './hero-slide.mapper';
 import { toHighlight } from './highlight.mapper';
 import { toPartnerLogo } from './partner-logo.mapper';
@@ -39,6 +50,9 @@ const PARTNER_LOGO_INCLUDE = { logo: true } as const;
 const ABOUT_PREVIEW_INCLUDE = {
   videoMedia: true,
   videoThumbnail: true,
+} as const;
+const EXPORT_DESTINATION_INCLUDE = {
+  products: { select: { id: true, slug: true, name: true } },
 } as const;
 
 @Injectable()
@@ -547,5 +561,121 @@ export class HomepageService {
     });
     if (!item)
       throw new ApiException('NOT_FOUND', 'Why Choose Us item not found.', 404);
+  }
+
+  // ── Export Destinations / Global Export Reach (Post-Launch) ─────────────
+
+  async findExportDestinations(locale?: string, publicOnly = false) {
+    const destinations = await this.prisma.exportDestination.findMany({
+      // Only a real, currently-active export relationship is ever shown to visitors —
+      // "previous"/"potential"/"inactive" stay Admin-only bookkeeping (see brief: never
+      // imply a market relationship that isn't current).
+      where: publicOnly
+        ? { enabled: true, exportStatus: 'active_destination' }
+        : undefined,
+      include: EXPORT_DESTINATION_INCLUDE,
+      orderBy: { order: 'asc' },
+    });
+    return destinations.map((d) => toExportDestination(d, locale));
+  }
+
+  async createExportDestination(dto: CreateExportDestinationDto) {
+    const countryMeta = this.resolveCountryMeta(dto.country_code);
+    const destination = await this.prisma.exportDestination.create({
+      data: {
+        countryCode: countryMeta.alpha2,
+        countryCodeAlpha3: countryMeta.alpha3,
+        countryName: countryMeta.name,
+        exportStatus: (dto.export_status as never) ?? 'active_destination',
+        description: dto.description,
+        exportVolume: dto.export_volume,
+        exportFrequency: dto.export_frequency,
+        destinationPort: dto.destination_port,
+        products: dto.product_ids
+          ? { connect: dto.product_ids.map((id) => ({ id })) }
+          : undefined,
+        order: dto.order ?? 0,
+        enabled: dto.enabled ?? true,
+        featured: dto.featured ?? false,
+        translations: dto.translations,
+      },
+      include: EXPORT_DESTINATION_INCLUDE,
+    });
+    return toExportDestination(destination);
+  }
+
+  async updateExportDestination(id: string, dto: UpdateExportDestinationDto) {
+    await this.assertExportDestinationExists(id);
+    const countryMeta = dto.country_code
+      ? this.resolveCountryMeta(dto.country_code)
+      : undefined;
+    const destination = await this.prisma.exportDestination.update({
+      where: { id },
+      data: {
+        countryCode: countryMeta?.alpha2,
+        countryCodeAlpha3: countryMeta?.alpha3,
+        countryName: countryMeta?.name,
+        exportStatus: dto.export_status as never,
+        description: dto.description,
+        exportVolume: dto.export_volume,
+        exportFrequency: dto.export_frequency,
+        destinationPort: dto.destination_port,
+        products: dto.product_ids
+          ? { set: dto.product_ids.map((id) => ({ id })) }
+          : undefined,
+        order: dto.order,
+        enabled: dto.enabled,
+        featured: dto.featured,
+        translations: dto.translations,
+      },
+      include: EXPORT_DESTINATION_INCLUDE,
+    });
+    return toExportDestination(destination);
+  }
+
+  async removeExportDestination(id: string) {
+    await this.assertExportDestinationExists(id);
+    await this.prisma.exportDestination.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  private resolveCountryMeta(alpha2: string) {
+    const meta = WORLD_COUNTRIES.find((c) => c.alpha2 === alpha2);
+    if (!meta)
+      throw new ApiException('INVALID_COUNTRY', 'Unknown country code.', 400);
+    return meta;
+  }
+
+  private async assertExportDestinationExists(id: string) {
+    const destination = await this.prisma.exportDestination.findUnique({
+      where: { id },
+    });
+    if (!destination)
+      throw new ApiException('NOT_FOUND', 'Export destination not found.', 404);
+  }
+
+  private async getOrCreateExportReachSection() {
+    const existing = await this.prisma.homepageExportReach.findFirst();
+    if (existing) return existing;
+    return this.prisma.homepageExportReach.create({ data: {} });
+  }
+
+  async findExportReachSection(locale: string = DEFAULT_LOCALE) {
+    const entry = await this.getOrCreateExportReachSection();
+    return toExportReachSection(entry, locale);
+  }
+
+  async updateExportReachSection(dto: UpdateExportReachSectionDto) {
+    const existing = await this.getOrCreateExportReachSection();
+    const updated = await this.prisma.homepageExportReach.update({
+      where: { id: existing.id },
+      data: {
+        heading: dto.heading,
+        subtitle: dto.subtitle,
+        enabled: dto.enabled,
+        translations: dto.translations,
+      },
+    });
+    return toExportReachSection(updated);
   }
 }

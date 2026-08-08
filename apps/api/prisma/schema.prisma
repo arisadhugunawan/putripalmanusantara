@@ -101,6 +101,7 @@ model Product {
   packagingAndApps  ProductPackagingApplication[]
   downloads         ProductDownload[]
   quotationRequests QuotationRequest[]
+  exportDestinations ExportDestination[] @relation("ExportDestinationProducts")
 
   @@index([status])
   @@index([isFeatured])
@@ -491,6 +492,55 @@ model HomepageWhyChooseUs {
   translations Json?
 
   @@map("homepage_why_choose_us")
+}
+
+// ── 3.11h ExportDestination (Post-Launch) ─────────────────────────────────
+// "Global Export Reach" world map — zero rows is a valid state (map renders with no
+// country highlighted; see apps/web ExportReachSection.tsx). Only "active_destination" +
+// enabled rows are ever exposed publicly; the other three ExportStatus values are Admin-side
+// bookkeeping so a lapsed/prospective market's data isn't lost when it stops being current.
+enum ExportStatus {
+  active_destination
+  previous_destination
+  potential_market
+  inactive
+}
+
+model ExportDestination {
+  id                String       @id @default(cuid())
+  /// ISO 3166-1 alpha-2, e.g. "TH" — matches the `data-alpha2` attribute on the world map SVG.
+  countryCode       String       @unique @map("country_code")
+  countryCodeAlpha3 String       @map("country_code_alpha3")
+  countryName       String       @map("country_name")
+  exportStatus      ExportStatus @default(active_destination) @map("export_status")
+  description       String?
+  exportVolume      String?      @map("export_volume")
+  exportFrequency   String?      @map("export_frequency")
+  destinationPort   String?      @map("destination_port")
+  products          Product[]    @relation("ExportDestinationProducts")
+  order             Int          @default(0)
+  enabled           Boolean      @default(true)
+  featured          Boolean      @default(false)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for countryName/description.
+  translations      Json?
+
+  @@index([enabled, exportStatus])
+  @@map("export_destinations")
+}
+
+// Singleton — "Global Export Reach" section heading/subtitle, editable independently of the
+// individual destination records (same get-or-create pattern as HomepagePartnersSection).
+model HomepageExportReach {
+  id           String   @id @default(cuid())
+  heading      String   @default("Global Export Reach")
+  subtitle     String   @default("Connecting Indonesian coconut products with buyers across international markets.")
+  enabled      Boolean  @default(true)
+  /// i18n — non-English overrides for heading/subtitle.
+  translations Json?
+
+  @@map("homepage_export_reach")
 }
 
 // ── 3.12 FAQ ─────────────────────────────────────────────────────────────

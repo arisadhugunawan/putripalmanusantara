@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import {
   getAboutPreview,
   getDecorativeGraphics,
+  getExportDestinations,
+  getExportReachSection,
   getFacilities,
   getFaqs,
   getFeaturedProducts,
@@ -19,6 +21,7 @@ import {
 } from "@/lib/api";
 import { AboutPreviewSection } from "@/components/home/AboutPreviewSection";
 import { ArticlesSection } from "@/components/home/ArticlesSection";
+import { ExportReachSection } from "@/components/home/ExportReachSection";
 import { FacilitiesPreview } from "@/components/home/FacilitiesPreview";
 import { FaqSection } from "@/components/home/FaqSection";
 import { FeaturedProductsSection } from "@/components/home/FeaturedProductsSection";
@@ -65,9 +68,12 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     aboutPreviewGraphics,
     partnersGraphics,
     whyChooseUsGraphics,
+    exportReachGraphics,
     aboutPreview,
     highlights,
     whyChooseUs,
+    exportDestinations,
+    exportReachSection,
     settings,
   ] = await Promise.all([
     getHomepageStatistics(locale),
@@ -85,9 +91,12 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     getDecorativeGraphics("home-about-preview"),
     getDecorativeGraphics("home-partners"),
     getDecorativeGraphics("home-why-choose-us"),
+    getDecorativeGraphics("home-export-reach"),
     getAboutPreview(locale),
     getHighlights(locale),
     getWhyChooseUs(locale),
+    getExportDestinations(locale),
+    getExportReachSection(locale),
     getPublicSettings(locale).catch(() => null),
   ]);
 
@@ -107,6 +116,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       <FacilitiesPreview facilities={facilities} />
       <GalleryPreview items={gallery} />
       <ArticlesSection articles={latestArticles} />
+      <ExportReachSection section={exportReachSection} destinations={exportDestinations} decorativeGraphics={exportReachGraphics} />
       <FaqSection faqs={faqs} />
       <QuotationSection products={allProducts} />
     </main>

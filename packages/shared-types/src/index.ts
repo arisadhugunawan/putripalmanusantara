@@ -6,6 +6,8 @@ export * from "./gallery";
 export * from "./facility";
 export * from "./production-step";
 export * from "./homepage";
+export * from "./countries";
+export * from "./export-destination";
 export * from "./quotation";
 export * from "./settings";
 export * from "./admin";

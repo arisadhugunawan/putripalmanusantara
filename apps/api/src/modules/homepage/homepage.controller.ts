@@ -45,4 +45,17 @@ export class HomepageController {
   findWhyChooseUs(@Query('locale') locale?: string) {
     return this.homepageService.findWhyChooseUs(resolveLocale(locale), true);
   }
+
+  @Get('export-destinations')
+  findExportDestinations(@Query('locale') locale?: string) {
+    return this.homepageService.findExportDestinations(
+      resolveLocale(locale),
+      true,
+    );
+  }
+
+  @Get('export-reach-section')
+  findExportReachSection(@Query('locale') locale?: string) {
+    return this.homepageService.findExportReachSection(resolveLocale(locale));
+  }
 }

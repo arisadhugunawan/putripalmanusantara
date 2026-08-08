@@ -169,6 +169,48 @@
   }
 }
 
+/* ── "Global Export Reach" world map — docs pattern: default/hover/destination/selected,
+   colors only from the existing PPN palette, transform/opacity/filter only (GPU-friendly). */
+.export-map-country {
+  fill: var(--color-neutral-200);
+  stroke: var(--color-neutral-50);
+  stroke-width: 0.5;
+  transition: fill 200ms ease-out;
+}
+
+.export-map-country--active {
+  fill: var(--color-primary-600);
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.export-map-country--active:hover {
+  fill: var(--color-primary-500);
+}
+
+.export-map-country--active:focus-visible {
+  outline: 2px solid var(--color-primary-700);
+  outline-offset: 1px;
+}
+
+.export-map-country--active[data-selected="true"] {
+  fill: var(--color-primary-700);
+  animation: export-map-pulse 450ms ease-out;
+}
+
+@keyframes export-map-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Desktop type scale — docs/03-design.md §3.1 (mobile sizes above are the base/default). */
 @media (min-width: 1024px) {
   :root {

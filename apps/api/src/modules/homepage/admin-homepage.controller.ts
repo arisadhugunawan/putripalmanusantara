@@ -15,6 +15,11 @@ import {
   CreateDecorativeGraphicDto,
   UpdateDecorativeGraphicDto,
 } from './dto/decorative-graphic.dto';
+import {
+  CreateExportDestinationDto,
+  UpdateExportDestinationDto,
+} from './dto/export-destination.dto';
+import { UpdateExportReachSectionDto } from './dto/export-reach-section.dto';
 import { CreateHeroSlideDto, UpdateHeroSlideDto } from './dto/hero-slide.dto';
 import { CreateHighlightDto, UpdateHighlightDto } from './dto/highlight.dto';
 import { ReplaceHomepageStatisticsDto } from './dto/homepage-statistic.dto';
@@ -247,6 +252,52 @@ export class AdminHomepageController {
   @Delete('why-choose-us/:id')
   async removeWhyChooseUs(@Param('id') id: string) {
     const result = await this.homepageService.removeWhyChooseUs(id);
+    await this.revalidation.revalidate(['/']);
+    return result;
+  }
+
+  // ── Global Export Reach ─────────────────────────────────────────────
+
+  @Get('export-reach-section')
+  findExportReachSection() {
+    return this.homepageService.findExportReachSection();
+  }
+
+  @Put('export-reach-section')
+  async updateExportReachSection(@Body() dto: UpdateExportReachSectionDto) {
+    const section = await this.homepageService.updateExportReachSection(dto);
+    await this.revalidation.revalidate(['/']);
+    return section;
+  }
+
+  @Get('export-destinations')
+  findExportDestinations() {
+    return this.homepageService.findExportDestinations();
+  }
+
+  @Post('export-destinations')
+  async createExportDestination(@Body() dto: CreateExportDestinationDto) {
+    const destination = await this.homepageService.createExportDestination(dto);
+    await this.revalidation.revalidate(['/']);
+    return destination;
+  }
+
+  @Put('export-destinations/:id')
+  async updateExportDestination(
+    @Param('id') id: string,
+    @Body() dto: UpdateExportDestinationDto,
+  ) {
+    const destination = await this.homepageService.updateExportDestination(
+      id,
+      dto,
+    );
+    await this.revalidation.revalidate(['/']);
+    return destination;
+  }
+
+  @Delete('export-destinations/:id')
+  async removeExportDestination(@Param('id') id: string) {
+    const result = await this.homepageService.removeExportDestination(id);
     await this.revalidation.revalidate(['/']);
     return result;
   }
