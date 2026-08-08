@@ -24,6 +24,7 @@ import { PARTNER_LOGO_SUGGESTED_CATEGORIES } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { HeroSlidePreviewModal } from "@/components/admin/HeroSlidePreviewModal";
 import { useToast } from "@/components/admin/Toast";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
@@ -281,6 +282,7 @@ function HeroSlideEditor() {
   const [slides, setSlides] = useState<HeroSlide[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewSlide, setPreviewSlide] = useState<HeroSlide | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const { showToast } = useToast();
 
   async function load() {
@@ -327,13 +329,14 @@ function HeroSlideEditor() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus hero slide ini?\n\nData yang dihapus tidak dapat dikembalikan.")) return;
     try {
       await adminApi.delete(`/admin/homepage/hero-slides/${id}`);
       await load();
       showToast("Slide berhasil dihapus.");
     } catch {
       showToast("Gagal menghapus slide. Silakan coba lagi.", "error");
+    } finally {
+      setDeleteTargetId(null);
     }
   }
 
@@ -398,7 +401,7 @@ function HeroSlideEditor() {
             slideCount={slides.length}
             onUpdate={(patch) => handleUpdate(slide.id, patch)}
             onToggleActive={() => void handleToggleActive(slide)}
-            onDelete={() => void handleDelete(slide.id)}
+            onDelete={() => setDeleteTargetId(slide.id)}
             onDuplicate={() => void handleDuplicate(slide.id)}
             onMove={(direction) => void handleMove(index, direction)}
             onPreview={() => setPreviewSlide(slide)}
@@ -427,6 +430,14 @@ function HeroSlideEditor() {
       </form>
 
       {previewSlide && <HeroSlidePreviewModal slide={previewSlide} onClose={() => setPreviewSlide(null)} />}
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus hero slide ini?"
+          message="Data yang dihapus tidak dapat dikembalikan."
+          onConfirm={() => void handleDelete(deleteTargetId)}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </Card>
   );
 }
