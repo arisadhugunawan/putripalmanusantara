@@ -101,6 +101,7 @@ export default function AdminGalleryPage() {
           <div>
             <Label htmlFor="gallery-file">File</Label>
             <input id="gallery-file" ref={fileInputRef} type="file" accept="image/*,video/*" className="text-small" />
+            <p className="mt-1 text-small text-neutral-500">Rekomendasi: 1200×1200px (rasio 1:1). Maksimum 5MB.</p>
           </div>
         </div>
         {error && <p className="mt-2 text-small text-red-600">{error}</p>}

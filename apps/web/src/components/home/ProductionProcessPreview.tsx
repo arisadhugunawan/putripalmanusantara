@@ -12,7 +12,7 @@ export function ProductionProcessPreview({ steps }: { steps: ProductionStep[] })
       <Container>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 className="text-h2 text-neutral-900">Our Production Process</h2>
-          <Link href="/production-process" className={buttonVariants("ghost", "md")}>
+          <Link href="/facilities#production-process" className={buttonVariants("ghost", "md")}>
             See Full Process →
           </Link>
         </div>

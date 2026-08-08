@@ -107,6 +107,7 @@ export default function AdminFacilitiesPage() {
               <MediaUploadField
                 label="Gambar Sampul"
                 media={facility.cover_image}
+                hint="Rekomendasi: 1200×900px (rasio 4:3). Maksimum 5MB."
                 onChange={async (media) => {
                   await adminApi.put(`/admin/facilities/${facility.id}`, { cover_image_id: media.id });
                   await load();
@@ -127,6 +128,7 @@ export default function AdminFacilitiesPage() {
                 <MediaUploadField
                   label="Tambah Foto Galeri"
                   media={null}
+                  hint="Rekomendasi: 1200×1200px (rasio 1:1). Maksimum 5MB."
                   onChange={async (media) => {
                     await adminApi.post(`/admin/facilities/${facility.id}/gallery`, { media_id: media.id });
                     await load();
