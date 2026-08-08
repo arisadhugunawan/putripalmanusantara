@@ -277,6 +277,33 @@ export class HomepageService {
     return { deleted: true };
   }
 
+  /** Clones every field except id/timestamps — new record is inactive and not featured by
+   * default so duplicating for a quick variant never accidentally goes live. */
+  async duplicatePartnerLogo(id: string) {
+    const source = await this.prisma.partnerLogo.findUnique({ where: { id } });
+    if (!source)
+      throw new ApiException('NOT_FOUND', 'Partner logo not found.', 404);
+
+    const count = await this.prisma.partnerLogo.count();
+    const logo = await this.prisma.partnerLogo.create({
+      data: {
+        logoId: source.logoId,
+        partnerName: `${source.partnerName} — Copy`,
+        description: source.description,
+        websiteUrl: source.websiteUrl,
+        openInNewTab: source.openInNewTab,
+        altText: source.altText,
+        category: source.category,
+        order: count,
+        enabled: false,
+        featured: false,
+        translations: source.translations as never,
+      },
+      include: PARTNER_LOGO_INCLUDE,
+    });
+    return toPartnerLogo(logo);
+  }
+
   private async assertPartnerLogoExists(id: string) {
     const logo = await this.prisma.partnerLogo.findUnique({ where: { id } });
     if (!logo)

@@ -123,6 +123,13 @@ export class AdminHomepageController {
     return result;
   }
 
+  @Post('partner-logos/:id/duplicate')
+  async duplicatePartnerLogo(@Param('id') id: string) {
+    const logo = await this.homepageService.duplicatePartnerLogo(id);
+    await this.revalidation.revalidate(['/']);
+    return logo;
+  }
+
   // ── Decorative Graphics ─────────────────────────────────────────────
 
   @Get('decorative-graphics')
