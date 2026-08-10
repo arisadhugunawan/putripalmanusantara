@@ -58,4 +58,17 @@ export class HomepageController {
   findExportReachSection(@Query('locale') locale?: string) {
     return this.homepageService.findExportReachSection(resolveLocale(locale));
   }
+
+  @Get('shipping-partners')
+  findShippingPartners(@Query('locale') locale?: string) {
+    return this.homepageService.findShippingPartners(
+      resolveLocale(locale),
+      true,
+    );
+  }
+
+  @Get('shipping-section')
+  findShippingSection(@Query('locale') locale?: string) {
+    return this.homepageService.findShippingSection(resolveLocale(locale));
+  }
 }

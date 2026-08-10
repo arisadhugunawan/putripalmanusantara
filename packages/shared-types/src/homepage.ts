@@ -93,6 +93,72 @@ export interface HomepagePartnersSection {
   translations?: Translations | null;
 }
 
+/** Not every logo shown is necessarily a confirmed formal partnership — Admin records the
+ * true relationship per record; the public section title stays "Global Shipping Partner"
+ * regardless (see README — same "don't imply an unconfirmed relationship" rule as
+ * PartnerLogo's category). */
+export type ShippingRelationshipType =
+  | "shipping_partner"
+  | "shipping_line"
+  | "carrier"
+  | "logistics_partner"
+  | "freight_network"
+  | "service_provider"
+  | "other";
+
+export const SHIPPING_RELATIONSHIP_TYPES: ShippingRelationshipType[] = [
+  "shipping_partner",
+  "shipping_line",
+  "carrier",
+  "logistics_partner",
+  "freight_network",
+  "service_provider",
+  "other",
+];
+
+export const SHIPPING_RELATIONSHIP_TYPE_LABELS: Record<ShippingRelationshipType, string> = {
+  shipping_partner: "Shipping Partner",
+  shipping_line: "Shipping Line",
+  carrier: "Carrier",
+  logistics_partner: "Logistics Partner",
+  freight_network: "Freight Network",
+  service_provider: "Service Provider",
+  other: "Other",
+};
+
+/** "Global Shipping Partner" carousel logo (Post-Launch). Zero rows is valid — no shipping
+ * line/carrier logos or relationships are fabricated ahead of client confirmation, same rule
+ * as PartnerLogo. */
+export interface ShippingPartner {
+  id: string;
+  logo: Media;
+  partner_name: string;
+  relationship_type: ShippingRelationshipType;
+  description: string | null;
+  website_url: string | null;
+  open_in_new_tab: boolean;
+  /** Falls back to partner_name when empty. */
+  alt_text: string | null;
+  order: number;
+  enabled: boolean;
+  featured: boolean;
+  updated_at: string;
+  translations?: Translations | null;
+}
+
+/** Homepage "Global Shipping Partner" section content (Post-Launch) — a singleton, same
+ * get-or-create pattern as HomepagePartnersSection. */
+export interface HomepageShippingSection {
+  id: string;
+  title: string;
+  subtitle: string;
+  marquee_duration_seconds: number;
+  show_partner_name: boolean;
+  show_relationship_type: boolean;
+  enabled: boolean;
+  translations?: Translations | null;
+}
+
 export type DecorativeGraphicVariant =
   | "leaf_outline"
   | "coconut_cross_section"

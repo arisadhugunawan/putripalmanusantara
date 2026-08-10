@@ -63,6 +63,7 @@ model Media {
   heroSlidesAsDesktop  HeroSlide[]                    @relation("HeroSlideDesktopImage")
   heroSlidesAsMobile   HeroSlide[]                    @relation("HeroSlideMobileImage")
   partnerLogos         PartnerLogo[]
+  shippingPartners     ShippingPartner[]
   aboutPreviewVideos   HomepageAboutPreview[]          @relation("AboutPreviewVideoMedia")
   aboutPreviewThumbs   HomepageAboutPreview[]          @relation("AboutPreviewVideoThumbnail")
 
@@ -541,6 +542,60 @@ model HomepageExportReach {
   translations Json?
 
   @@map("homepage_export_reach")
+}
+
+// ── 3.11i ShippingPartner (Post-Launch) ───────────────────────────────────
+// "Global Shipping Partner" carousel. Not every shipping company shown is necessarily a
+// confirmed formal business partner (brief §"Data Terminology") — relationshipType lets
+// Admin record the true relationship per record while the public section keeps its generic
+// "Global Shipping Partner" title. Same enabled+featured dual-gate as PartnerLogo.
+enum ShippingRelationshipType {
+  shipping_partner
+  shipping_line
+  carrier
+  logistics_partner
+  freight_network
+  service_provider
+  other
+}
+
+model ShippingPartner {
+  id               String                   @id @default(cuid())
+  logoId           String                   @map("logo_id")
+  logo             Media                    @relation(fields: [logoId], references: [id])
+  partnerName      String                   @map("partner_name")
+  relationshipType ShippingRelationshipType @default(shipping_partner) @map("relationship_type")
+  description      String?
+  websiteUrl       String?                  @map("website_url")
+  openInNewTab     Boolean                  @default(true) @map("open_in_new_tab")
+  altText          String?                  @map("alt_text")
+  order            Int                      @default(0)
+  enabled          Boolean                  @default(true)
+  featured         Boolean                  @default(true)
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for partnerName/description.
+  translations     Json?
+
+  @@map("shipping_partners")
+}
+
+// Singleton — "Global Shipping Partner" section heading/subtitle/marquee + display toggles,
+// editable independently of the individual partner records (same get-or-create pattern as
+// HomepagePartnersSection/HomepageExportReach).
+model HomepageShippingSection {
+  id                     String   @id @default(cuid())
+  title                  String   @default("GLOBAL SHIPPING PARTNER")
+  subtitle               String   @default("Connecting our export operations with reliable shipping and logistics networks for international delivery.")
+  marqueeDurationSeconds Int      @default(50) @map("marquee_duration_seconds")
+  showPartnerName        Boolean  @default(true) @map("show_partner_name")
+  showRelationshipType   Boolean  @default(true) @map("show_relationship_type")
+  enabled                Boolean  @default(true)
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/subtitle.
+  translations           Json?
+
+  @@map("homepage_shipping_section")
 }
 
 // ── 3.12 FAQ ─────────────────────────────────────────────────────────────

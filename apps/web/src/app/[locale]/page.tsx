@@ -17,6 +17,8 @@ import {
   getProductionSteps,
   getProducts,
   getPublicSettings,
+  getShippingPartners,
+  getShippingSection,
   getWhyChooseUs,
 } from "@/lib/api";
 import { AboutPreviewSection } from "@/components/home/AboutPreviewSection";
@@ -26,6 +28,7 @@ import { FacilitiesPreview } from "@/components/home/FacilitiesPreview";
 import { FaqSection } from "@/components/home/FaqSection";
 import { FeaturedProductsSection } from "@/components/home/FeaturedProductsSection";
 import { GalleryPreview } from "@/components/home/GalleryPreview";
+import { GlobalShippingPartnerSection } from "@/components/home/GlobalShippingPartnerSection";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { PartnerMarquee } from "@/components/home/PartnerMarquee";
 import { ProductionProcessPreview } from "@/components/home/ProductionProcessPreview";
@@ -69,11 +72,14 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     partnersGraphics,
     whyChooseUsGraphics,
     exportReachGraphics,
+    shippingPartnersGraphics,
     aboutPreview,
     highlights,
     whyChooseUs,
     exportDestinations,
     exportReachSection,
+    shippingPartners,
+    shippingSection,
     settings,
   ] = await Promise.all([
     getHomepageStatistics(locale),
@@ -92,11 +98,14 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     getDecorativeGraphics("home-partners"),
     getDecorativeGraphics("home-why-choose-us"),
     getDecorativeGraphics("home-export-reach"),
+    getDecorativeGraphics("home-shipping-partners"),
     getAboutPreview(locale),
     getHighlights(locale),
     getWhyChooseUs(locale),
     getExportDestinations(locale),
     getExportReachSection(locale),
+    getShippingPartners(locale),
+    getShippingSection(locale),
     getPublicSettings(locale).catch(() => null),
   ]);
 
@@ -117,6 +126,11 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       <GalleryPreview items={gallery} />
       <ArticlesSection articles={latestArticles} />
       <ExportReachSection section={exportReachSection} destinations={exportDestinations} decorativeGraphics={exportReachGraphics} />
+      <GlobalShippingPartnerSection
+        section={shippingSection}
+        partners={shippingPartners}
+        decorativeGraphics={shippingPartnersGraphics}
+      />
       <FaqSection faqs={faqs} />
       <QuotationSection products={allProducts} />
     </main>

@@ -14,6 +14,7 @@ import type {
   HomepageExportReach,
   HomepageHighlight,
   HomepagePartnersSection,
+  HomepageShippingSection,
   HomepageStatistic,
   HomepageWhyChooseUs,
   PaginationMeta,
@@ -22,6 +23,7 @@ import type {
   ProductSummary,
   ProductionStep,
   PublicSiteSettings,
+  ShippingPartner,
 } from "@ppn/shared-types";
 import { ApiRequestError } from "./api-error";
 
@@ -170,5 +172,15 @@ export async function getExportDestinations(locale?: string): Promise<ExportDest
 
 export async function getExportReachSection(locale?: string): Promise<HomepageExportReach> {
   const json = await request<HomepageExportReach>(withLocale("/homepage/export-reach-section", locale));
+  return json.data;
+}
+
+export async function getShippingPartners(locale?: string): Promise<ShippingPartner[]> {
+  const json = await request<ShippingPartner[]>(withLocale("/homepage/shipping-partners", locale));
+  return json.data;
+}
+
+export async function getShippingSection(locale?: string): Promise<HomepageShippingSection> {
+  const json = await request<HomepageShippingSection>(withLocale("/homepage/shipping-section", locale));
   return json.data;
 }

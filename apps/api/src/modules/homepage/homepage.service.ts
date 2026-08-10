@@ -27,6 +27,11 @@ import type {
 } from './dto/partner-logo.dto';
 import type { UpdatePartnersSectionDto } from './dto/partners-section.dto';
 import type {
+  CreateShippingPartnerDto,
+  UpdateShippingPartnerDto,
+} from './dto/shipping-partner.dto';
+import type { UpdateShippingSectionDto } from './dto/shipping-section.dto';
+import type {
   CreateExportDestinationDto,
   UpdateExportDestinationDto,
 } from './dto/export-destination.dto';
@@ -43,10 +48,13 @@ import { toHeroSlide } from './hero-slide.mapper';
 import { toHighlight } from './highlight.mapper';
 import { toPartnerLogo } from './partner-logo.mapper';
 import { toPartnersSection } from './partners-section.mapper';
+import { toShippingPartner } from './shipping-partner.mapper';
+import { toShippingSection } from './shipping-section.mapper';
 import { toWhyChooseUs } from './why-choose-us.mapper';
 
 const HERO_SLIDE_INCLUDE = { desktopImage: true, mobileImage: true } as const;
 const PARTNER_LOGO_INCLUDE = { logo: true } as const;
+const SHIPPING_PARTNER_INCLUDE = { logo: true } as const;
 const ABOUT_PREVIEW_INCLUDE = {
   videoMedia: true,
   videoThumbnail: true,
@@ -324,6 +332,104 @@ export class HomepageService {
       throw new ApiException('NOT_FOUND', 'Partner logo not found.', 404);
   }
 
+  // ── Shipping Partners (Post-Launch) ────────────────────────────────────
+
+  async findShippingPartners(locale?: string, publicOnly = false) {
+    const partners = await this.prisma.shippingPartner.findMany({
+      // Same independent enabled+featured gate as PartnerLogo — Active keeps the record on
+      // file/editable, Featured is what actually publishes it to the Homepage carousel.
+      where: publicOnly ? { enabled: true, featured: true } : undefined,
+      include: SHIPPING_PARTNER_INCLUDE,
+      orderBy: { order: 'asc' },
+    });
+    return partners.map((partner) => toShippingPartner(partner, locale));
+  }
+
+  async createShippingPartner(dto: CreateShippingPartnerDto) {
+    const partner = await this.prisma.shippingPartner.create({
+      data: {
+        logoId: dto.logo_id,
+        partnerName: dto.partner_name,
+        relationshipType: dto.relationship_type as never,
+        description: dto.description,
+        websiteUrl: dto.website_url,
+        openInNewTab: dto.open_in_new_tab ?? true,
+        altText: dto.alt_text,
+        order: dto.order ?? 0,
+        enabled: dto.enabled ?? true,
+        featured: dto.featured ?? true,
+        translations: dto.translations,
+      },
+      include: SHIPPING_PARTNER_INCLUDE,
+    });
+    return toShippingPartner(partner);
+  }
+
+  async updateShippingPartner(id: string, dto: UpdateShippingPartnerDto) {
+    await this.assertShippingPartnerExists(id);
+    const partner = await this.prisma.shippingPartner.update({
+      where: { id },
+      data: {
+        logoId: dto.logo_id,
+        partnerName: dto.partner_name,
+        relationshipType: dto.relationship_type as never,
+        description: dto.description,
+        websiteUrl: dto.website_url,
+        openInNewTab: dto.open_in_new_tab,
+        altText: dto.alt_text,
+        order: dto.order,
+        enabled: dto.enabled,
+        featured: dto.featured,
+        translations: dto.translations,
+      },
+      include: SHIPPING_PARTNER_INCLUDE,
+    });
+    return toShippingPartner(partner);
+  }
+
+  async removeShippingPartner(id: string) {
+    await this.assertShippingPartnerExists(id);
+    await this.prisma.shippingPartner.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  /** Clones every field except id/timestamps — new record is inactive and not featured by
+   * default so duplicating for a quick variant never accidentally goes live. */
+  async duplicateShippingPartner(id: string) {
+    const source = await this.prisma.shippingPartner.findUnique({
+      where: { id },
+    });
+    if (!source)
+      throw new ApiException('NOT_FOUND', 'Shipping partner not found.', 404);
+
+    const count = await this.prisma.shippingPartner.count();
+    const partner = await this.prisma.shippingPartner.create({
+      data: {
+        logoId: source.logoId,
+        partnerName: `${source.partnerName} — Copy`,
+        relationshipType: source.relationshipType,
+        description: source.description,
+        websiteUrl: source.websiteUrl,
+        openInNewTab: source.openInNewTab,
+        altText: source.altText,
+        order: count,
+        enabled: false,
+        featured: false,
+        translations: source.translations as never,
+      },
+      include: SHIPPING_PARTNER_INCLUDE,
+    });
+    return toShippingPartner(partner);
+  }
+
+  private async assertShippingPartnerExists(id: string) {
+    const partner = await this.prisma.shippingPartner.findUnique({
+      where: { id },
+    });
+    if (!partner)
+      throw new ApiException('NOT_FOUND', 'Shipping partner not found.', 404);
+  }
+
   // ── Decorative Graphics (Post-Launch) ──────────────────────────────────
 
   async findDecorativeGraphics(page?: string, publicOnly = false) {
@@ -505,6 +611,36 @@ export class HomepageService {
       },
     });
     return toPartnersSection(updated);
+  }
+
+  // ── Shipping Section (Post-Launch, singleton) ──────────────────────────
+
+  private async getOrCreateShippingSection() {
+    const existing = await this.prisma.homepageShippingSection.findFirst();
+    if (existing) return existing;
+    return this.prisma.homepageShippingSection.create({ data: {} });
+  }
+
+  async findShippingSection(locale: string = DEFAULT_LOCALE) {
+    const entry = await this.getOrCreateShippingSection();
+    return toShippingSection(entry, locale);
+  }
+
+  async updateShippingSection(dto: UpdateShippingSectionDto) {
+    const existing = await this.getOrCreateShippingSection();
+    const updated = await this.prisma.homepageShippingSection.update({
+      where: { id: existing.id },
+      data: {
+        title: dto.title,
+        subtitle: dto.subtitle,
+        marqueeDurationSeconds: dto.marquee_duration_seconds,
+        showPartnerName: dto.show_partner_name,
+        showRelationshipType: dto.show_relationship_type,
+        enabled: dto.enabled,
+        translations: dto.translations,
+      },
+    });
+    return toShippingSection(updated);
   }
 
   // ── Why Choose Us (Post-Launch) ─────────────────────────────────────────

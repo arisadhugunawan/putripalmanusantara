@@ -29,6 +29,11 @@ import {
 } from './dto/partner-logo.dto';
 import { UpdatePartnersSectionDto } from './dto/partners-section.dto';
 import {
+  CreateShippingPartnerDto,
+  UpdateShippingPartnerDto,
+} from './dto/shipping-partner.dto';
+import { UpdateShippingSectionDto } from './dto/shipping-section.dto';
+import {
   CreateWhyChooseUsDto,
   UpdateWhyChooseUsDto,
 } from './dto/why-choose-us.dto';
@@ -300,5 +305,58 @@ export class AdminHomepageController {
     const result = await this.homepageService.removeExportDestination(id);
     await this.revalidation.revalidate(['/']);
     return result;
+  }
+
+  // ── Shipping Partners ────────────────────────────────────────────────
+
+  @Get('shipping-partners')
+  findShippingPartners() {
+    return this.homepageService.findShippingPartners();
+  }
+
+  @Post('shipping-partners')
+  async createShippingPartner(@Body() dto: CreateShippingPartnerDto) {
+    const partner = await this.homepageService.createShippingPartner(dto);
+    await this.revalidation.revalidate(['/']);
+    return partner;
+  }
+
+  @Put('shipping-partners/:id')
+  async updateShippingPartner(
+    @Param('id') id: string,
+    @Body() dto: UpdateShippingPartnerDto,
+  ) {
+    const partner = await this.homepageService.updateShippingPartner(
+      id,
+      dto,
+    );
+    await this.revalidation.revalidate(['/']);
+    return partner;
+  }
+
+  @Delete('shipping-partners/:id')
+  async removeShippingPartner(@Param('id') id: string) {
+    const result = await this.homepageService.removeShippingPartner(id);
+    await this.revalidation.revalidate(['/']);
+    return result;
+  }
+
+  @Post('shipping-partners/:id/duplicate')
+  async duplicateShippingPartner(@Param('id') id: string) {
+    const partner = await this.homepageService.duplicateShippingPartner(id);
+    await this.revalidation.revalidate(['/']);
+    return partner;
+  }
+
+  @Get('shipping-section')
+  findShippingSection() {
+    return this.homepageService.findShippingSection();
+  }
+
+  @Put('shipping-section')
+  async updateShippingSection(@Body() dto: UpdateShippingSectionDto) {
+    const section = await this.homepageService.updateShippingSection(dto);
+    await this.revalidation.revalidate(['/']);
+    return section;
   }
 }
