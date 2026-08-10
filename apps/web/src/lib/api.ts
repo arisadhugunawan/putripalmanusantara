@@ -23,6 +23,7 @@ import type {
   ProductSummary,
   ProductionStep,
   PublicSiteSettings,
+  PublishedHomepagePayload,
   ShippingPartner,
 } from "@ppn/shared-types";
 import { ApiRequestError } from "./api-error";
@@ -182,5 +183,15 @@ export async function getShippingPartners(locale?: string): Promise<ShippingPart
 
 export async function getShippingSection(locale?: string): Promise<HomepageShippingSection> {
   const json = await request<HomepageShippingSection>(withLocale("/homepage/shipping-section", locale));
+  return json.data;
+}
+
+/** The Homepage's single data source for its CMS-owned sections (Draft/Publish — see README
+ * "Homepage Manager"). Featured Products/Facilities/Gallery/Production Steps/Articles are NOT
+ * part of this payload — those keep being fetched live, unchanged, via their own `get*`
+ * functions below. Same default ISR window as every other call here — Publish already forces
+ * an immediate on-demand revalidation via the existing webhook, same as every other mutation. */
+export async function getPublishedHomepage(locale?: string): Promise<PublishedHomepagePayload> {
+  const json = await request<PublishedHomepagePayload>(withLocale("/homepage/published-snapshot", locale));
   return json.data;
 }

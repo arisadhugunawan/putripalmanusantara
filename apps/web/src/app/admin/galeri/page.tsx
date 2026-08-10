@@ -4,7 +4,11 @@ import { Badge, Button, Card, Input, Label } from "@ppn/ui-components";
 import type { GalleryCategory, GalleryItem, Media } from "@ppn/shared-types";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { adminApi } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { SaveStateIndicator } from "@/components/admin/SaveStateIndicator";
+import { useToast } from "@/components/admin/Toast";
+import { useSaveState } from "@/hooks/useSaveState";
 
 const CATEGORIES: { value: GalleryCategory; label: string }[] = [
   { value: "product", label: "Produk" },
@@ -19,9 +23,12 @@ export default function AdminGalleryPage() {
   const [category, setCategory] = useState<GalleryCategory>("product");
   const [altText, setAltText] = useState("");
   const [caption, setCaption] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { status, error, run } = useSaveState();
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<GalleryItem[]>("/admin/gallery");
@@ -36,12 +43,11 @@ export default function AdminGalleryPage() {
   async function handleUpload() {
     const file = fileInputRef.current?.files?.[0];
     if (!file || !altText.trim()) {
-      setError("Pilih file dan isi teks alternatif.");
+      setValidationError("Pilih file dan isi teks alternatif.");
       return;
     }
-    setUploading(true);
-    setError(null);
-    try {
+    setValidationError(null);
+    const result = await run(async () => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("alt_text", altText);
@@ -51,21 +57,28 @@ export default function AdminGalleryPage() {
         category,
         caption: caption || undefined,
       });
+    });
+    if (result.success) {
       setAltText("");
       setCaption("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       await load();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Gagal mengunggah media.");
-    } finally {
-      setUploading(false);
+      showToast("Media berhasil diunggah.");
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus item galeri ini?")) return;
-    await adminApi.delete(`/admin/gallery/${id}`);
-    await load();
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/gallery/${id}`);
+      await load();
+      showToast("Item galeri berhasil dihapus.");
+      setDeleteTargetId(null);
+    } catch {
+      showToast("Gagal menghapus item galeri. Silakan coba lagi.", "error");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -104,10 +117,13 @@ export default function AdminGalleryPage() {
             <p className="mt-1 text-small text-neutral-500">Rekomendasi: 1200×1200px (rasio 1:1). Maksimum 5MB.</p>
           </div>
         </div>
-        {error && <p className="mt-2 text-small text-red-600">{error}</p>}
-        <Button type="button" onClick={() => void handleUpload()} disabled={uploading} className="mt-4">
-          {uploading ? "Mengunggah..." : "Unggah"}
-        </Button>
+        {validationError && <p className="mt-2 text-small text-red-600">{validationError}</p>}
+        <div className="mt-4 flex items-center gap-3">
+          <Button type="button" onClick={() => void handleUpload()} disabled={status === "saving"}>
+            {status === "saving" ? "Mengunggah..." : "Unggah"}
+          </Button>
+          <SaveStateIndicator status={status} error={error} />
+        </div>
       </Card>
 
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -120,7 +136,7 @@ export default function AdminGalleryPage() {
               <Badge variant="neutral">{CATEGORIES.find((c) => c.value === item.category)?.label}</Badge>
               <button
                 type="button"
-                onClick={() => void handleDelete(item.id)}
+                onClick={() => setDeleteTargetId(item.id)}
                 className="mt-2 block text-small text-red-600 underline"
               >
                 Hapus
@@ -130,6 +146,18 @@ export default function AdminGalleryPage() {
         ))}
         {items?.length === 0 && <p className="text-body text-neutral-600">Belum ada media di galeri.</p>}
       </div>
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus item galeri ini?"
+          message="Data yang dihapus tidak dapat dikembalikan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete(deleteTargetId);
+          }}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </div>
   );
 }

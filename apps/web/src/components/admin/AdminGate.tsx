@@ -6,6 +6,9 @@ import { useAuth } from "@/lib/admin/auth-context";
 import { AdminShell } from "./AdminShell";
 
 const PUBLIC_PATHS = ["/admin/login"];
+// Still requires auth (not in PUBLIC_PATHS) but renders full-width, without the sidebar shell
+// — the Homepage draft preview needs to look like the real public page, not an admin screen.
+const BARE_PATH_PREFIXES = ["/admin/preview"];
 
 /**
  * docs/06-architecture.md §4 — Admin Panel is CSR behind authentication. The auth cookie
@@ -39,6 +42,11 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
 
   if (status === "unauthenticated") {
     return null;
+  }
+
+  const isBarePath = BARE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  if (isBarePath) {
+    return <>{children}</>;
   }
 
   return <AdminShell>{children}</AdminShell>;

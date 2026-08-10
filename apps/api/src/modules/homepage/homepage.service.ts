@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   DEFAULT_LOCALE,
+  HOMEPAGE_SECTION_KEYS,
   WORLD_COUNTRIES,
   type HomepageStatistic,
 } from '@ppn/shared-types';
@@ -12,6 +13,7 @@ import type {
   CreateDecorativeGraphicDto,
   UpdateDecorativeGraphicDto,
 } from './dto/decorative-graphic.dto';
+import type { UpdateHomepageSectionDto } from './dto/homepage-section.dto';
 import type {
   CreateHeroSlideDto,
   UpdateHeroSlideDto,
@@ -46,6 +48,7 @@ import { toExportDestination } from './export-destination.mapper';
 import { toExportReachSection } from './export-reach-section.mapper';
 import { toHeroSlide } from './hero-slide.mapper';
 import { toHighlight } from './highlight.mapper';
+import { toHomepageSectionConfig } from './homepage-section.mapper';
 import { toPartnerLogo } from './partner-logo.mapper';
 import { toPartnersSection } from './partners-section.mapper';
 import { toShippingPartner } from './shipping-partner.mapper';
@@ -814,4 +817,345 @@ export class HomepageService {
     });
     return toExportReachSection(updated);
   }
+
+  // ── Homepage Manager: Draft/Publish (Post-Launch) ──────────────────────
+  //
+  // Every table above stays exactly as it is — it's the Admin's "draft" working copy,
+  // unaffected by anything below. `HomepageSectionConfig` adds an order/visibility gate
+  // layered OVER each section's own existing logic (never replacing an `enabled` field).
+  // `HomepagePublishedSnapshot` is a frozen, versioned, locale-agnostic copy of the CMS-owned
+  // sections (Hero/Partners/About/WhyChooseUs/ExportReach/ShippingPartner/Statistics/FAQ) that
+  // the PUBLIC site reads from — see README "Homepage Manager". Featured Products, Facilities,
+  // Gallery, Production Process, and News & Articles are NOT snapshotted: those modules kept
+  // their existing "save = live" behavior by design, so the Homepage keeps pulling them live,
+  // exactly as it does today.
+
+  async getSections() {
+    await this.ensureSectionConfigsSeeded();
+    const configs = await this.prisma.homepageSectionConfig.findMany({
+      orderBy: { order: 'asc' },
+    });
+    return configs.map(toHomepageSectionConfig);
+  }
+
+  async updateSection(key: string, dto: UpdateHomepageSectionDto) {
+    await this.ensureSectionConfigsSeeded();
+    if (!HOMEPAGE_SECTION_KEYS.includes(key as never)) {
+      throw new ApiException('NOT_FOUND', 'Unknown homepage section.', 404);
+    }
+    const updated = await this.prisma.homepageSectionConfig.update({
+      where: { key },
+      data: { order: dto.order, visible: dto.visible },
+    });
+    return toHomepageSectionConfig(updated);
+  }
+
+  /** Seeds all 14 section rows, in the exact order rendered in `[locale]/page.tsx`, on first
+   * access — same lazy get-or-create idiom as every other Homepage singleton in this file. */
+  private async ensureSectionConfigsSeeded() {
+    const count = await this.prisma.homepageSectionConfig.count();
+    if (count > 0) return;
+    await this.prisma.homepageSectionConfig.createMany({
+      data: HOMEPAGE_SECTION_KEYS.map((key, order) => ({ key, order })),
+      skipDuplicates: true,
+    });
+  }
+
+  async getPublishStatus() {
+    const latest = await this.prisma.homepagePublishedSnapshot.findFirst({
+      orderBy: { publishedAt: 'desc' },
+      select: { publishedAt: true },
+    });
+    const lastPublishedAt = latest?.publishedAt ?? null;
+
+    if (!lastPublishedAt) {
+      return { last_published_at: null, has_unpublished_changes: true };
+    }
+
+    const latestChange = await this.latestDraftChangeAt();
+    return {
+      last_published_at: lastPublishedAt.toISOString(),
+      has_unpublished_changes: !latestChange || latestChange > lastPublishedAt,
+    };
+  }
+
+  /** Watermark, not a field-level diff — the max `updatedAt` across every table that can
+   * affect the published snapshot. Good enough for an honest "unpublished changes exist"
+   * indicator without needing full change-tracking infrastructure. */
+  private async latestDraftChangeAt(): Promise<Date | null> {
+    type TimestampedDelegate = {
+      findFirst: (args: {
+        orderBy: { updatedAt: 'desc' };
+        select: { updatedAt: true };
+      }) => Promise<{ updatedAt: Date } | null>;
+    };
+    const findLatest = (delegate: unknown) =>
+      (delegate as TimestampedDelegate).findFirst({
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true },
+      });
+    const results = await Promise.all([
+      findLatest(this.prisma.heroSlide),
+      findLatest(this.prisma.partnerLogo),
+      findLatest(this.prisma.homepagePartnersSection),
+      findLatest(this.prisma.homepageAboutPreview),
+      findLatest(this.prisma.homepageHighlight),
+      findLatest(this.prisma.homepageWhyChooseUs),
+      findLatest(this.prisma.exportDestination),
+      findLatest(this.prisma.homepageExportReach),
+      findLatest(this.prisma.shippingPartner),
+      findLatest(this.prisma.homepageShippingSection),
+      findLatest(this.prisma.homepageStatistic),
+      findLatest(this.prisma.faq),
+      findLatest(this.prisma.homepageSectionConfig),
+    ]);
+    const dates = results
+      .map((r) => r?.updatedAt)
+      .filter((d): d is Date => Boolean(d));
+    if (dates.length === 0) return null;
+    return new Date(Math.max(...dates.map((d) => d.getTime())));
+  }
+
+  /** Raw (untranslated) rows per section — locale resolution happens later, at read time, via
+   * the same mapper functions every live endpoint already uses. Uses the identical
+   * `publicOnly` filters those endpoints use so the snapshot only ever contains what would
+   * already be publicly visible. */
+  private async buildSnapshotPayload() {
+    await this.ensureSectionConfigsSeeded();
+    const [
+      heroSlides,
+      partnersSection,
+      partnerLogos,
+      aboutPreview,
+      highlights,
+      whyChooseUs,
+      exportReachSection,
+      exportDestinations,
+      shippingSection,
+      shippingPartners,
+      statistics,
+      faqs,
+      sectionConfig,
+    ] = await Promise.all([
+      this.prisma.heroSlide.findMany({
+        where: {
+          enabled: true,
+          OR: [{ publishDate: null }, { publishDate: { lte: new Date() } }],
+        },
+        include: HERO_SLIDE_INCLUDE,
+        orderBy: { order: 'asc' },
+      }),
+      this.getOrCreatePartnersSection(),
+      this.prisma.partnerLogo.findMany({
+        where: { enabled: true, featured: true },
+        include: PARTNER_LOGO_INCLUDE,
+        orderBy: { order: 'asc' },
+      }),
+      this.getOrCreateAboutPreview(),
+      this.prisma.homepageHighlight.findMany({
+        where: { enabled: true },
+        orderBy: { order: 'asc' },
+      }),
+      this.prisma.homepageWhyChooseUs.findMany({
+        where: { enabled: true, featured: true },
+        orderBy: { order: 'asc' },
+      }),
+      this.getOrCreateExportReachSection(),
+      this.prisma.exportDestination.findMany({
+        where: { enabled: true, exportStatus: 'active_destination' },
+        include: EXPORT_DESTINATION_INCLUDE,
+        orderBy: { order: 'asc' },
+      }),
+      this.getOrCreateShippingSection(),
+      this.prisma.shippingPartner.findMany({
+        where: { enabled: true, featured: true },
+        include: SHIPPING_PARTNER_INCLUDE,
+        orderBy: { order: 'asc' },
+      }),
+      this.prisma.homepageStatistic.findMany({ orderBy: { order: 'asc' } }),
+      this.prisma.faq.findMany({
+        where: { status: 'published' },
+        orderBy: { order: 'asc' },
+      }),
+      this.prisma.homepageSectionConfig.findMany({ orderBy: { order: 'asc' } }),
+    ]);
+
+    return {
+      heroSlides,
+      partnersSection,
+      partnerLogos,
+      aboutPreview,
+      highlights,
+      whyChooseUs,
+      exportReachSection,
+      exportDestinations,
+      shippingSection,
+      shippingPartners,
+      statistics,
+      faqs,
+      sectionConfig,
+    };
+  }
+
+  /** Wrapped in a transaction so a failed write never leaves a partial/corrupt snapshot row —
+   * matches the existing `$transaction` pattern in `replaceStatistics` above. Snapshots are
+   * append-only (older ones are never deleted or mutated), which is what makes "restore a
+   * previous version" safe: it's just "publish an old payload again". */
+  async publishHomepage() {
+    const payload = await this.buildSnapshotPayload();
+    const [snapshot] = await this.prisma.$transaction([
+      this.prisma.homepagePublishedSnapshot.create({
+        data: { data: payload as never },
+      }),
+    ]);
+    return {
+      id: snapshot.id,
+      published_at: snapshot.publishedAt.toISOString(),
+    };
+  }
+
+  async listSnapshots() {
+    const snapshots = await this.prisma.homepagePublishedSnapshot.findMany({
+      orderBy: { publishedAt: 'desc' },
+      take: 20,
+      select: { id: true, publishedAt: true },
+    });
+    return snapshots.map((s) => ({
+      id: s.id,
+      published_at: s.publishedAt.toISOString(),
+    }));
+  }
+
+  /** Re-inserts a copy of an old snapshot's `data` as the new latest row — never mutates or
+   * deletes history, so a restore can itself always be undone by restoring something else. */
+  async restoreSnapshot(id: string) {
+    const source = await this.prisma.homepagePublishedSnapshot.findUnique({
+      where: { id },
+    });
+    if (!source)
+      throw new ApiException('NOT_FOUND', 'Snapshot not found.', 404);
+    const [snapshot] = await this.prisma.$transaction([
+      this.prisma.homepagePublishedSnapshot.create({
+        data: { data: source.data as never },
+      }),
+    ]);
+    return {
+      id: snapshot.id,
+      published_at: snapshot.publishedAt.toISOString(),
+    };
+  }
+
+  /** The public Homepage's single data source for its CMS-owned sections. Safe on a fresh
+   * deploy with zero snapshots — returns the same empty/default shape every section component
+   * already treats as "nothing to show" (zero rows = section returns null everywhere else in
+   * this app). */
+  async getPublishedHomepage(locale: string = DEFAULT_LOCALE) {
+    const latest = await this.prisma.homepagePublishedSnapshot.findFirst({
+      orderBy: { publishedAt: 'desc' },
+    });
+
+    if (!latest) {
+      return {
+        hero_slides: [],
+        partners_section: toPartnersSection(
+          await this.getOrCreatePartnersSection(),
+          locale,
+        ),
+        partner_logos: [],
+        about_preview: toAboutPreview(
+          await this.getOrCreateAboutPreview(),
+          locale,
+        ),
+        highlights: [],
+        why_choose_us: [],
+        export_reach_section: toExportReachSection(
+          await this.getOrCreateExportReachSection(),
+          locale,
+        ),
+        export_destinations: [],
+        shipping_section: toShippingSection(
+          await this.getOrCreateShippingSection(),
+          locale,
+        ),
+        shipping_partners: [],
+        statistics: [],
+        faqs: [],
+        section_config: await this.getSections(),
+      };
+    }
+
+    const raw = reviveDates(latest.data as unknown) as Awaited<
+      ReturnType<HomepageService['buildSnapshotPayload']>
+    >;
+
+    return {
+      hero_slides: raw.heroSlides.map((s) => toHeroSlide(s, locale)),
+      partners_section: toPartnersSection(raw.partnersSection, locale),
+      partner_logos: raw.partnerLogos.map((l) => toPartnerLogo(l, locale)),
+      about_preview: toAboutPreview(raw.aboutPreview, locale),
+      highlights: raw.highlights.map((h) => toHighlight(h, locale)),
+      why_choose_us: raw.whyChooseUs.map((w) => toWhyChooseUs(w, locale)),
+      export_reach_section: toExportReachSection(
+        raw.exportReachSection,
+        locale,
+      ),
+      export_destinations: raw.exportDestinations.map((d) =>
+        toExportDestination(d, locale),
+      ),
+      shipping_section: toShippingSection(raw.shippingSection, locale),
+      shipping_partners: raw.shippingPartners.map((p) =>
+        toShippingPartner(p, locale),
+      ),
+      statistics: raw.statistics.map((stat) => {
+        const t = translate(stat, stat.translations, locale, [
+          'label',
+          'value',
+        ]);
+        return {
+          id: stat.id,
+          label: t.label,
+          value: t.value,
+          icon: stat.icon,
+          order: stat.order,
+        };
+      }),
+      faqs: raw.faqs.map((faq) => {
+        const t = translate(faq, faq.translations, locale, [
+          'question',
+          'answer',
+        ]);
+        return {
+          id: faq.id,
+          question: t.question,
+          answer: t.answer,
+          order: faq.order,
+          status: faq.status,
+        };
+      }),
+      section_config: raw.sectionConfig.map(toHomepageSectionConfig),
+    };
+  }
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
+/** JSON round-trips through the `Json` column turn every Date into a plain ISO string —
+ * this reconstructs real Date objects so the existing mapper functions (which call
+ * `.toISOString()` on some fields) work unmodified against snapshot data. */
+function reviveDates<T>(value: T): T {
+  if (Array.isArray(value)) {
+    const items = value as unknown[];
+    return items.map((v) => reviveDates(v)) as never;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      out[key] =
+        typeof val === 'string' && ISO_DATE_RE.test(val)
+          ? new Date(val)
+          : reviveDates(val);
+    }
+    return out as T;
+  }
+  return value;
 }

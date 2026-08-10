@@ -6,9 +6,13 @@ import type { ProductDetail, Translations } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { adminApi } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+import { SaveStateIndicator } from "@/components/admin/SaveStateIndicator";
+import { useToast } from "@/components/admin/Toast";
+import { useSaveState } from "@/hooks/useSaveState";
 
 const TRANSLATABLE_FIELDS = [
   { key: "name", label: "Nama Produk", multiline: false },
@@ -22,9 +26,10 @@ export default function EditProductPage() {
   const router = useRouter();
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [translations, setTranslations] = useState<Translations>({});
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { status, error, run } = useSaveState();
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<ProductDetail>(`/admin/products/${id}`);
@@ -48,11 +53,8 @@ export default function EditProductPage() {
   async function handleSaveBasics(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    setSaving(true);
-    setError(null);
-    setSavedMessage(null);
-    try {
-      await adminApi.put(`/admin/products/${id}`, {
+    const result = await run(() =>
+      adminApi.put(`/admin/products/${id}`, {
         slug: formData.get("slug"),
         name: formData.get("name"),
         category: formData.get("category"),
@@ -61,21 +63,21 @@ export default function EditProductPage() {
         status: formData.get("status"),
         is_featured: formData.get("is_featured") === "on",
         translations,
-      });
-      setSavedMessage("Perubahan tersimpan.");
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Gagal menyimpan perubahan.");
-    } finally {
-      setSaving(false);
-    }
+      }),
+    );
+    if (result.success) await load();
   }
 
   async function handleDelete() {
-    if (!product) return;
-    if (!confirm(`Hapus produk "${product.name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
-    await adminApi.delete(`/admin/products/${id}`);
-    router.push("/admin/produk");
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/products/${id}`);
+      showToast("Produk berhasil dihapus.");
+      router.push("/admin/produk");
+    } catch {
+      showToast("Gagal menghapus produk. Silakan coba lagi.", "error");
+      setDeleting(false);
+    }
   }
 
   if (!product) return <p className="text-body text-neutral-600">Memuat...</p>;
@@ -84,7 +86,7 @@ export default function EditProductPage() {
     <div className="max-w-3xl">
       <div className="flex items-center justify-between">
         <h1 className="text-h2 text-neutral-900">Ubah Produk: {product.name}</h1>
-        <button type="button" onClick={() => void handleDelete()} className="text-body text-red-600 underline">
+        <button type="button" onClick={() => setConfirmingDelete(true)} className="text-body text-red-600 underline">
           Hapus Produk
         </button>
       </div>
@@ -200,12 +202,12 @@ export default function EditProductPage() {
             </div>
           </div>
 
-          {error && <p className="text-small text-red-600">{error}</p>}
-          {savedMessage && <p className="text-small text-primary-700">{savedMessage}</p>}
-
-          <Button type="submit" disabled={saving} className="mt-2 w-fit">
-            {saving ? "Menyimpan..." : "Simpan Perubahan"}
-          </Button>
+          <div className="mt-2 flex items-center gap-4">
+            <Button type="submit" disabled={status === "saving"} className="w-fit">
+              {status === "saving" ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
+            <SaveStateIndicator status={status} error={error} />
+          </div>
         </form>
       </Card>
 
@@ -227,6 +229,18 @@ export default function EditProductPage() {
       <ProductGallerySection productId={id} gallery={product.gallery} onChange={load} />
       <ProductSpecificationsSection productId={id} specifications={product.specifications} onChange={load} />
       <ProductDownloadsSection productId={id} downloads={product.downloads} onChange={load} />
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Hapus produk "${product.name}"?`}
+          message="Tindakan ini tidak dapat dibatalkan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete();
+          }}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }
@@ -240,6 +254,21 @@ function ProductGallerySection({
   gallery: ProductDetail["gallery"];
   onChange: () => void;
 }) {
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const { showToast } = useToast();
+
+  async function handleDelete(itemId: string) {
+    try {
+      await adminApi.delete(`/admin/products/${productId}/gallery/${itemId}`);
+      onChange();
+      showToast("Foto galeri berhasil dihapus.");
+    } catch {
+      showToast("Gagal menghapus foto galeri. Silakan coba lagi.", "error");
+    } finally {
+      setDeleteTargetId(null);
+    }
+  }
+
   return (
     <Card className="mt-6">
       <h2 className="text-h3 text-neutral-900">Galeri Produk</h2>
@@ -249,14 +278,7 @@ function ProductGallerySection({
             <div className="relative aspect-square w-full overflow-hidden rounded-field">
               <Image src={item.media.file_url} alt={item.media.alt_text} fill className="object-cover" />
             </div>
-            <button
-              type="button"
-              onClick={async () => {
-                await adminApi.delete(`/admin/products/${productId}/gallery/${item.id}`);
-                onChange();
-              }}
-              className="mt-1 text-small text-red-600 underline"
-            >
+            <button type="button" onClick={() => setDeleteTargetId(item.id)} className="mt-1 text-small text-red-600 underline">
               Hapus
             </button>
           </div>
@@ -273,6 +295,15 @@ function ProductGallerySection({
           }}
         />
       </div>
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus foto galeri ini?"
+          message="Data yang dihapus tidak dapat dikembalikan."
+          onConfirm={() => void handleDelete(deleteTargetId)}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </Card>
   );
 }
@@ -289,6 +320,8 @@ function ProductSpecificationsSection({
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
   const [group, setGroup] = useState<"specification" | "export_info">("specification");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   async function handleAdd() {
     if (!key.trim() || !value.trim()) return;
@@ -303,8 +336,15 @@ function ProductSpecificationsSection({
   }
 
   async function handleDelete(specId: string) {
-    await adminApi.delete(`/admin/products/${productId}/specifications/${specId}`);
-    onChange();
+    try {
+      await adminApi.delete(`/admin/products/${productId}/specifications/${specId}`);
+      onChange();
+      showToast("Spesifikasi berhasil dihapus.");
+    } catch {
+      showToast("Gagal menghapus spesifikasi. Silakan coba lagi.", "error");
+    } finally {
+      setDeleteTargetId(null);
+    }
   }
 
   const specRows = specifications.filter((spec) => spec.group !== "export_info");
@@ -320,10 +360,10 @@ function ProductSpecificationsSection({
       </p>
 
       <h3 className="mt-5 text-body font-medium text-neutral-900">Spesifikasi</h3>
-      <SpecTable rows={specRows} onDelete={handleDelete} />
+      <SpecTable rows={specRows} onDelete={setDeleteTargetId} />
 
       <h3 className="mt-6 text-body font-medium text-neutral-900">Info Ekspor</h3>
-      <SpecTable rows={exportInfoRows} onDelete={handleDelete} />
+      <SpecTable rows={exportInfoRows} onDelete={setDeleteTargetId} />
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <div>
@@ -356,6 +396,15 @@ function ProductSpecificationsSection({
           Tambah
         </Button>
       </div>
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus baris ini?"
+          message="Data yang dihapus tidak dapat dikembalikan."
+          onConfirm={() => void handleDelete(deleteTargetId)}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </Card>
   );
 }
@@ -402,13 +451,14 @@ function ProductDownloadsSection({
   downloads: ProductDetail["downloads"];
   onChange: () => void;
 }) {
-  const [uploading, setUploading] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const { status, error, run } = useSaveState();
+  const { showToast } = useToast();
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setUploading(true);
-    try {
+    const result = await run(async () => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("alt_text", file.name);
@@ -417,10 +467,20 @@ function ProductDownloadsSection({
         file_name: file.name,
         file_url: media.file_url,
       });
+    });
+    event.target.value = "";
+    if (result.success) onChange();
+  }
+
+  async function handleDelete(downloadId: string) {
+    try {
+      await adminApi.delete(`/admin/products/${productId}/downloads/${downloadId}`);
       onChange();
+      showToast("File unduhan berhasil dihapus.");
+    } catch {
+      showToast("Gagal menghapus file unduhan. Silakan coba lagi.", "error");
     } finally {
-      setUploading(false);
-      event.target.value = "";
+      setDeleteTargetId(null);
     }
   }
 
@@ -433,14 +493,7 @@ function ProductDownloadsSection({
             <a href={download.file_url} target="_blank" rel="noopener noreferrer" className="text-primary-700 underline">
               {download.file_name}
             </a>
-            <button
-              type="button"
-              onClick={async () => {
-                await adminApi.delete(`/admin/products/${productId}/downloads/${download.id}`);
-                onChange();
-              }}
-              className="text-small text-red-600 underline"
-            >
+            <button type="button" onClick={() => setDeleteTargetId(download.id)} className="text-small text-red-600 underline">
               Hapus
             </button>
           </li>
@@ -455,11 +508,22 @@ function ProductDownloadsSection({
           type="file"
           accept="application/pdf"
           onChange={(e) => void handleFileChange(e)}
-          disabled={uploading}
+          disabled={status === "saving"}
           className="text-small"
         />
-        {uploading && <p className="mt-1 text-small text-neutral-600">Mengunggah...</p>}
+        <div className="mt-1">
+          <SaveStateIndicator status={status} error={error} />
+        </div>
       </div>
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus file unduhan ini?"
+          message="Data yang dihapus tidak dapat dikembalikan."
+          onConfirm={() => void handleDelete(deleteTargetId)}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </Card>
   );
 }

@@ -4,18 +4,23 @@ import { Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
 import type { ArticleDetail } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { adminApi } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { SaveStateIndicator } from "@/components/admin/SaveStateIndicator";
+import { useToast } from "@/components/admin/Toast";
+import { useSaveState } from "@/hooks/useSaveState";
 
 export default function EditArticlePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [article, setArticle] = useState<ArticleDetail | null>(null);
   const [content, setContent] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { status, error, run } = useSaveState();
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<ArticleDetail>(`/admin/articles/${id}`);
@@ -32,32 +37,29 @@ export default function EditArticlePage() {
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    setSaving(true);
-    setError(null);
-    setSavedMessage(null);
-    try {
-      await adminApi.put(`/admin/articles/${id}`, {
+    const result = await run(() =>
+      adminApi.put(`/admin/articles/${id}`, {
         slug: formData.get("slug"),
         title: formData.get("title"),
         excerpt: formData.get("excerpt"),
         content,
         category: formData.get("category") || undefined,
         status: formData.get("status"),
-      });
-      setSavedMessage("Perubahan tersimpan.");
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Gagal menyimpan perubahan.");
-    } finally {
-      setSaving(false);
-    }
+      }),
+    );
+    if (result.success) await load();
   }
 
   async function handleDelete() {
-    if (!article) return;
-    if (!confirm(`Hapus artikel "${article.title}"?`)) return;
-    await adminApi.delete(`/admin/articles/${id}`);
-    router.push("/admin/artikel");
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/articles/${id}`);
+      showToast("Artikel berhasil dihapus.");
+      router.push("/admin/artikel");
+    } catch {
+      showToast("Gagal menghapus artikel. Silakan coba lagi.", "error");
+      setDeleting(false);
+    }
   }
 
   if (!article) return <p className="text-body text-neutral-600">Memuat...</p>;
@@ -66,7 +68,7 @@ export default function EditArticlePage() {
     <div className="max-w-2xl">
       <div className="flex items-center justify-between">
         <h1 className="text-h2 text-neutral-900">Ubah Artikel</h1>
-        <button type="button" onClick={() => void handleDelete()} className="text-body text-red-600 underline">
+        <button type="button" onClick={() => setConfirmingDelete(true)} className="text-body text-red-600 underline">
           Hapus Artikel
         </button>
       </div>
@@ -114,12 +116,12 @@ export default function EditArticlePage() {
             </select>
           </div>
 
-          {error && <p className="text-small text-red-600">{error}</p>}
-          {savedMessage && <p className="text-small text-primary-700">{savedMessage}</p>}
-
-          <Button type="submit" disabled={saving} className="mt-2 w-fit">
-            {saving ? "Menyimpan..." : "Simpan Perubahan"}
-          </Button>
+          <div className="mt-2 flex items-center gap-4">
+            <Button type="submit" disabled={status === "saving"} className="w-fit">
+              {status === "saving" ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
+            <SaveStateIndicator status={status} error={error} />
+          </div>
         </form>
       </Card>
 
@@ -136,6 +138,18 @@ export default function EditArticlePage() {
           />
         </div>
       </Card>
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Hapus artikel "${article.title}"?`}
+          message="Tindakan ini tidak dapat dibatalkan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete();
+          }}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }

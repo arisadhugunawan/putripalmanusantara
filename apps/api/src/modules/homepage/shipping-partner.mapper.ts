@@ -35,8 +35,7 @@ export function toShippingPartner(
     id: entry.id,
     logo: toMedia(entry.logo),
     partner_name: t.partnerName,
-    relationship_type:
-      entry.relationshipType as SharedShippingPartner['relationship_type'],
+    relationship_type: entry.relationshipType,
     description: t.description,
     website_url: entry.websiteUrl,
     open_in_new_tab: entry.openInNewTab,

@@ -1,5 +1,6 @@
 import type { Media } from "./media";
 import type { Translations } from "./i18n";
+import type { ExportDestination, HomepageExportReach } from "./export-destination";
 
 export interface HomepageStatistic {
   id: string;
@@ -245,4 +246,70 @@ export interface HomepageWhyChooseUs {
   enabled: boolean;
   featured: boolean;
   translations?: Translations | null;
+}
+
+// ── Homepage Manager: Draft/Publish (Post-Launch) ──────────────────────────
+// See README "Homepage Manager" — every section above keeps working exactly as it does today
+// (Admin's draft working copy); these types add a Draft/Published separation on top of it.
+
+/** Stable order matches the actual section order rendered in `[locale]/page.tsx`. Sections
+ * marked "content lives elsewhere" have no Homepage-owned content — their Manage action links
+ * to the module that already owns it (Facility/Article/GalleryItem/ProductionStep admin); only
+ * their position/visibility on the Homepage is controlled here. */
+export const HOMEPAGE_SECTION_KEYS = [
+  "hero_slider",
+  "partners",
+  "about_company",
+  "statistics",
+  "why_choose_us",
+  "featured_products",
+  "production_process",
+  "facilities",
+  "gallery",
+  "news_articles",
+  "export_reach",
+  "shipping_partner",
+  "faq",
+  "contact_cta",
+] as const;
+
+export type HomepageSectionKey = (typeof HOMEPAGE_SECTION_KEYS)[number];
+
+export interface HomepageSectionConfig {
+  id: string;
+  key: HomepageSectionKey;
+  order: number;
+  visible: boolean;
+  updated_at: string;
+}
+
+export interface HomepagePublishStatus {
+  last_published_at: string | null;
+  has_unpublished_changes: boolean;
+}
+
+/** Lightweight history entry for rollback — the full `data` payload is never sent to the list
+ * view, only fetched when actually restoring. */
+export interface HomepageSnapshotSummary {
+  id: string;
+  published_at: string;
+}
+
+/** The public Homepage's single data source for its CMS-owned sections (everything except
+ * Featured Products/Facilities/Gallery/Production Process/News, which stay live-fetched — see
+ * README "Homepage Manager"). Returned by `GET /homepage/published-snapshot`. */
+export interface PublishedHomepagePayload {
+  hero_slides: HeroSlide[];
+  partners_section: HomepagePartnersSection;
+  partner_logos: PartnerLogo[];
+  about_preview: HomepageAboutPreview;
+  highlights: HomepageHighlight[];
+  why_choose_us: HomepageWhyChooseUs[];
+  export_reach_section: HomepageExportReach;
+  export_destinations: ExportDestination[];
+  shipping_section: HomepageShippingSection;
+  shipping_partners: ShippingPartner[];
+  statistics: HomepageStatistic[];
+  faqs: Faq[];
+  section_config: HomepageSectionConfig[];
 }

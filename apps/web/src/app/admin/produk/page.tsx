@@ -5,10 +5,15 @@ import type { ProductDetail } from "@ppn/shared-types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
 
 // FR-CMS-03 — daftar produk (termasuk draft).
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<ProductDetail[] | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<ProductDetail[]>("/admin/products");
@@ -20,10 +25,18 @@ export default function AdminProductsPage() {
     void load();
   }, []);
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Hapus produk "${name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
-    await adminApi.delete(`/admin/products/${id}`);
-    await load();
+  async function handleDelete(id: string) {
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/products/${id}`);
+      await load();
+      showToast("Produk berhasil dihapus.");
+      setDeleteTarget(null);
+    } catch {
+      showToast("Gagal menghapus produk. Silakan coba lagi.", "error");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -67,7 +80,7 @@ export default function AdminProductsPage() {
                     </Link>
                     <button
                       type="button"
-                      onClick={() => void handleDelete(product.id, product.name)}
+                      onClick={() => setDeleteTarget({ id: product.id, name: product.name })}
                       className="text-body text-red-600 underline underline-offset-4"
                     >
                       Hapus
@@ -82,6 +95,18 @@ export default function AdminProductsPage() {
           <p className="p-6 text-body text-neutral-600">Belum ada produk.</p>
         )}
       </div>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title={`Hapus produk "${deleteTarget.name}"?`}
+          message="Tindakan ini tidak dapat dibatalkan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete(deleteTarget.id);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }

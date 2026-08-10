@@ -5,10 +5,15 @@ import type { ArticleDetail } from "@ppn/shared-types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
 
 // FR-CMS-04
 export default function AdminArticlesPage() {
   const [articles, setArticles] = useState<ArticleDetail[] | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<ArticleDetail[]>("/admin/articles");
@@ -20,10 +25,18 @@ export default function AdminArticlesPage() {
     void load();
   }, []);
 
-  async function handleDelete(id: string, title: string) {
-    if (!confirm(`Hapus artikel "${title}"?`)) return;
-    await adminApi.delete(`/admin/articles/${id}`);
-    await load();
+  async function handleDelete(id: string) {
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/articles/${id}`);
+      await load();
+      showToast("Artikel berhasil dihapus.");
+      setDeleteTarget(null);
+    } catch {
+      showToast("Gagal menghapus artikel. Silakan coba lagi.", "error");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -60,7 +73,7 @@ export default function AdminArticlesPage() {
                     </Link>
                     <button
                       type="button"
-                      onClick={() => void handleDelete(article.id, article.title)}
+                      onClick={() => setDeleteTarget({ id: article.id, title: article.title })}
                       className="text-body text-red-600 underline"
                     >
                       Hapus
@@ -73,6 +86,18 @@ export default function AdminArticlesPage() {
         </table>
         {articles?.length === 0 && <p className="p-6 text-body text-neutral-600">Belum ada artikel.</p>}
       </div>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title={`Hapus artikel "${deleteTarget.title}"?`}
+          message="Tindakan ini tidak dapat dibatalkan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete(deleteTarget.id);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }

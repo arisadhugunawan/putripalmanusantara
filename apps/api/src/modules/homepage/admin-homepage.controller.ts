@@ -22,6 +22,7 @@ import {
 import { UpdateExportReachSectionDto } from './dto/export-reach-section.dto';
 import { CreateHeroSlideDto, UpdateHeroSlideDto } from './dto/hero-slide.dto';
 import { CreateHighlightDto, UpdateHighlightDto } from './dto/highlight.dto';
+import { UpdateHomepageSectionDto } from './dto/homepage-section.dto';
 import { ReplaceHomepageStatisticsDto } from './dto/homepage-statistic.dto';
 import {
   CreatePartnerLogoDto,
@@ -55,7 +56,6 @@ export class AdminHomepageController {
   @Put('statistics')
   async replaceStatistics(@Body() dto: ReplaceHomepageStatisticsDto) {
     const statistics = await this.homepageService.replaceStatistics(dto);
-    await this.revalidation.revalidate(['/']);
     return statistics;
   }
 
@@ -74,7 +74,6 @@ export class AdminHomepageController {
   @Post('hero-slides')
   async createHeroSlide(@Body() dto: CreateHeroSlideDto) {
     const slide = await this.homepageService.createHeroSlide(dto);
-    await this.revalidation.revalidate(['/']);
     return slide;
   }
 
@@ -84,21 +83,18 @@ export class AdminHomepageController {
     @Body() dto: UpdateHeroSlideDto,
   ) {
     const slide = await this.homepageService.updateHeroSlide(id, dto);
-    await this.revalidation.revalidate(['/']);
     return slide;
   }
 
   @Delete('hero-slides/:id')
   async removeHeroSlide(@Param('id') id: string) {
     const result = await this.homepageService.removeHeroSlide(id);
-    await this.revalidation.revalidate(['/']);
     return result;
   }
 
   @Post('hero-slides/:id/duplicate')
   async duplicateHeroSlide(@Param('id') id: string) {
     const slide = await this.homepageService.duplicateHeroSlide(id);
-    await this.revalidation.revalidate(['/']);
     return slide;
   }
 
@@ -112,7 +108,6 @@ export class AdminHomepageController {
   @Post('partner-logos')
   async createPartnerLogo(@Body() dto: CreatePartnerLogoDto) {
     const logo = await this.homepageService.createPartnerLogo(dto);
-    await this.revalidation.revalidate(['/']);
     return logo;
   }
 
@@ -122,21 +117,18 @@ export class AdminHomepageController {
     @Body() dto: UpdatePartnerLogoDto,
   ) {
     const logo = await this.homepageService.updatePartnerLogo(id, dto);
-    await this.revalidation.revalidate(['/']);
     return logo;
   }
 
   @Delete('partner-logos/:id')
   async removePartnerLogo(@Param('id') id: string) {
     const result = await this.homepageService.removePartnerLogo(id);
-    await this.revalidation.revalidate(['/']);
     return result;
   }
 
   @Post('partner-logos/:id/duplicate')
   async duplicatePartnerLogo(@Param('id') id: string) {
     const logo = await this.homepageService.duplicatePartnerLogo(id);
-    await this.revalidation.revalidate(['/']);
     return logo;
   }
 
@@ -150,7 +142,6 @@ export class AdminHomepageController {
   @Post('decorative-graphics')
   async createDecorativeGraphic(@Body() dto: CreateDecorativeGraphicDto) {
     const graphic = await this.homepageService.createDecorativeGraphic(dto);
-    await this.revalidation.revalidate(['/']);
     return graphic;
   }
 
@@ -160,14 +151,12 @@ export class AdminHomepageController {
     @Body() dto: UpdateDecorativeGraphicDto,
   ) {
     const graphic = await this.homepageService.updateDecorativeGraphic(id, dto);
-    await this.revalidation.revalidate(['/']);
     return graphic;
   }
 
   @Delete('decorative-graphics/:id')
   async removeDecorativeGraphic(@Param('id') id: string) {
     const result = await this.homepageService.removeDecorativeGraphic(id);
-    await this.revalidation.revalidate(['/']);
     return result;
   }
 
@@ -181,7 +170,6 @@ export class AdminHomepageController {
   @Put('about-preview')
   async updateAboutPreview(@Body() dto: UpdateAboutPreviewDto) {
     const preview = await this.homepageService.updateAboutPreview(dto);
-    await this.revalidation.revalidate(['/']);
     return preview;
   }
 
@@ -195,7 +183,6 @@ export class AdminHomepageController {
   @Post('highlights')
   async createHighlight(@Body() dto: CreateHighlightDto) {
     const highlight = await this.homepageService.createHighlight(dto);
-    await this.revalidation.revalidate(['/']);
     return highlight;
   }
 
@@ -205,14 +192,12 @@ export class AdminHomepageController {
     @Body() dto: UpdateHighlightDto,
   ) {
     const highlight = await this.homepageService.updateHighlight(id, dto);
-    await this.revalidation.revalidate(['/']);
     return highlight;
   }
 
   @Delete('highlights/:id')
   async removeHighlight(@Param('id') id: string) {
     const result = await this.homepageService.removeHighlight(id);
-    await this.revalidation.revalidate(['/']);
     return result;
   }
 
@@ -226,7 +211,6 @@ export class AdminHomepageController {
   @Put('partners-section')
   async updatePartnersSection(@Body() dto: UpdatePartnersSectionDto) {
     const section = await this.homepageService.updatePartnersSection(dto);
-    await this.revalidation.revalidate(['/']);
     return section;
   }
 
@@ -240,7 +224,6 @@ export class AdminHomepageController {
   @Post('why-choose-us')
   async createWhyChooseUs(@Body() dto: CreateWhyChooseUsDto) {
     const item = await this.homepageService.createWhyChooseUs(dto);
-    await this.revalidation.revalidate(['/']);
     return item;
   }
 
@@ -250,14 +233,12 @@ export class AdminHomepageController {
     @Body() dto: UpdateWhyChooseUsDto,
   ) {
     const item = await this.homepageService.updateWhyChooseUs(id, dto);
-    await this.revalidation.revalidate(['/']);
     return item;
   }
 
   @Delete('why-choose-us/:id')
   async removeWhyChooseUs(@Param('id') id: string) {
     const result = await this.homepageService.removeWhyChooseUs(id);
-    await this.revalidation.revalidate(['/']);
     return result;
   }
 
@@ -271,7 +252,6 @@ export class AdminHomepageController {
   @Put('export-reach-section')
   async updateExportReachSection(@Body() dto: UpdateExportReachSectionDto) {
     const section = await this.homepageService.updateExportReachSection(dto);
-    await this.revalidation.revalidate(['/']);
     return section;
   }
 
@@ -283,7 +263,6 @@ export class AdminHomepageController {
   @Post('export-destinations')
   async createExportDestination(@Body() dto: CreateExportDestinationDto) {
     const destination = await this.homepageService.createExportDestination(dto);
-    await this.revalidation.revalidate(['/']);
     return destination;
   }
 
@@ -296,14 +275,12 @@ export class AdminHomepageController {
       id,
       dto,
     );
-    await this.revalidation.revalidate(['/']);
     return destination;
   }
 
   @Delete('export-destinations/:id')
   async removeExportDestination(@Param('id') id: string) {
     const result = await this.homepageService.removeExportDestination(id);
-    await this.revalidation.revalidate(['/']);
     return result;
   }
 
@@ -317,7 +294,6 @@ export class AdminHomepageController {
   @Post('shipping-partners')
   async createShippingPartner(@Body() dto: CreateShippingPartnerDto) {
     const partner = await this.homepageService.createShippingPartner(dto);
-    await this.revalidation.revalidate(['/']);
     return partner;
   }
 
@@ -326,25 +302,19 @@ export class AdminHomepageController {
     @Param('id') id: string,
     @Body() dto: UpdateShippingPartnerDto,
   ) {
-    const partner = await this.homepageService.updateShippingPartner(
-      id,
-      dto,
-    );
-    await this.revalidation.revalidate(['/']);
+    const partner = await this.homepageService.updateShippingPartner(id, dto);
     return partner;
   }
 
   @Delete('shipping-partners/:id')
   async removeShippingPartner(@Param('id') id: string) {
     const result = await this.homepageService.removeShippingPartner(id);
-    await this.revalidation.revalidate(['/']);
     return result;
   }
 
   @Post('shipping-partners/:id/duplicate')
   async duplicateShippingPartner(@Param('id') id: string) {
     const partner = await this.homepageService.duplicateShippingPartner(id);
-    await this.revalidation.revalidate(['/']);
     return partner;
   }
 
@@ -356,7 +326,47 @@ export class AdminHomepageController {
   @Put('shipping-section')
   async updateShippingSection(@Body() dto: UpdateShippingSectionDto) {
     const section = await this.homepageService.updateShippingSection(dto);
-    await this.revalidation.revalidate(['/']);
     return section;
+  }
+
+  // ── Homepage Manager: Draft/Publish ─────────────────────────────────
+
+  @Get('sections')
+  findSections() {
+    return this.homepageService.getSections();
+  }
+
+  // Order/visibility changes are draft state — deliberately NOT revalidated here; they only
+  // take effect on the public Homepage after an explicit Publish (see Rule 1: no auto-publish).
+  @Put('sections/:key')
+  updateSection(
+    @Param('key') key: string,
+    @Body() dto: UpdateHomepageSectionDto,
+  ) {
+    return this.homepageService.updateSection(key, dto);
+  }
+
+  @Get('publish-status')
+  getPublishStatus() {
+    return this.homepageService.getPublishStatus();
+  }
+
+  @Post('publish')
+  async publish() {
+    const result = await this.homepageService.publishHomepage();
+    await this.revalidation.revalidate(['/']);
+    return result;
+  }
+
+  @Get('snapshots')
+  listSnapshots() {
+    return this.homepageService.listSnapshots();
+  }
+
+  @Post('snapshots/:id/restore')
+  async restoreSnapshot(@Param('id') id: string) {
+    const result = await this.homepageService.restoreSnapshot(id);
+    await this.revalidation.revalidate(['/']);
+    return result;
   }
 }

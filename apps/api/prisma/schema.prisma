@@ -268,11 +268,12 @@ model ProductionStep {
 
 // ── 3.11 HomepageStatistic ──────────────────────────────────────────────
 model HomepageStatistic {
-  id    String  @id @default(cuid())
-  label String
-  value String
-  icon  String?
-  order Int     @default(0)
+  id        String   @id @default(cuid())
+  label     String
+  value     String
+  icon      String?
+  order     Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for label/value.
   translations Json?
 
@@ -401,6 +402,7 @@ model DecorativeGraphic {
   scale     Float                      @default(1)
   order     Int                        @default(0)
   enabled   Boolean                    @default(true)
+  updatedAt DateTime                   @default(now()) @updatedAt @map("updated_at")
 
   @@map("decorative_graphics")
 }
@@ -460,6 +462,7 @@ model HomepageHighlight {
   description  String
   order        Int                   @default(0)
   enabled      Boolean               @default(true)
+  updatedAt    DateTime              @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for title/description.
   translations Json?
 
@@ -489,6 +492,7 @@ model HomepageWhyChooseUs {
   order        Int                     @default(0)
   enabled      Boolean                 @default(true)
   featured     Boolean                 @default(true)
+  updatedAt    DateTime                @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for title.
   translations Json?
 
@@ -538,6 +542,7 @@ model HomepageExportReach {
   heading      String   @default("Global Export Reach")
   subtitle     String   @default("Connecting Indonesian coconut products with buyers across international markets.")
   enabled      Boolean  @default(true)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for heading/subtitle.
   translations Json?
 
@@ -598,13 +603,44 @@ model HomepageShippingSection {
   @@map("homepage_shipping_section")
 }
 
+// ── 3.11j Homepage Manager: Draft/Publish (Post-Launch) ──────────────────
+// Every Homepage table above stays exactly as it is — it's the Admin's "draft" working copy,
+// unchanged. These two models add a Draft/Published separation on top, without it: `visible`/
+// `order` here are additional gates layered OVER each section's own existing logic (never
+// replacing an existing `enabled` field), and HomepagePublishedSnapshot is a frozen, versioned
+// copy of the whole homepage that the PUBLIC site reads from — see README "Homepage Manager".
+model HomepageSectionConfig {
+  id        String   @id @default(cuid())
+  /// Stable key, e.g. "hero_slider", "shipping_partner" — matches the frontend section registry.
+  key       String   @unique
+  order     Int      @default(0)
+  visible   Boolean  @default(true)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("homepage_section_config")
+}
+
+// Append-only — old rows are never deleted or mutated, so "restore a previous version" is just
+// "publish an old row's `data` again" (see `restoreSnapshot` in homepage.service.ts).
+model HomepagePublishedSnapshot {
+  id          String   @id @default(cuid())
+  /// Raw (untranslated) rows per section, locale-resolved at read time via the same mappers
+  /// every live endpoint already uses — one snapshot serves all 6 locales.
+  data        Json
+  publishedAt DateTime @default(now()) @map("published_at")
+
+  @@index([publishedAt])
+  @@map("homepage_published_snapshot")
+}
+
 // ── 3.12 FAQ ─────────────────────────────────────────────────────────────
 model Faq {
-  id       String        @id @default(cuid())
-  question String
-  answer   String
-  order    Int           @default(0)
-  status   ContentStatus @default(draft)
+  id        String        @id @default(cuid())
+  question  String
+  answer    String
+  order     Int           @default(0)
+  status    ContentStatus @default(draft)
+  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for question/answer.
   translations Json?
 

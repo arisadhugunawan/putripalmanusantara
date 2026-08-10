@@ -42,7 +42,7 @@ export function toFacility(
     cover_image: facility.coverImage ? toMedia(facility.coverImage) : null,
     gallery: (facility.gallery ?? [])
       .sort((a, b) => a.order - b.order)
-      .map((item) => toMedia(item.media)),
+      .map((item) => ({ id: item.id, media: toMedia(item.media) })),
     order: facility.order,
     translations: facility.translations as SharedFacility['translations'],
   };

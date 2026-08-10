@@ -71,4 +71,9 @@ export class HomepageController {
   findShippingSection(@Query('locale') locale?: string) {
     return this.homepageService.findShippingSection(resolveLocale(locale));
   }
+
+  @Get('published-snapshot')
+  getPublishedSnapshot(@Query('locale') locale?: string) {
+    return this.homepageService.getPublishedHomepage(resolveLocale(locale));
+  }
 }
