@@ -7,7 +7,9 @@ import type {
   ArticleDetail,
   ArticleStatistic,
   ArticleSummary,
+  Locale,
   Media,
+  Translations,
 } from "@ppn/shared-types";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,13 +22,88 @@ import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DocumentPreviewModal } from "@/components/admin/DocumentPreviewModal";
 import { InstagramPreviewPanel } from "@/components/admin/InstagramPreviewPanel";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { PublishConfirmModal } from "@/components/admin/PublishConfirmModal";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { SaveStateIndicator } from "@/components/admin/SaveStateIndicator";
 import { Skeleton } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 import { useSaveState } from "@/hooks/useSaveState";
+
+type ArticleTranslatableField = "title" | "excerpt" | "content" | "metaTitle" | "metaDescription" | "quoteText";
+
+/** Collapsible per-locale translation block shared by the three cards below — one field group
+ * per card (Website Content / Premium Editorial Blocks / SEO), all writing into the same
+ * `Article.translations` JSON column. Mirrors the Phase 5E-A/5E-B `TranslationsBlock` pattern:
+ * every panel stays mounted (LocaleTabs' own contract), so a locale switch never discards an
+ * in-progress edit in another tab. */
+function ArticleTranslationsBlock({
+  translations,
+  onUpdate,
+  base,
+  fields,
+}: {
+  translations: Translations | null | undefined;
+  onUpdate: (locale: Exclude<Locale, "en">, field: ArticleTranslatableField, value: string) => void;
+  base: Record<string, string>;
+  fields: Array<{
+    key: ArticleTranslatableField;
+    label: string;
+    englishValue: string;
+    kind?: "input" | "textarea" | "richtext";
+  }>;
+}) {
+  return (
+    <details className="mt-4 border-t border-neutral-100 pt-4">
+      <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+        🌐 Translations
+        <TranslationStatusBadges translations={translations} base={base} />
+      </summary>
+      <div className="mt-3">
+        <LocaleTabs>
+          {(locale) =>
+            locale === "en" ? (
+              <p className="text-small text-neutral-500">
+                Bahasa Inggris diedit langsung pada field-field di atas.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {fields.map((field) => {
+                  const value = translations?.[locale]?.[field.key] ?? "";
+                  if (field.kind === "richtext") {
+                    return (
+                      <div key={field.key}>
+                        <Label className="text-small">{field.label}</Label>
+                        <RichTextEditor content={value} onChange={(html) => onUpdate(locale, field.key, html)} />
+                      </div>
+                    );
+                  }
+                  const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                    onUpdate(locale, field.key, e.target.value);
+                  return (
+                    <div key={field.key}>
+                      <Label className="text-small">{field.label}</Label>
+                      {field.kind === "textarea" ? (
+                        <Textarea rows={2} defaultValue={value} placeholder={field.englishValue} onBlur={onBlur} />
+                      ) : (
+                        <Input defaultValue={value} placeholder={field.englishValue} onBlur={onBlur} />
+                      )}
+                    </div>
+                  );
+                })}
+                <p className="text-small text-neutral-500">
+                  Kosongkan untuk memakai teks Inggris sebagai fallback.
+                </p>
+              </div>
+            )
+          }
+        </LocaleTabs>
+      </div>
+    </details>
+  );
+}
 
 function captionToHtml(caption: string): string {
   return caption
@@ -60,6 +137,7 @@ interface FormState {
   quoteAuthor: string;
   statistics: ArticleStatistic[];
   readingTimeOverride: string;
+  translations: Translations | null;
 }
 
 function toFormState(article: ArticleDetail): FormState {
@@ -86,6 +164,7 @@ function toFormState(article: ArticleDetail): FormState {
     quoteAuthor: article.quote_author ?? "",
     statistics: article.statistics,
     readingTimeOverride: article.reading_time_override != null ? String(article.reading_time_override) : "",
+    translations: article.translations ?? null,
   };
 }
 
@@ -134,6 +213,20 @@ export default function EditArticlePage() {
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
+    setDirty(true);
+  }
+
+  // Save-safety: merges only the edited locale/field into the existing `translations` object
+  // held in local form state — never overwrites the other five locales. Same contract as the
+  // Phase 5E-A/5E-B pattern; the difference here is this editor batches everything into one
+  // Save Draft/Publish click rather than saving per-field on blur, so the merge happens in
+  // local state and the *whole* merged object is sent on the next persist() call.
+  function updateTranslation(locale: Exclude<Locale, "en">, field: ArticleTranslatableField, value: string) {
+    setForm((prev) => {
+      if (!prev) return prev;
+      const current = prev.translations ?? {};
+      return { ...prev, translations: { ...current, [locale]: { ...current[locale], [field]: value } } };
+    });
     setDirty(true);
   }
 
@@ -195,6 +288,7 @@ export default function EditArticlePage() {
         statistics: form.statistics.filter((s) => s.value.trim() && s.label.trim()),
         reading_time_minutes: form.readingTimeOverride ? Number(form.readingTimeOverride) : null,
         status: statusOverride ?? article?.status,
+        translations: form.translations,
       }),
     );
   }
@@ -442,6 +536,17 @@ export default function EditArticlePage() {
             Featured
           </label>
         </div>
+
+        <ArticleTranslationsBlock
+          translations={form.translations}
+          onUpdate={updateTranslation}
+          base={{ title: form.title, excerpt: form.excerpt, content: form.content }}
+          fields={[
+            { key: "title", label: "Website Article Title", englishValue: form.title, kind: "input" },
+            { key: "excerpt", label: "Short Description / Excerpt", englishValue: form.excerpt, kind: "textarea" },
+            { key: "content", label: "Article Content", englishValue: "", kind: "richtext" },
+          ]}
+        />
       </Card>
 
       <Card className="mt-6">
@@ -527,6 +632,13 @@ export default function EditArticlePage() {
             </Button>
           </div>
         </div>
+
+        <ArticleTranslationsBlock
+          translations={form.translations}
+          onUpdate={updateTranslation}
+          base={{ quoteText: form.quoteText }}
+          fields={[{ key: "quoteText", label: "Pull Quote", englishValue: form.quoteText, kind: "textarea" }]}
+        />
       </Card>
 
       <Card className="mt-6">
@@ -709,6 +821,25 @@ export default function EditArticlePage() {
             }}
           />
         </div>
+
+        <ArticleTranslationsBlock
+          translations={form.translations}
+          onUpdate={updateTranslation}
+          base={{ metaTitle: form.metaTitle, metaDescription: form.metaDescription }}
+          fields={[
+            { key: "metaTitle", label: "SEO Title", englishValue: form.metaTitle || form.title, kind: "input" },
+            {
+              key: "metaDescription",
+              label: "Meta Description",
+              englishValue: form.metaDescription || form.excerpt,
+              kind: "textarea",
+            },
+          ]}
+        />
+        <p className="mt-2 text-small text-neutral-500">
+          Focus Keyword dan Canonical URL tidak diterjemahkan — keduanya properti dari URL/target pencarian,
+          sama di semua bahasa.
+        </p>
       </Card>
 
       <div className="sticky bottom-0 mt-6 flex flex-wrap items-center gap-4 rounded-card border border-neutral-200 bg-white p-4 shadow-card">

@@ -5,11 +5,31 @@ function buildService() {
   const article = {
     findMany: jest.fn<Promise<unknown[]>, unknown[]>(),
     count: jest.fn<Promise<number>, unknown[]>(),
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
   };
-  const prisma = { article };
+  const articleCategory = {
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const prisma = { article, articleCategory };
   return {
     service: new ArticlesService(prisma as unknown as PrismaService),
     article,
+    articleCategory,
+  };
+}
+
+function stubArticleCategoryRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'cat-1',
+    name: 'Export News',
+    slug: 'export-news',
+    description: null,
+    order: 0,
+    active: true,
+    translations: null,
+    ...overrides,
   };
 }
 
@@ -166,5 +186,169 @@ describe('ArticlesService.findAllForAdminPaginated', () => {
       { featured: 'desc' },
       { publishedAt: 'desc' },
     ]);
+  });
+});
+
+// Phase 5E-C: the Admin's LocaleTabs editor (apps/web/.../artikel/[id]/page.tsx
+// `updateTranslation`) merges the full six-locale `translations` object in local form state
+// before every Save Draft/Publish, identical in contract to the Phase 5D/5E-A/5E-B pattern —
+// these tests guard the service half of that contract: a save must persist every locale key
+// it was given untouched, never silently dropping the ones the Admin wasn't actively editing.
+describe('ArticlesService.update — translation preservation (Phase 5E-C)', () => {
+  it('a TH-only title edit persists EN, ID, ZH, HI, and VI content unchanged', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow()); // assertExists
+    const mergedAfterThEdit = {
+      id: { title: 'Ekspor Kopra' },
+      zh: { title: '椰干出口' },
+      hi: { title: 'कोपरा निर्यात' },
+      vi: { title: 'Xuất khẩu cùi dừa khô' },
+      th: { title: 'การส่งออกโคปรา (แก้ไขแล้ว)' },
+    };
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', { translations: mergedAfterThEdit });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterThEdit);
+    expect(args[0].data.translations.id).toEqual({ title: 'Ekspor Kopra' });
+    expect(args[0].data.translations.zh).toEqual({ title: '椰干出口' });
+    expect(args[0].data.translations.hi).toEqual({ title: 'कोपरा निर्यात' });
+    expect(args[0].data.translations.vi).toEqual({
+      title: 'Xuất khẩu cùi dừa khô',
+    });
+  });
+
+  it('a ZH-only excerpt edit persists all other locales unchanged', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    const mergedAfterZhEdit = {
+      id: { excerpt: 'Ringkasan ekspor kopra.' },
+      th: { excerpt: 'สรุปการส่งออกโคปรา' },
+      hi: { excerpt: 'कोपरा निर्यात सारांश।' },
+      vi: { excerpt: 'Tóm tắt xuất khẩu cùi dừa khô.' },
+      zh: { excerpt: '椰干出口摘要（已编辑）。' },
+    };
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', { translations: mergedAfterZhEdit });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterZhEdit);
+    expect(args[0].data.translations.id).toEqual({
+      excerpt: 'Ringkasan ekspor kopra.',
+    });
+    expect(args[0].data.translations.th).toEqual({
+      excerpt: 'สรุปการส่งออกโคปรา',
+    });
+    expect(args[0].data.translations.hi).toEqual({
+      excerpt: 'कोपरा निर्यात सारांश।',
+    });
+    expect(args[0].data.translations.vi).toEqual({
+      excerpt: 'Tóm tắt xuất khẩu cùi dừa khô.',
+    });
+  });
+
+  it('a VI-only content edit persists all other locales unchanged', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    const mergedAfterViEdit = {
+      id: { content: '<p>Isi dalam Bahasa Indonesia.</p>' },
+      zh: { content: '<p>中文内容。</p>' },
+      th: { content: '<p>เนื้อหาภาษาไทย</p>' },
+      hi: { content: '<p>हिन्दी सामग्री।</p>' },
+      vi: { content: '<p>Nội dung tiếng Việt (đã chỉnh sửa).</p>' },
+    };
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', { translations: mergedAfterViEdit });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterViEdit);
+    expect(args[0].data.translations.id).toEqual({
+      content: '<p>Isi dalam Bahasa Indonesia.</p>',
+    });
+    expect(args[0].data.translations.zh).toEqual({
+      content: '<p>中文内容。</p>',
+    });
+    expect(args[0].data.translations.th).toEqual({
+      content: '<p>เนื้อหาภาษาไทย</p>',
+    });
+    expect(args[0].data.translations.hi).toEqual({
+      content: '<p>हिन्दी सामग्री।</p>',
+    });
+  });
+
+  it('a TH-only SEO metaTitle edit persists other SEO translations (metaDescription) unchanged', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    const mergedAfterSeoEdit = {
+      zh: { metaDescription: '中文元描述。' },
+      th: {
+        metaTitle: 'ชื่อ SEO ภาษาไทย (แก้ไขแล้ว)',
+        metaDescription: 'คำอธิบาย SEO ภาษาไทย',
+      },
+    };
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', { translations: mergedAfterSeoEdit });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterSeoEdit);
+    expect(args[0].data.translations.zh).toEqual({
+      metaDescription: '中文元描述。',
+    });
+    expect(args[0].data.translations.th.metaDescription).toBe(
+      'คำอธิบาย SEO ภาษาไทย',
+    );
+  });
+
+  it('does not touch the translations column when the caller omits it from the patch', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', { title: 'Renamed' });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { translations: unknown } },
+    ];
+    expect(args[0].data.translations).toBeUndefined();
+  });
+});
+
+describe('ArticlesService.updateCategory — translation preservation (Phase 5E-C)', () => {
+  it('a TH-only category name edit persists all other locale translations unchanged', async () => {
+    const { service, articleCategory } = buildService();
+    articleCategory.findUnique.mockResolvedValue(stubArticleCategoryRow()); // assertCategoryExists
+    const mergedAfterThEdit = {
+      id: { name: 'Berita Ekspor' },
+      zh: { name: '出口新闻' },
+      hi: { name: 'निर्यात समाचार' },
+      vi: { name: 'Tin tức xuất khẩu' },
+      th: { name: 'ข่าวการส่งออก (แก้ไขแล้ว)' },
+    };
+    articleCategory.update.mockResolvedValue(stubArticleCategoryRow());
+
+    await service.updateCategory('cat-1', { translations: mergedAfterThEdit });
+
+    const args = articleCategory.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterThEdit);
+    expect(args[0].data.translations.id).toEqual({ name: 'Berita Ekspor' });
+    expect(args[0].data.translations.zh).toEqual({ name: '出口新闻' });
+    expect(args[0].data.translations.hi).toEqual({ name: 'निर्यात समाचार' });
+    expect(args[0].data.translations.vi).toEqual({
+      name: 'Tin tức xuất khẩu',
+    });
   });
 });

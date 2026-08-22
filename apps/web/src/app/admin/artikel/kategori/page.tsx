@@ -1,6 +1,6 @@
 "use client";
 
-import type { ArticleCategory } from "@ppn/shared-types";
+import type { ArticleCategory, Locale } from "@ppn/shared-types";
 import { Badge, Button, Card, cn, Input, Label } from "@ppn/ui-components";
 import Link from "next/link";
 import { FormEvent, useCallback, useState } from "react";
@@ -9,7 +9,9 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonCard } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 // Brief §12 — categories manageable from Admin, mirrors LegalDocumentCategory's pattern.
@@ -53,6 +55,13 @@ export default function ArticleCategoriesPage() {
       showToast(err instanceof ApiRequestError ? err.message : "Perubahan gagal disimpan.", "error");
       await reload();
     }
+  }
+
+  async function handleUpdateTranslation(category: ArticleCategory, locale: Exclude<Locale, "en">, value: string) {
+    const current = category.translations ?? {};
+    await handleUpdate(category.id, {
+      translations: { ...current, [locale]: { ...current[locale], name: value } },
+    });
   }
 
   async function handleDelete() {
@@ -127,51 +136,80 @@ export default function ArticleCategoriesPage() {
                   key={category.id}
                   {...rowProps}
                   className={cn(
-                    "flex flex-wrap items-center gap-3 rounded-field border border-neutral-200 p-3 transition-opacity",
+                    "rounded-field border border-neutral-200 p-3 transition-opacity",
                     rowProps.className,
                   )}
                 >
-                  <span {...getHandleProps(index)}>
-                    <DragHandle />
-                  </span>
-                  <Input
-                    className="max-w-xs"
-                    defaultValue={category.name}
-                    onBlur={(e) => void handleUpdate(category.id, { name: e.target.value })}
-                  />
-                  <Badge variant="neutral">{category.slug}</Badge>
-                  <label className="flex items-center gap-2 text-small text-neutral-600">
-                    <input
-                      type="checkbox"
-                      checked={category.active}
-                      onChange={(e) => void handleUpdate(category.id, { active: e.target.checked })}
-                      className="h-4 w-4"
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span {...getHandleProps(index)}>
+                      <DragHandle />
+                    </span>
+                    <Input
+                      className="max-w-xs"
+                      defaultValue={category.name}
+                      onBlur={(e) => void handleUpdate(category.id, { name: e.target.value })}
                     />
-                    Aktif
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => void handleReorder(index, index - 1)}
-                    disabled={index === 0}
-                    className="text-small text-neutral-600 underline disabled:opacity-30"
-                  >
-                    Naik
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleReorder(index, index + 1)}
-                    disabled={index === categories.length - 1}
-                    className="text-small text-neutral-600 underline disabled:opacity-30"
-                  >
-                    Turun
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTargetId(category.id)}
-                    className="ml-auto text-small text-red-600 underline"
-                  >
-                    Hapus
-                  </button>
+                    <Badge variant="neutral">{category.slug}</Badge>
+                    <label className="flex items-center gap-2 text-small text-neutral-600">
+                      <input
+                        type="checkbox"
+                        checked={category.active}
+                        onChange={(e) => void handleUpdate(category.id, { active: e.target.checked })}
+                        className="h-4 w-4"
+                      />
+                      Aktif
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void handleReorder(index, index - 1)}
+                      disabled={index === 0}
+                      className="text-small text-neutral-600 underline disabled:opacity-30"
+                    >
+                      Naik
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleReorder(index, index + 1)}
+                      disabled={index === categories.length - 1}
+                      className="text-small text-neutral-600 underline disabled:opacity-30"
+                    >
+                      Turun
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTargetId(category.id)}
+                      className="ml-auto text-small text-red-600 underline"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+
+                  <details className="mt-2">
+                    <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                      🌐 Translations
+                      <TranslationStatusBadges translations={category.translations} base={{ name: category.name }} />
+                    </summary>
+                    <div className="mt-2 max-w-xs">
+                      <LocaleTabs>
+                        {(locale) =>
+                          locale === "en" ? (
+                            <p className="text-small text-neutral-500">
+                              Bahasa Inggris diedit langsung pada field nama di atas.
+                            </p>
+                          ) : (
+                            <div>
+                              <Label className="text-small">Nama</Label>
+                              <Input
+                                defaultValue={category.translations?.[locale]?.name ?? ""}
+                                placeholder={category.name}
+                                onBlur={(e) => void handleUpdateTranslation(category, locale, e.target.value)}
+                              />
+                            </div>
+                          )
+                        }
+                      </LocaleTabs>
+                    </div>
+                  </details>
                 </div>
               );
             })}
