@@ -1,5 +1,7 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { resolveAboutCompanySectionStatus } from '@ppn/shared-types';
+import { ApiException } from '../../common/exceptions/api.exception';
+import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.event';
 import { AboutCompanyService } from './about-company.service';
 import type { MediaService } from '../../media/media.service';
 import type { PrismaService } from '../../prisma/prisma.service';
@@ -76,6 +78,61 @@ describe('AboutCompanyService.getPublishedAboutCompany', () => {
         expect(method).not.toHaveBeenCalled();
       }
     }
+  });
+});
+
+describe('AboutCompanyService.restoreSnapshot', () => {
+  function buildRestoreService() {
+    const aboutCompanyPublishedSnapshot = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      create: jest.fn<Promise<unknown>, [{ data: Record<string, unknown> }]>(),
+    };
+    const prisma = {
+      aboutCompanyPublishedSnapshot,
+      $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
+    };
+    const events = { emit: jest.fn() };
+    return {
+      service: new AboutCompanyService(
+        prisma as unknown as PrismaService,
+        {} as unknown as MediaService,
+        events as unknown as EventEmitter2,
+      ),
+      aboutCompanyPublishedSnapshot,
+      events,
+    };
+  }
+
+  it('emits content.published with source="about_company" after the restore transaction commits', async () => {
+    const { service, aboutCompanyPublishedSnapshot, events } =
+      buildRestoreService();
+    aboutCompanyPublishedSnapshot.findUnique.mockResolvedValue({
+      id: 'snap-1',
+      data: {},
+    });
+    aboutCompanyPublishedSnapshot.create.mockResolvedValue({
+      id: 'snap-2',
+      publishedAt: new Date('2026-08-22T00:00:00.000Z'),
+    });
+
+    await service.restoreSnapshot('snap-1');
+
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledWith(CONTENT_PUBLISHED_EVENT, {
+      source: 'about_company',
+    });
+  });
+
+  it('does not emit content.published when the snapshot does not exist (restore never starts)', async () => {
+    const { service, aboutCompanyPublishedSnapshot, events } =
+      buildRestoreService();
+    aboutCompanyPublishedSnapshot.findUnique.mockResolvedValue(null);
+
+    await expect(service.restoreSnapshot('missing')).rejects.toThrow(
+      ApiException,
+    );
+
+    expect(events.emit).not.toHaveBeenCalled();
   });
 });
 

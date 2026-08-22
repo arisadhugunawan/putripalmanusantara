@@ -3271,6 +3271,10 @@ export class AboutCompanyService {
         data: { data: source.data as never },
       }),
     ]);
+    // A restore is a publish of an old payload — one event per restore, same as
+    // `publishAboutCompany()`'s single bundled event. Emitted only after commit.
+    const event: ContentPublishedEvent = { source: 'about_company' };
+    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
     return {
       id: snapshot.id,
       published_at: snapshot.publishedAt.toISOString(),

@@ -1084,6 +1084,11 @@ export class HomepageService {
         data: { data: source.data as never },
       }),
     ]);
+    // A restore is a publish of an old payload — the public site changes exactly like a fresh
+    // publish, so it must trigger the same AI resync. Emitted only after the transaction above
+    // has committed, same rule as `publishHomepage()`.
+    const event: ContentPublishedEvent = { source: 'home' };
+    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
     return {
       id: snapshot.id,
       published_at: snapshot.publishedAt.toISOString(),

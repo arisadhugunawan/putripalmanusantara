@@ -159,11 +159,11 @@ describe('ProductsService.restoreSnapshot', () => {
     ).rejects.toThrow(ApiException);
   });
 
-  // restoreSnapshot is intentionally NOT one of Phase 4's 4 publish() call sites — restoring an
-  // old version only reflects in AI knowledge via the next automatic/cron sync, not instantly.
-  // See the Phase 4 final report's REMAINING ISSUES section for why this was scoped out.
-  it('does not emit content.published (only publish() does)', async () => {
-    const { service, productPublishedSnapshot, events } = buildService();
+  // Phase 4.1: restore is a publish of an old payload — the public site changes exactly like a
+  // fresh publish, so it must emit content.published too (previously scoped out in Phase 4).
+  it('emits content.published with source="products" and the product id after the restore transaction commits', async () => {
+    const { service, product, productPublishedSnapshot, events } =
+      buildService();
     productPublishedSnapshot.findFirst
       .mockResolvedValueOnce({ id: 'snap-2', productId: 'p1', data: {} })
       .mockResolvedValueOnce({ version: 5 });
@@ -172,8 +172,24 @@ describe('ProductsService.restoreSnapshot', () => {
       version: 6,
       publishedAt: new Date(),
     });
+    product.update.mockResolvedValue({});
 
     await service.restoreSnapshot('p1', 'snap-2', ACTOR);
+
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledWith(CONTENT_PUBLISHED_EVENT, {
+      source: 'products',
+      entityId: 'p1',
+    });
+  });
+
+  it('does not emit content.published when the snapshot lookup fails (restore never starts)', async () => {
+    const { service, productPublishedSnapshot, events } = buildService();
+    productPublishedSnapshot.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.restoreSnapshot('p1', 'snap-missing', ACTOR),
+    ).rejects.toThrow(ApiException);
 
     expect(events.emit).not.toHaveBeenCalled();
   });

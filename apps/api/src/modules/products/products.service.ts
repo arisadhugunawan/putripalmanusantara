@@ -300,6 +300,14 @@ export class ProductsService {
         data: { status: 'published', lastPublishedAt: now, updatedAt: now },
       }),
     ]);
+    // A restore is a publish of an old snapshot — the public site changes exactly like a fresh
+    // publish, so it must trigger the same AI resync. Only the id, never the payload — same
+    // rule as publish(). Emitted only after the transaction above has committed.
+    const event: ContentPublishedEvent = {
+      source: 'products',
+      entityId: productId,
+    };
+    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
     return {
       id: snapshot.id,
       version: snapshot.version,

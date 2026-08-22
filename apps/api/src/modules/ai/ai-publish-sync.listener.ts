@@ -10,7 +10,14 @@ import { AiSyncService } from './ai-sync.service';
  * should refresh." Lives inside `AiModule` on purpose — content modules emit a domain-neutral
  * `content.published` event and never import anything from here, which is what avoids the
  * circular-dependency `AiModule` would otherwise have with every content module it already
- * imports (for `AiContentExtractorService`). */
+ * imports (for `AiContentExtractorService`).
+ *
+ * Phase 4.1: `restoreSnapshot()` (Homepage/About Company/Products) now emits this same event,
+ * with the same payload shape, as its own `publish()` — from the public site's and AI's point
+ * of view a restore of an old version IS a publish, so this listener deliberately cannot (and
+ * does not need to) tell the two apart. The resulting `AiSyncLog.trigger` is therefore
+ * `publish:<source>` for a restore too, not a separate `restore:<source>` label — there is
+ * nothing sync-relevant that distinguishes them. */
 @Injectable()
 export class AiPublishSyncListener {
   private readonly logger = new Logger(AiPublishSyncListener.name);
