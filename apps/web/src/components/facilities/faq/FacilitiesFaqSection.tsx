@@ -2,6 +2,7 @@ import type { AboutCompanyFacilitiesFaqSection, FacilitiesFaqItem } from "@ppn/s
 import { buttonVariants } from "@ppn/ui-components";
 import { Link } from "@/i18n/Link";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { DECORATIVE_SVGS } from "@/components/decorative/DecorativeSvgs";
 import { faqPageJsonLd } from "@/lib/json-ld";
 import { FacilitiesFaqAccordion } from "./FacilitiesFaqAccordion";
@@ -22,12 +23,7 @@ export function FacilitiesFaqSection({
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-linear-to-b from-white via-primary-50/20 to-white p-6 sm:p-10">
-      {items.length > 0 && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      )}
+      {items.length > 0 && <JsonLd data={jsonLd} />}
 
       <div
         aria-hidden="true"

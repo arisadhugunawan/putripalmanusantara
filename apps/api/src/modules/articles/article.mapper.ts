@@ -14,6 +14,7 @@ import type {
   MediaModel as Media,
 } from '../../../generated/prisma/models';
 import { translate } from '../../common/utils/i18n.util';
+import { sanitizeRichText } from '../../common/utils/sanitize-rich-text.util';
 import { toArticleCategory } from './article-category.mapper';
 
 type ArticleWithRelations = Article & {
@@ -118,7 +119,11 @@ export function toArticleDetail(
 
   return {
     ...toArticleSummary(article, locale),
-    content: t.content,
+    // Read-time defense-in-depth on top of the write-time sanitization in
+    // ArticlesService.create()/update() — belt-and-suspenders against any row saved before this
+    // fix shipped, with zero database migration needed (sanitizing already-clean HTML is a
+    // no-op, so this is safe to apply unconditionally to every read).
+    content: sanitizeRichText(t.content),
     meta_title: t.metaTitle,
     meta_description: t.metaDescription,
     canonical_url: article.canonicalUrl,

@@ -10,6 +10,7 @@ import type {
   MediaModel as Media,
 } from '../../../generated/prisma/models';
 import { translate } from '../../common/utils/i18n.util';
+import { sanitizeRichText } from '../../common/utils/sanitize-rich-text.util';
 
 type ProfileWithRelations = Profile & {
   mainImage: Media | null;
@@ -80,10 +81,13 @@ export function toAboutCompanyProfile(
     id: entry.id,
     headline: t.headline,
     short_description: t.shortDescription,
-    main_description: t.mainDescription,
+    // Read-time defense-in-depth on top of the write-time sanitization in
+    // AboutCompanyService.updateProfile() — belt-and-suspenders against any row saved before
+    // this fix shipped; a no-op for already-clean HTML, so safe to apply unconditionally.
+    main_description: sanitizeRichText(t.mainDescription),
     vision: t.vision,
     mission: t.mission,
-    company_overview: t.companyOverview,
+    company_overview: sanitizeRichText(t.companyOverview),
     main_image: entry.mainImage ? toMedia(entry.mainImage) : null,
     gallery: [...entry.gallery]
       .sort((a, b) => a.order - b.order)

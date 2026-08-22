@@ -394,3 +394,138 @@ describe('resolveAboutCompanySectionStatus', () => {
     ).toBe('published');
   });
 });
+
+// Phase 5F-P0.1 — stored-XSS hardening. mainDescription/companyOverview are edited via the same
+// unsanitized-HTML-producing TipTap RichTextEditor as Article.content (CompanyProfileEditor.tsx)
+// and already feed the AI content extractor (ai-content-extractor.service.ts) — these tests
+// prove updateProfile() strips malicious markup before it reaches Prisma.
+describe('AboutCompanyService.updateProfile — stored-XSS hardening (Phase 5F-P0.1)', () => {
+  function buildService() {
+    const aboutCompanyProfile = {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue({ id: 'profile-1', translations: null }),
+      create: jest.fn(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const prisma = { aboutCompanyProfile };
+    return {
+      service: new AboutCompanyService(
+        prisma as unknown as PrismaService,
+        {} as unknown as MediaService,
+        { emit: jest.fn() } as unknown as EventEmitter2,
+      ),
+      aboutCompanyProfile,
+    };
+  }
+
+  it('strips a <script> payload from main_description before persisting', async () => {
+    const { service, aboutCompanyProfile } = buildService();
+    aboutCompanyProfile.update.mockResolvedValue({
+      id: 'profile-1',
+      gallery: [],
+    });
+
+    await service.updateProfile({
+      main_description: '<p>Hello</p><script>alert(1)</script>',
+    });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      { data: { mainDescription: string } },
+    ];
+    expect(args[0].data.mainDescription).not.toContain('<script');
+    expect(args[0].data.mainDescription).not.toContain('alert(1)');
+    expect(args[0].data.mainDescription).toContain('<p>Hello</p>');
+  });
+
+  it('strips an <img onerror> payload from company_overview before persisting', async () => {
+    const { service, aboutCompanyProfile } = buildService();
+    aboutCompanyProfile.update.mockResolvedValue({
+      id: 'profile-1',
+      gallery: [],
+    });
+
+    await service.updateProfile({
+      company_overview: '<img src=x onerror=alert(1)><p>Overview</p>',
+    });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      { data: { companyOverview: string } },
+    ];
+    expect(args[0].data.companyOverview).not.toContain('onerror');
+    expect(args[0].data.companyOverview).not.toContain('alert(1)');
+    expect(args[0].data.companyOverview).toContain('<p>Overview</p>');
+  });
+
+  it('strips a malicious payload from mainDescription/companyOverview in every locale of translations', async () => {
+    const { service, aboutCompanyProfile } = buildService();
+    aboutCompanyProfile.update.mockResolvedValue({
+      id: 'profile-1',
+      gallery: [],
+    });
+
+    await service.updateProfile({
+      translations: {
+        zh: {
+          mainDescription: '<svg onload=alert(1)></svg><p>干净</p>',
+          companyOverview:
+            '<iframe src="javascript:alert(1)"></iframe><p>概述</p>',
+        },
+      },
+    });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      {
+        data: {
+          translations: Record<string, Record<string, string>>;
+        };
+      },
+    ];
+    expect(args[0].data.translations.zh.mainDescription).not.toContain('<svg');
+    expect(args[0].data.translations.zh.mainDescription).toContain(
+      '<p>干净</p>',
+    );
+    expect(args[0].data.translations.zh.companyOverview).not.toContain(
+      '<iframe',
+    );
+    expect(args[0].data.translations.zh.companyOverview).toContain(
+      '<p>概述</p>',
+    );
+  });
+
+  it('preserves legitimate formatting in main_description', async () => {
+    const { service, aboutCompanyProfile } = buildService();
+    aboutCompanyProfile.update.mockResolvedValue({
+      id: 'profile-1',
+      gallery: [],
+    });
+
+    await service.updateProfile({
+      main_description:
+        '<h2>About Us</h2><p><strong>Bold</strong> text</p><ul><li>Item</li></ul>',
+    });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      { data: { mainDescription: string } },
+    ];
+    expect(args[0].data.mainDescription).toContain('<h2>About Us</h2>');
+    expect(args[0].data.mainDescription).toContain('<strong>Bold</strong>');
+    expect(args[0].data.mainDescription).toContain('<ul><li>Item</li></ul>');
+  });
+
+  it('leaves mainDescription/companyOverview untouched (undefined) when omitted from the patch', async () => {
+    const { service, aboutCompanyProfile } = buildService();
+    aboutCompanyProfile.update.mockResolvedValue({
+      id: 'profile-1',
+      gallery: [],
+    });
+
+    await service.updateProfile({ headline: 'New Headline' });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      { data: { mainDescription: unknown; companyOverview: unknown } },
+    ];
+    expect(args[0].data.mainDescription).toBeUndefined();
+    expect(args[0].data.companyOverview).toBeUndefined();
+  });
+});

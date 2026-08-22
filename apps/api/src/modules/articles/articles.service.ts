@@ -4,6 +4,10 @@ import {
   parseSort,
 } from '../../common/dto/pagination-query.dto';
 import { ApiException } from '../../common/exceptions/api.exception';
+import {
+  sanitizeRichText,
+  sanitizeTranslationsRichText,
+} from '../../common/utils/sanitize-rich-text.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { toArticleCategory } from './article-category.mapper';
 import { toArticleDetail, toArticleSummary } from './article.mapper';
@@ -309,7 +313,7 @@ export class ArticlesService {
         slug,
         title: dto.title,
         excerpt: dto.excerpt,
-        content: dto.content,
+        content: sanitizeRichText(dto.content),
         coverImageId: dto.cover_image_id,
         categoryId: emptyToNull(dto.category_id),
         tags: dto.tags ?? [],
@@ -340,7 +344,9 @@ export class ArticlesService {
         readingTimeMinutes: dto.reading_time_minutes,
         status: dto.status ?? 'draft',
         publishedAt: dto.status === 'published' ? new Date() : null,
-        translations: dto.translations,
+        translations: sanitizeTranslationsRichText(dto.translations, [
+          'content',
+        ]) as never,
       },
       include: DETAIL_INCLUDE,
     });
@@ -382,7 +388,8 @@ export class ArticlesService {
         slug,
         title: dto.title,
         excerpt: dto.excerpt,
-        content: dto.content,
+        content:
+          dto.content !== undefined ? sanitizeRichText(dto.content) : undefined,
         coverImageId: dto.cover_image_id,
         // Picking a structured category (even clearing it back to "none") retires the old
         // free-text value — going forward `categoryId` is the single source of truth for
@@ -420,7 +427,9 @@ export class ArticlesService {
         readingTimeMinutes: dto.reading_time_minutes,
         status: dto.status,
         publishedAt: justPublished ? new Date() : undefined,
-        translations: dto.translations,
+        translations: sanitizeTranslationsRichText(dto.translations, [
+          'content',
+        ]) as never,
       },
       include: DETAIL_INCLUDE,
     });

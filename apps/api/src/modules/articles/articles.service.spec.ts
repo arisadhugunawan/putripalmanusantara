@@ -6,6 +6,7 @@ function buildService() {
     findMany: jest.fn<Promise<unknown[]>, unknown[]>(),
     count: jest.fn<Promise<number>, unknown[]>(),
     findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    create: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const articleCategory = {
@@ -350,5 +351,135 @@ describe('ArticlesService.updateCategory — translation preservation (Phase 5E-
     expect(args[0].data.translations.vi).toEqual({
       name: 'Tin tức xuất khẩu',
     });
+  });
+});
+
+// Phase 5F-P0.1 — stored-XSS hardening. Article.content is the confirmed attack surface
+// (rendered via dangerouslySetInnerHTML in ArticleDetailView.tsx with no prior sanitization).
+// These tests prove the write boundary in ArticlesService.create()/update() actually strips
+// malicious markup before it reaches Prisma, for both the English field and every locale's
+// translated content.
+describe('ArticlesService — stored-XSS hardening (Phase 5F-P0.1)', () => {
+  it('create() strips a <script> payload from content before persisting', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(null); // slug not taken
+    article.create.mockResolvedValue(stubArticleRow());
+
+    await service.create({
+      title: 'Test Article',
+      excerpt: 'Excerpt',
+      content: '<p>Hello</p><script>alert(1)</script>',
+    });
+
+    const args = article.create.mock.calls[0] as [
+      { data: { content: string } },
+    ];
+    expect(args[0].data.content).not.toContain('<script');
+    expect(args[0].data.content).not.toContain('alert(1)');
+    expect(args[0].data.content).toContain('<p>Hello</p>');
+  });
+
+  it('create() strips a malicious payload from every locale in translations.content', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(null);
+    article.create.mockResolvedValue(stubArticleRow());
+
+    await service.create({
+      title: 'Test Article',
+      excerpt: 'Excerpt',
+      content: '<p>Clean</p>',
+      translations: {
+        zh: { content: '<img src=x onerror=alert(1)><p>干净</p>' },
+        th: { content: '<svg onload=alert(1)></svg><p>สะอาด</p>' },
+      },
+    });
+
+    const args = article.create.mock.calls[0] as [
+      {
+        data: {
+          translations: Record<string, Record<string, string>>;
+        };
+      },
+    ];
+    expect(args[0].data.translations.zh.content).not.toContain('onerror');
+    expect(args[0].data.translations.zh.content).not.toContain('alert(1)');
+    expect(args[0].data.translations.zh.content).toContain('<p>干净</p>');
+    expect(args[0].data.translations.th.content).not.toContain('<svg');
+    expect(args[0].data.translations.th.content).toContain('<p>สะอาด</p>');
+  });
+
+  it('update() strips a <a href="javascript:..."> payload from content', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow()); // assertExists
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', {
+      content: '<a href="javascript:alert(1)">Click</a><p>Body</p>',
+    });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { content: string } },
+    ];
+    expect(args[0].data.content).not.toContain('javascript:');
+    expect(args[0].data.content).not.toContain('alert(1)');
+    expect(args[0].data.content).toContain('<p>Body</p>');
+  });
+
+  it('update() strips an <iframe> payload from every locale in translations.content', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', {
+      translations: {
+        vi: {
+          content: '<iframe src="javascript:alert(1)"></iframe><p>Sạch</p>',
+        },
+      },
+    });
+
+    const args = article.update.mock.calls[0] as [
+      {
+        data: {
+          translations: Record<string, Record<string, string>>;
+        };
+      },
+    ];
+    expect(args[0].data.translations.vi.content).not.toContain('<iframe');
+    expect(args[0].data.translations.vi.content).not.toContain('javascript:');
+    expect(args[0].data.translations.vi.content).toContain('<p>Sạch</p>');
+  });
+
+  it('update() preserves legitimate formatting untouched (headings, bold, lists, safe links)', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    article.update.mockResolvedValue(stubArticleRow());
+
+    const legitimateHtml =
+      '<h2>Heading</h2><p><strong>Bold</strong> text</p>' +
+      '<ul><li>Item</li></ul><a href="https://example.com">Link</a>';
+
+    await service.update('a1', { content: legitimateHtml });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { content: string } },
+    ];
+    expect(args[0].data.content).toContain('<h2>Heading</h2>');
+    expect(args[0].data.content).toContain('<strong>Bold</strong>');
+    expect(args[0].data.content).toContain('<ul><li>Item</li></ul>');
+    expect(args[0].data.content).toContain('href="https://example.com"');
+  });
+
+  it('update() leaves content untouched (undefined) when the caller omits it from the patch', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', { title: 'Renamed' });
+
+    const args = article.update.mock.calls[0] as [
+      { data: { content: unknown } },
+    ];
+    expect(args[0].data.content).toBeUndefined();
   });
 });

@@ -14,6 +14,10 @@ import {
   CONTENT_PUBLISHED_EVENT,
   type ContentPublishedEvent,
 } from '../../common/events/content-published.event';
+import {
+  sanitizeRichText,
+  sanitizeTranslationsRichText,
+} from '../../common/utils/sanitize-rich-text.util';
 import { MediaService } from '../../media/media.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { toExportDestination } from '../homepage/export-destination.mapper';
@@ -682,10 +686,16 @@ export class AboutCompanyService {
       data: {
         headline: dto.headline,
         shortDescription: dto.short_description,
-        mainDescription: dto.main_description,
+        mainDescription:
+          dto.main_description !== undefined
+            ? sanitizeRichText(dto.main_description)
+            : undefined,
         vision: dto.vision,
         mission: dto.mission,
-        companyOverview: dto.company_overview,
+        companyOverview:
+          dto.company_overview !== undefined
+            ? sanitizeRichText(dto.company_overview)
+            : undefined,
         mainImageId: dto.main_image_id,
 
         eyebrow: dto.eyebrow,
@@ -732,7 +742,10 @@ export class AboutCompanyService {
         closingCtaHref: dto.closing_cta_href,
         closingVisible: dto.closing_visible,
 
-        translations: dto.translations,
+        translations: sanitizeTranslationsRichText(dto.translations, [
+          'mainDescription',
+          'companyOverview',
+        ]) as never,
       },
       include: PROFILE_INCLUDE,
     });
