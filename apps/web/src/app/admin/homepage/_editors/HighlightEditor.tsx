@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Input, Label } from "@ppn/ui-components";
+import { Button, Card, FormField, Input, Select } from "@ppn/ui-components";
 import type { HomepageHighlight, HomepageHighlightIcon } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
@@ -84,17 +84,13 @@ export function HighlightEditor() {
       <div className="mt-4 flex flex-col gap-3">
         {highlights?.map((highlight) => (
           <div key={highlight.id} className="flex flex-wrap items-center gap-3 rounded-field border border-neutral-200 p-3">
-            <select
+            <Select
+              aria-label="Ikon"
+              className="w-auto text-small"
               defaultValue={highlight.icon}
               onChange={(e) => void handleUpdate(highlight.id, { icon: e.target.value })}
-              className="rounded-field border border-neutral-300 px-3 py-2 text-small"
-            >
-              {HIGHLIGHT_ICONS.map((icon) => (
-                <option key={icon.value} value={icon.value}>
-                  {icon.label}
-                </option>
-              ))}
-            </select>
+              options={HIGHLIGHT_ICONS}
+            />
             <Input
               className="max-w-[200px]"
               defaultValue={highlight.title}
@@ -123,24 +119,15 @@ export function HighlightEditor() {
 
       <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-3 border-t border-neutral-200 pt-4">
         <p className="text-small font-medium text-neutral-900">Tambah Highlight</p>
-        <div>
-          <Label htmlFor="new-highlight-icon">Ikon</Label>
-          <select id="new-highlight-icon" name="icon" className="w-full rounded-field border border-neutral-300 px-4 py-2.5 text-body">
-            {HIGHLIGHT_ICONS.map((icon) => (
-              <option key={icon.value} value={icon.value}>
-                {icon.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label htmlFor="new-highlight-title">Judul</Label>
+        <FormField label="Ikon" htmlFor="new-highlight-icon">
+          <Select id="new-highlight-icon" name="icon" options={HIGHLIGHT_ICONS} />
+        </FormField>
+        <FormField label="Judul" htmlFor="new-highlight-title" required>
           <Input id="new-highlight-title" name="title" required />
-        </div>
-        <div>
-          <Label htmlFor="new-highlight-desc">Deskripsi Singkat</Label>
+        </FormField>
+        <FormField label="Deskripsi Singkat" htmlFor="new-highlight-desc" required>
           <Input id="new-highlight-desc" name="description" required />
-        </div>
+        </FormField>
         {error && <p className="text-small text-red-600">{error}</p>}
         <Button type="submit" className="w-fit">
           Tambah Highlight

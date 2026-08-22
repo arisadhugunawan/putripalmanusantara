@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
+import { Badge, Button, Card, EmptyState, Input, Label, Textarea } from "@ppn/ui-components";
 import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
 import type { HeroButtonStyle, HeroSlide, HeroTextAlignment, Locale } from "@ppn/shared-types";
 import Image from "next/image";
@@ -162,11 +162,7 @@ export function HeroSlideEditor() {
       )}
 
       <div className="mt-4 flex flex-col gap-6">
-        {slides?.length === 0 && (
-          <div className="rounded-field border border-dashed border-neutral-300 p-8 text-center">
-            <p className="text-body text-neutral-600">Belum ada hero slide.</p>
-          </div>
-        )}
+        {slides?.length === 0 && <EmptyState title="Belum ada hero slide." />}
         {slides?.map((slide, index) => (
           <HeroSlideCard
             key={slide.id}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
+import { Badge, Button, Card, cn, FormField, Input, Label, Textarea } from "@ppn/ui-components";
 import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
 import type { Locale, TeamMember } from "@ppn/shared-types";
 import Image from "next/image";
@@ -408,30 +408,30 @@ export function TeamEditor() {
 
               <FieldGroup title="5 · Kontak & Sosial">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div>
-                    <Label className="text-small">Email (opsional)</Label>
+                  <FormField label="Email (opsional)" htmlFor={`team-${member.id}-email`}>
                     <Input
+                      id={`team-${member.id}-email`}
                       type="email"
                       defaultValue={member.email ?? ""}
                       onBlur={(e) => void handleUpdate(member.id, { email: e.target.value })}
                     />
-                  </div>
-                  <div>
-                    <Label className="text-small">Telepon (opsional)</Label>
+                  </FormField>
+                  <FormField label="Telepon (opsional)" htmlFor={`team-${member.id}-phone`}>
                     <Input
+                      id={`team-${member.id}-phone`}
                       defaultValue={member.phone ?? ""}
                       placeholder="+62..."
                       onBlur={(e) => void handleUpdate(member.id, { phone: e.target.value })}
                     />
-                  </div>
-                  <div>
-                    <Label className="text-small">LinkedIn URL (opsional)</Label>
+                  </FormField>
+                  <FormField label="LinkedIn URL (opsional)" htmlFor={`team-${member.id}-linkedin`}>
                     <Input
+                      id={`team-${member.id}-linkedin`}
                       placeholder="https://linkedin.com/in/..."
                       defaultValue={member.linkedin_url ?? ""}
                       onBlur={(e) => void handleUpdate(member.id, { linkedin_url: e.target.value })}
                     />
-                  </div>
+                  </FormField>
                 </div>
                 <p className="mt-1 text-small text-neutral-500">
                   Hanya field yang diisi yang tampil di halaman publik — tidak akan ada ikon kosong.

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button } from "@ppn/ui-components";
+import { Badge, Button, Table, TableEmptyRow } from "@ppn/ui-components";
 import type { ProductDetail } from "@ppn/shared-types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -48,8 +48,8 @@ export default function AdminProductsPage() {
         </Link>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-card bg-white shadow-card">
-        <table className="w-full text-body">
+      <div className="mt-6">
+        <Table>
           <thead>
             <tr className="border-b border-neutral-200 text-left text-small text-neutral-600">
               <th className="px-4 py-3">Nama</th>
@@ -60,6 +60,7 @@ export default function AdminProductsPage() {
             </tr>
           </thead>
           <tbody>
+            {products?.length === 0 && <TableEmptyRow colSpan={5}>Belum ada produk.</TableEmptyRow>}
             {products?.map((product) => (
               <tr key={product.id} className="border-b border-neutral-100 last:border-0">
                 <td className="px-4 py-3 font-medium text-neutral-900">{product.name}</td>
@@ -90,10 +91,7 @@ export default function AdminProductsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
-        {products?.length === 0 && (
-          <p className="p-6 text-body text-neutral-600">Belum ada produk.</p>
-        )}
+        </Table>
       </div>
 
       {deleteTarget && (

@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { Modal } from "@ppn/ui-components";
 
 /**
  * In-page confirmation modal — replaces native `window.confirm()` for destructive actions.
  * `confirm()` depends on the browser's own dialog implementation, which some embedded/webview
  * contexts suppress or auto-dismiss silently (the delete button then looks like it does
  * nothing). A React-rendered dialog has no such dependency and always works the same way.
+ *
+ * Built on the shared `Modal` primitive (Phase 5B) — overlay/Escape/focus-restore mechanics are
+ * Modal's, this file only supplies the title/message/Cancel-Confirm footer shape. `hideCloseButton`
+ * keeps the visible surface identical to before (Cancel/Confirm only, no separate ✕); focus still
+ * lands on Cancel, not Confirm, so an accidental Enter press after opening can never trigger the
+ * destructive action.
  */
 export function ConfirmDialog({
   title,
@@ -27,34 +34,15 @@ export function ConfirmDialog({
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onCancel]);
-
-  // Moves focus into the dialog on open and hands it back to whatever opened it on close, so
-  // keyboard users aren't dropped at the top of the page behind the overlay.
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    cancelRef.current?.focus();
-    return () => previouslyFocused?.focus?.();
-  }, []);
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4"
-      onClick={onCancel}
-    >
-      <div className="w-full max-w-sm rounded-card bg-white p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-h3 text-neutral-900">{title}</h3>
-        <p className="mt-2 text-body text-neutral-600">{message}</p>
-        <div className="mt-6 flex justify-end gap-3">
+    <Modal
+      onClose={onCancel}
+      title={title}
+      maxWidth="sm"
+      hideCloseButton
+      initialFocusRef={cancelRef}
+      footer={
+        <>
           <button
             ref={cancelRef}
             type="button"
@@ -70,8 +58,10 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p className="text-body text-neutral-600">{message}</p>
+    </Modal>
   );
 }

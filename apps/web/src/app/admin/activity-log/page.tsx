@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "@ppn/ui-components";
+import { Card, EmptyState, Pagination, Select, Table } from "@ppn/ui-components";
 import type { PaginationMeta } from "@ppn/shared-types";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
@@ -30,9 +30,6 @@ interface FilterOptions {
 }
 
 const LIMIT = 25;
-
-const selectClass =
-  "rounded-field border border-neutral-200 bg-white px-3 py-2 text-small text-neutral-700";
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", {
@@ -102,30 +99,39 @@ export default function AdminActivityLogPage() {
 
       <Card className="mt-6">
         <div className="flex flex-wrap items-center gap-3">
-          <select value={actorId} onChange={(e) => setActorId(e.target.value)} className={selectClass}>
-            <option value="">All admins</option>
-            {filters?.actors.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select value={action} onChange={(e) => setAction(e.target.value)} className={selectClass}>
-            <option value="">All actions</option>
-            {filters?.actions.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-          <select value={module} onChange={(e) => setModule(e.target.value)} className={selectClass}>
-            <option value="">All modules</option>
-            {filters?.modules.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+          {/* "All ___" is a real, re-selectable filter state (empty string = no filter), not a
+              one-time prompt — so it's a normal enabled option, not Select's `placeholder`
+              (which native-select semantics make permanently unselectable after a real choice). */}
+          <Select
+            aria-label="Filter by admin"
+            className="w-auto"
+            value={actorId}
+            onChange={(e) => setActorId(e.target.value)}
+            options={[
+              { value: "", label: "All admins" },
+              ...(filters?.actors.map((a) => ({ value: a.id, label: a.name })) ?? []),
+            ]}
+          />
+          <Select
+            aria-label="Filter by action"
+            className="w-auto"
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+            options={[
+              { value: "", label: "All actions" },
+              ...(filters?.actions.map((a) => ({ value: a, label: a })) ?? []),
+            ]}
+          />
+          <Select
+            aria-label="Filter by module"
+            className="w-auto"
+            value={module}
+            onChange={(e) => setModule(e.target.value)}
+            options={[
+              { value: "", label: "All modules" },
+              ...(filters?.modules.map((m) => ({ value: m, label: m })) ?? []),
+            ]}
+          />
         </div>
 
         {status === "error" && <AdminLoadError message="Failed to load the activity log." onRetry={() => void load()} />}
@@ -141,12 +147,10 @@ export default function AdminActivityLogPage() {
         {status === "ready" && items && (
           <>
             {items.length === 0 ? (
-              <div className="mt-6 rounded-field border border-dashed border-neutral-300 p-10 text-center">
-                <p className="text-body text-neutral-600">No activity matches these filters yet.</p>
-              </div>
+              <EmptyState className="mt-6" title="No activity matches these filters yet." />
             ) : (
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[640px] border-collapse text-small">
+              <div className="mt-4">
+                <Table className="min-w-[640px] border-collapse text-small">
                   <thead>
                     <tr className="border-b border-neutral-200 text-left text-neutral-500">
                       <th className="whitespace-nowrap py-2 pr-4 font-medium">Time</th>
@@ -176,32 +180,17 @@ export default function AdminActivityLogPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             )}
 
-            {meta && meta.total_pages > 1 && (
-              <div className="mt-6 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="rounded-field border border-neutral-200 px-3 py-1.5 text-small text-neutral-600 disabled:opacity-30"
-                >
-                  Prev
-                </button>
-                <span className="text-small text-neutral-500">
-                  {page} / {meta.total_pages} · {meta.total} entries
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(meta.total_pages, p + 1))}
-                  disabled={page >= meta.total_pages}
-                  className="rounded-field border border-neutral-200 px-3 py-1.5 text-small text-neutral-600 disabled:opacity-30"
-                >
-                  Next
-                </button>
-              </div>
+            {meta && (
+              <Pagination
+                page={page}
+                totalPages={meta.total_pages}
+                onPageChange={setPage}
+                summary={`${page} / ${meta.total_pages} · ${meta.total} entries`}
+              />
             )}
           </>
         )}
