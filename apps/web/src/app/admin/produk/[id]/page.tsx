@@ -25,6 +25,7 @@ import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { ProductsPublishHistoryCard } from "@/components/admin/ProductsPublishHistoryCard";
 import { PublishProductsButton } from "@/components/admin/PublishProductsButton";
 import { SaveStateIndicator } from "@/components/admin/SaveStateIndicator";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove } from "@/hooks/useDragReorder";
@@ -37,6 +38,17 @@ const TRANSLATABLE_FIELDS = [
   { key: "fullDescription", label: "Deskripsi Lengkap", multiline: true },
 ] as const;
 
+// Phase 5E-D — SEO's own translatable fields, kept as a separate LocaleTabs block from
+// TRANSLATABLE_FIELDS above (and its own "🌐 SEO Translations" section) rather than merged into
+// the main content block, since SEO metadata is edited and reasoned about separately from the
+// product's actual body content. Both blocks read/write the SAME shared `translations` state
+// declared below, so a save from either section always carries every locale's current edits —
+// no separate/stale copy of the translations object exists anywhere on this page.
+const SEO_TRANSLATABLE_FIELDS = [
+  { key: "metaTitle", label: "Meta Title", multiline: false },
+  { key: "metaDescription", label: "Meta Description", multiline: true },
+] as const;
+
 export default function EditProductPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -47,6 +59,7 @@ export default function EditProductPage() {
   const [deleting, setDeleting] = useState(false);
   const { status, error, run } = useSaveState();
   const unpublishState = useSaveState();
+  const seoState = useSaveState();
   const { showToast } = useToast();
 
   async function load() {
@@ -82,6 +95,23 @@ export default function EditProductPage() {
         short_description: formData.get("short_description"),
         full_description: formData.get("full_description"),
         is_featured: formData.get("is_featured") === "on",
+        translations,
+      }),
+    );
+    if (result.success) await load();
+  }
+
+  // Same shared `translations` state as handleSaveBasics above — a Save here always carries
+  // every locale's current edits (SEO and content alike), never a stale/partial copy. Separate
+  // from handleSaveBasics only so SEO has its own Save button and SaveStateIndicator, matching
+  // this page's existing pattern for independent save actions (see unpublishState above).
+  async function handleSaveSeo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const result = await seoState.run(() =>
+      adminApi.put(`/admin/products/${id}`, {
+        meta_title: formData.get("meta_title"),
+        meta_description: formData.get("meta_description"),
         translations,
       }),
     );
@@ -315,6 +345,87 @@ export default function EditProductPage() {
               {status === "saving" ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>
             <SaveStateIndicator status={status} error={error} />
+          </div>
+        </form>
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="text-h3 text-neutral-900">SEO</h2>
+        <form onSubmit={handleSaveSeo} className="mt-4 flex flex-col gap-4">
+          <p className="flex flex-wrap items-center gap-2 text-small font-medium text-neutral-700">
+            🌐 SEO Translations
+            <TranslationStatusBadges
+              translations={translations}
+              base={{ metaTitle: product.meta_title ?? "", metaDescription: product.meta_description ?? "" }}
+            />
+          </p>
+
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Label htmlFor="meta_title">Meta Title</Label>
+                    <Input
+                      id="meta_title"
+                      name="meta_title"
+                      maxLength={70}
+                      defaultValue={product.meta_title ?? ""}
+                      placeholder={product.name}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="meta_description">Meta Description</Label>
+                    <Textarea
+                      id="meta_description"
+                      name="meta_description"
+                      rows={2}
+                      maxLength={200}
+                      defaultValue={product.meta_description ?? ""}
+                      placeholder={product.short_description}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <p className="text-small text-neutral-600">
+                    Terjemahan {LOCALE_LABELS[locale].name} — kosongkan untuk memakai teks
+                    Inggris sebagai cadangan.
+                  </p>
+                  {SEO_TRANSLATABLE_FIELDS.map((field) => (
+                    <div key={field.key}>
+                      <Label htmlFor={`${field.key}-${locale}`}>{field.label}</Label>
+                      {field.multiline ? (
+                        <Textarea
+                          id={`${field.key}-${locale}`}
+                          rows={2}
+                          value={translations[locale]?.[field.key] ?? ""}
+                          onChange={(e) => setTranslatedField(locale, field.key, e.target.value)}
+                        />
+                      ) : (
+                        <Input
+                          id={`${field.key}-${locale}`}
+                          value={translations[locale]?.[field.key] ?? ""}
+                          onChange={(e) => setTranslatedField(locale, field.key, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+          </LocaleTabs>
+
+          <p className="-mt-2 text-small text-neutral-500">
+            Focus Keyword dan Canonical URL tidak diterjemahkan — keduanya properti dari
+            URL/target pencarian, sama di semua bahasa.
+          </p>
+
+          <div className="mt-2 flex items-center gap-4">
+            <Button type="submit" disabled={seoState.status === "saving"} className="w-fit">
+              {seoState.status === "saving" ? "Menyimpan..." : "Simpan SEO"}
+            </Button>
+            <SaveStateIndicator status={seoState.status} error={seoState.error} />
           </div>
         </form>
       </Card>

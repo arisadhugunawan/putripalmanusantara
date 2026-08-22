@@ -2,6 +2,7 @@ import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.event';
 import { ProductsService } from './products.service';
+import { toProductDetail } from './product.mapper';
 import type { PrismaService } from '../../prisma/prisma.service';
 
 const ACTOR = { id: 'admin-1', name: 'Ari' };
@@ -418,5 +419,195 @@ describe('ProductsService.update — translation preservation (Phase 5D)', () =>
     // guards against a future change that starts always writing `translations: dto.translations
     // ?? {}` (which WOULD silently wipe existing translations on any English-only edit).
     expect(args[0].data.translations).toBeUndefined();
+  });
+});
+
+// Phase 5E-D — Product SEO (metaTitle/metaDescription) reuses the exact same `translations`
+// column and `update()` write path already proven safe above; these tests exercise that same
+// contract specifically for the two SEO fields, plus the publish/restore/fallback behavior the
+// brief calls out by name.
+describe('ProductsService.update — SEO translation preservation (Phase 5E-D)', () => {
+  it('a TH metaTitle-only edit persists EN(base)/ID/ZH/HI/VI content unchanged', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue(stubProductRow());
+    const mergedAfterThEdit = {
+      id: { metaTitle: 'Kopra Terbaik' },
+      zh: { metaTitle: '最佳椰干' },
+      hi: { metaTitle: 'सर्वश्रेष्ठ कोपरा' },
+      vi: { metaTitle: 'Cùi dừa khô tốt nhất' },
+      th: { metaTitle: 'โคปราที่ดีที่สุด (แก้ไขแล้ว)' },
+    };
+    product.update.mockResolvedValue(stubProductRow());
+
+    await service.update('p1', { translations: mergedAfterThEdit });
+
+    const args = product.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterThEdit);
+    expect(args[0].data.translations.id).toEqual({
+      metaTitle: 'Kopra Terbaik',
+    });
+    expect(args[0].data.translations.zh).toEqual({ metaTitle: '最佳椰干' });
+    expect(args[0].data.translations.hi).toEqual({
+      metaTitle: 'सर्वश्रेष्ठ कोपरा',
+    });
+    expect(args[0].data.translations.vi).toEqual({
+      metaTitle: 'Cùi dừa khô tốt nhất',
+    });
+  });
+
+  it('a VI metaDescription-only edit persists all other locales unchanged', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue(stubProductRow());
+    const mergedAfterViEdit = {
+      id: { metaDescription: 'Deskripsi SEO kopra.' },
+      zh: { metaDescription: '椰干SEO描述。' },
+      th: { metaDescription: 'คำอธิบาย SEO โคปรา' },
+      hi: { metaDescription: 'कोपरा एसईओ विवरण।' },
+      vi: { metaDescription: 'Mô tả SEO cùi dừa khô (đã chỉnh sửa).' },
+    };
+    product.update.mockResolvedValue(stubProductRow());
+
+    await service.update('p1', { translations: mergedAfterViEdit });
+
+    const args = product.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterViEdit);
+    expect(args[0].data.translations.id).toEqual({
+      metaDescription: 'Deskripsi SEO kopra.',
+    });
+    expect(args[0].data.translations.zh).toEqual({
+      metaDescription: '椰干SEO描述。',
+    });
+    expect(args[0].data.translations.th).toEqual({
+      metaDescription: 'คำอธิบาย SEO โคปรา',
+    });
+  });
+
+  it('updating both TH SEO fields preserves other fields already translated in the same TH locale object', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue(stubProductRow());
+    // TH already had `name` translated before this SEO edit — the merged payload the admin
+    // page sends (per its own setTranslatedField spread-merge) must keep it alongside the two
+    // newly-edited SEO fields, not replace the whole TH locale object with just the SEO pair.
+    const mergedPayload = {
+      th: {
+        name: 'มะพร้าวแห้ง (Copra)',
+        metaTitle: 'โคปราที่ดีที่สุด',
+        metaDescription: 'คำอธิบาย SEO โคปรา',
+      },
+    };
+    product.update.mockResolvedValue(stubProductRow());
+
+    await service.update('p1', { translations: mergedPayload });
+
+    const args = product.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations.th).toEqual({
+      name: 'มะพร้าวแห้ง (Copra)',
+      metaTitle: 'โคปราที่ดีที่สุด',
+      metaDescription: 'คำอธิบาย SEO โคปรา',
+    });
+  });
+});
+
+describe('ProductsService.publish — SEO translation snapshot (Phase 5E-D)', () => {
+  it('the published snapshot data includes the translated SEO fields present on the draft row', async () => {
+    const { service, product, productPublishedSnapshot } = buildService();
+    const translationsWithSeo = {
+      th: {
+        metaTitle: 'โคปราที่ดีที่สุด',
+        metaDescription: 'คำอธิบาย SEO โคปรา',
+      },
+    };
+    product.findUnique
+      .mockResolvedValueOnce({ id: 'p1' }) // assertExists
+      .mockResolvedValueOnce(
+        stubProductRow({ translations: translationsWithSeo }),
+      ); // buildSnapshotData
+    productPublishedSnapshot.findFirst.mockResolvedValue(null);
+    productPublishedSnapshot.create.mockResolvedValue({
+      id: 'snap-1',
+      version: 1,
+      publishedAt: new Date('2026-08-22T00:00:00.000Z'),
+    });
+    product.update.mockResolvedValue({});
+
+    await service.publish('p1', { id: 'admin-1', name: 'Ari' });
+
+    const [createArgs] = productPublishedSnapshot.create.mock.calls;
+    const snapshotData = createArgs[0].data.data as { translations: unknown };
+    expect(snapshotData.translations).toEqual(translationsWithSeo);
+  });
+});
+
+describe('ProductsService.restoreSnapshot — SEO translation restore (Phase 5E-D)', () => {
+  it('restoring an older snapshot brings back its translated SEO fields verbatim', async () => {
+    const { service, product, productPublishedSnapshot } = buildService();
+    const oldSeoTranslations = {
+      th: { metaTitle: 'ชื่อ SEO เก่า', metaDescription: 'คำอธิบาย SEO เก่า' },
+    };
+    const sourceSnapshotData = stubProductRow({
+      translations: oldSeoTranslations,
+    });
+    productPublishedSnapshot.findFirst
+      .mockResolvedValueOnce({
+        id: 'snap-2',
+        productId: 'p1',
+        data: sourceSnapshotData,
+      })
+      .mockResolvedValueOnce({ version: 5 });
+    productPublishedSnapshot.create.mockResolvedValue({
+      id: 'snap-6',
+      version: 6,
+      publishedAt: new Date('2026-08-22T01:00:00.000Z'),
+    });
+    product.update.mockResolvedValue({});
+
+    await service.restoreSnapshot('p1', 'snap-2', {
+      id: 'admin-1',
+      name: 'Ari',
+    });
+
+    const [call] = productPublishedSnapshot.create.mock.calls;
+    const restoredData = call[0].data.data as { translations: unknown };
+    expect(restoredData.translations).toEqual(oldSeoTranslations);
+  });
+});
+
+describe('toProductDetail — SEO translation fallback (Phase 5E-D)', () => {
+  it('falls back to the English metaTitle when the requested locale has no metaTitle translation, while still translating other fields', () => {
+    const row = stubProductRow({
+      metaTitle: 'Best Copra',
+      metaDescription: 'English SEO description.',
+      translations: {
+        // TH has a `name` translation but no `metaTitle`/`metaDescription` override.
+        th: { name: 'มะพร้าวแห้ง (Copra)' },
+      },
+    });
+
+    const result = toProductDetail(row as never, 'th');
+
+    expect(result.name).toBe('มะพร้าวแห้ง (Copra)');
+    expect(result.meta_title).toBe('Best Copra');
+    expect(result.meta_description).toBe('English SEO description.');
+  });
+
+  it('uses the translated metaTitle when present, and only falls back per-field for metaDescription', () => {
+    const row = stubProductRow({
+      metaTitle: 'Best Copra',
+      metaDescription: 'English SEO description.',
+      translations: {
+        th: { metaTitle: 'โคปราที่ดีที่สุด' },
+      },
+    });
+
+    const result = toProductDetail(row as never, 'th');
+
+    expect(result.meta_title).toBe('โคปราที่ดีที่สุด');
+    expect(result.meta_description).toBe('English SEO description.');
   });
 });
