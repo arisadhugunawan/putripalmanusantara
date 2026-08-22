@@ -6,6 +6,7 @@ import {
   CONTENT_PUBLISHED_EVENT,
   type ContentPublishedEvent,
 } from '../../common/events/content-published.event';
+import { buildPaginationMeta } from '../../common/dto/pagination-query.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AddProductGalleryItemDto,
@@ -16,6 +17,7 @@ import type {
   UpsertProductSpecificationDto,
 } from './dto/product-subresources.dto';
 import type { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import type { ProductQueryDto } from './dto/product-query.dto';
 import { toProductDetail, toProductSummary } from './product.mapper';
 
 /** Actor recorded on a snapshot — deliberately just the two display fields, not a full
@@ -331,6 +333,43 @@ export class ProductsService {
       orderBy: { order: 'asc' },
     });
     return products.map((product) => toProductDetail(product));
+  }
+
+  /** Backs the admin Products list page (Phase 5C) — paginated, searchable, filterable. Only
+   * reached when the caller explicitly passes `page` (see `AdminProductsController.findAll()`);
+   * every other admin surface still gets the full unpaginated list via `findAllForAdmin()`. */
+  async findAllForAdminPaginated(query: ProductQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit;
+    const q = query.q?.trim();
+    const where = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.featured !== undefined
+        ? { isFeatured: query.featured === 'true' }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' as const } },
+              { category: { contains: q, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        include: DETAIL_INCLUDE,
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+    return {
+      items: products.map((product) => toProductDetail(product)),
+      meta: buildPaginationMeta(page, limit, total),
+    };
   }
 
   async findByIdForAdmin(id: string) {

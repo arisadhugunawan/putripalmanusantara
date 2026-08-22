@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
@@ -14,6 +15,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { RevalidationService } from '../../revalidation/revalidation.service';
+import { ProductQueryDto } from './dto/product-query.dto';
 import {
   AddProductGalleryItemDto,
   UpdateProductGalleryItemDto,
@@ -97,9 +99,15 @@ export class AdminProductsController {
     return snapshot;
   }
 
+  // `page` present → the Products list page (Phase 5C, paginated/searchable/filterable).
+  // `page` absent → every other admin surface (Dashboard, Homepage pickers, WhatWeDoEditor)
+  // that still needs the full unpaginated list — unchanged from before Phase 5C.
   @Get()
-  findAll() {
-    return this.productsService.findAllForAdmin();
+  findAll(@Query() query: ProductQueryDto) {
+    if (query.page === undefined) {
+      return this.productsService.findAllForAdmin();
+    }
+    return this.productsService.findAllForAdminPaginated(query);
   }
 
   @Get(':id')

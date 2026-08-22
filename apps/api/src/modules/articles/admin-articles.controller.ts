@@ -6,11 +6,13 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RevalidationService } from '../../revalidation/revalidation.service';
 import { ArticlesService } from './articles.service';
+import { AdminArticleQueryDto } from './dto/admin-article-query.dto';
 import {
   AddArticleGalleryItemDto,
   CreateArticleCategoryDto,
@@ -62,9 +64,15 @@ export class AdminArticlesController {
     return this.articlesService.fetchInstagramMetadata(dto.url);
   }
 
+  // `page` present → the Articles list page (Phase 5C, paginated/searchable/filterable).
+  // `page` absent → every other admin surface (Dashboard, article-preview-by-id lookup) that
+  // still needs the full unpaginated list — unchanged from before Phase 5C.
   @Get()
-  findAll() {
-    return this.articlesService.findAllForAdmin();
+  findAll(@Query() query: AdminArticleQueryDto) {
+    if (query.page === undefined) {
+      return this.articlesService.findAllForAdmin();
+    }
+    return this.articlesService.findAllForAdminPaginated(query);
   }
 
   @Get(':id')

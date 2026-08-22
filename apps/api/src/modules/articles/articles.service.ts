@@ -16,6 +16,7 @@ import type {
   UpdateArticleDto,
   UpdateArticleGalleryItemDto,
 } from './dto/article.dto';
+import type { AdminArticleQueryDto } from './dto/admin-article-query.dto';
 import type {
   InstagramDuplicateResult,
   InstagramImportResult,
@@ -210,6 +211,70 @@ export class ArticlesService {
       orderBy: { createdAt: 'desc' },
     });
     return items.map((article) => toArticleDetail(article));
+  }
+
+  /** Backs the admin Articles list page (Phase 5C) — paginated, searchable, filterable. Only
+   * reached when the caller explicitly passes `page` (see `AdminArticlesController.findAll()`);
+   * the Admin Dashboard and the article-preview-by-id lookup still get the full unpaginated
+   * list via `findAllForAdmin()`. Replicates the old client-side tabs/search/sort exactly, just
+   * moved server-side — see `AdminArticleQueryDto` for the field-by-field mapping. */
+  async findAllForAdminPaginated(query: AdminArticleQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit;
+    const q = query.q?.trim();
+    const where = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.featured !== undefined
+        ? { featured: query.featured === 'true' }
+        : {}),
+      ...(query.category ? { categoryRef: { slug: query.category } } : {}),
+      ...(query.content_type === 'website'
+        ? { contentSource: { not: 'instagram' as const } }
+        : {}),
+      ...(query.content_type === 'instagram'
+        ? { contentSource: { not: 'website' as const } }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: 'insensitive' as const } },
+              { excerpt: { contains: q, mode: 'insensitive' as const } },
+              {
+                instagramCaption: {
+                  contains: q,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                categoryRef: {
+                  name: { contains: q, mode: 'insensitive' as const },
+                },
+              },
+              { tags: { has: q } },
+            ],
+          }
+        : {}),
+    };
+    const orderBy =
+      query.sort === '-featured'
+        ? [{ featured: 'desc' as const }, { publishedAt: 'desc' as const }]
+        : query.sort === 'published_at'
+          ? { publishedAt: 'asc' as const }
+          : { publishedAt: 'desc' as const };
+    const [items, total] = await Promise.all([
+      this.prisma.article.findMany({
+        where,
+        include: DETAIL_INCLUDE,
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.article.count({ where }),
+    ]);
+    return {
+      items: items.map((article) => toArticleDetail(article)),
+      meta: buildPaginationMeta(page, limit, total),
+    };
   }
 
   async findByIdForAdmin(id: string) {

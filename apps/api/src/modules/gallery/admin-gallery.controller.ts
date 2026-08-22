@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -18,6 +19,7 @@ import {
   CreateGalleryItemDto,
   UpdateGalleryItemDto,
 } from './dto/gallery-item.dto';
+import { GalleryQueryDto } from './dto/gallery-query.dto';
 import { GalleryService } from './gallery.service';
 
 @Controller('api/v1/admin/gallery')
@@ -60,9 +62,15 @@ export class AdminGalleryController {
     return result;
   }
 
+  // `page` present → the Gallery list page (Phase 5C, paginated/searchable/filterable).
+  // `page` absent → every other admin surface (Dashboard, Gallery overview stat tiles) that
+  // still needs the full unpaginated list — unchanged from before Phase 5C.
   @Get()
-  findAll() {
-    return this.galleryService.findAll();
+  findAll(@Query() query: GalleryQueryDto) {
+    if (query.page === undefined) {
+      return this.galleryService.findAll();
+    }
+    return this.galleryService.findAllPaginated(query);
   }
 
   @Post()

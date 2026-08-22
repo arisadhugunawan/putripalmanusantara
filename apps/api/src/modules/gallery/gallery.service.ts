@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE } from '@ppn/shared-types';
+import { buildPaginationMeta } from '../../common/dto/pagination-query.dto';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -10,6 +11,7 @@ import type {
   CreateGalleryItemDto,
   UpdateGalleryItemDto,
 } from './dto/gallery-item.dto';
+import type { GalleryQueryDto } from './dto/gallery-query.dto';
 import { toGalleryCategory } from './gallery-category.mapper';
 import { toGalleryItem } from './gallery-item.mapper';
 
@@ -133,6 +135,51 @@ export class GalleryService {
       orderBy: { order: 'asc' },
     });
     return items.map((item) => toGalleryItem(item, locale ?? DEFAULT_LOCALE));
+  }
+
+  /** Backs the admin Gallery list page (Phase 5C) — paginated, searchable, filterable. Only
+   * reached when the caller explicitly passes `page` (see `AdminGalleryController.findAll()`);
+   * the Admin Dashboard and the Gallery overview stat tiles still get the full unpaginated list
+   * via `findAll()`. Sort stays `order asc` (unchanged) — Gallery's manual drag-reorder is tied
+   * to that field, see the admin Gallery page's `canReorder` guard for how pagination and
+   * reorder coexist. */
+  async findAllPaginated(query: GalleryQueryDto, locale?: string) {
+    const page = query.page ?? 1;
+    const limit = query.limit;
+    const q = query.q?.trim();
+    const where = {
+      ...(query.category_id ? { categoryId: query.category_id } : {}),
+      ...(query.status ? { active: query.status === 'active' } : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: 'insensitive' as const } },
+              { caption: { contains: q, mode: 'insensitive' as const } },
+              { location: { contains: q, mode: 'insensitive' as const } },
+              {
+                shortDescription: {
+                  contains: q,
+                  mode: 'insensitive' as const,
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.galleryItem.findMany({
+        where,
+        include: ITEM_INCLUDE,
+        orderBy: { order: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.galleryItem.count({ where }),
+    ]);
+    return {
+      items: items.map((item) => toGalleryItem(item, locale ?? DEFAULT_LOCALE)),
+      meta: buildPaginationMeta(page, limit, total),
+    };
   }
 
   /** Public-facing — active items only, optionally filtered to one category by slug. */

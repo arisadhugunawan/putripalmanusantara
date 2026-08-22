@@ -11,6 +11,7 @@ function buildService() {
     findUnique: jest.fn<Promise<unknown>, unknown[]>(),
     findFirst: jest.fn<Promise<unknown>, unknown[]>(),
     findMany: jest.fn<Promise<unknown[]>, unknown[]>(),
+    count: jest.fn<Promise<number>, unknown[]>(),
     update: jest.fn<
       Promise<unknown>,
       [{ where: unknown; data: Record<string, unknown> }]
@@ -232,7 +233,7 @@ describe('ProductsService.update', () => {
     await service.update('p1', {
       status: 'published',
       name: 'New Name',
-    } as never);
+    });
 
     const call = product.update.mock.calls[0][0];
     expect(call.data).not.toHaveProperty('status');
@@ -254,5 +255,128 @@ describe('ProductsService.remove', () => {
     expect(thrown).toBeInstanceOf(ApiException);
     expect(thrown?.code).toBe('PRODUCT_HAS_PUBLISHED_HISTORY');
     expect(thrown?.getStatus()).toBe(409);
+  });
+});
+
+function stubProductRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'p1',
+    slug: 'copra',
+    name: 'Copra',
+    titleAccent: null,
+    category: 'Copra',
+    shortDescription: 'Short',
+    fullDescription: 'Full',
+    coverImage: null,
+    metaTitle: null,
+    metaDescription: null,
+    isFeatured: false,
+    status: 'published',
+    order: 0,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    translations: null,
+    gallery: [],
+    shapes: [],
+    specifications: [],
+    packagingAndApps: [],
+    downloads: [],
+    ...overrides,
+  };
+}
+
+describe('ProductsService.findAllForAdminPaginated', () => {
+  it('paginates using skip/take derived from page/limit and returns total-based meta', async () => {
+    const { service, product } = buildService();
+    product.findMany.mockResolvedValue([stubProductRow()]);
+    product.count.mockResolvedValue(45);
+
+    const result = await service.findAllForAdminPaginated({
+      page: 3,
+      limit: 20,
+    });
+
+    expect(product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 40, take: 20 }),
+    );
+    expect(result.meta).toEqual({
+      page: 3,
+      limit: 20,
+      total: 45,
+      total_pages: 3,
+    });
+  });
+
+  it('defaults to page 1 when only limit is given', async () => {
+    const { service, product } = buildService();
+    product.findMany.mockResolvedValue([]);
+    product.count.mockResolvedValue(0);
+
+    await service.findAllForAdminPaginated({ limit: 20 });
+
+    expect(product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 0, take: 20 }),
+    );
+  });
+
+  it('searches name/category case-insensitively via q', async () => {
+    const { service, product } = buildService();
+    product.findMany.mockResolvedValue([]);
+    product.count.mockResolvedValue(0);
+
+    await service.findAllForAdminPaginated({
+      page: 1,
+      limit: 20,
+      q: '  copra  ',
+    });
+
+    const [args] = product.findMany.mock.calls;
+    expect(args[0].where).toEqual({
+      OR: [
+        { name: { contains: 'copra', mode: 'insensitive' } },
+        { category: { contains: 'copra', mode: 'insensitive' } },
+      ],
+    });
+  });
+
+  it('filters by status', async () => {
+    const { service, product } = buildService();
+    product.findMany.mockResolvedValue([]);
+    product.count.mockResolvedValue(0);
+
+    await service.findAllForAdminPaginated({
+      page: 1,
+      limit: 20,
+      status: 'draft',
+    });
+
+    const [args] = product.findMany.mock.calls;
+    expect(args[0].where).toEqual({ status: 'draft' });
+  });
+
+  it('filters by featured — "false" must mean not-featured, not "any truthy string"', async () => {
+    const { service, product } = buildService();
+    product.findMany.mockResolvedValue([]);
+    product.count.mockResolvedValue(0);
+
+    await service.findAllForAdminPaginated({
+      page: 1,
+      limit: 20,
+      featured: 'false',
+    });
+
+    const [args] = product.findMany.mock.calls;
+    expect(args[0].where).toEqual({ isFeatured: false });
+  });
+
+  it('sorts by updatedAt desc by default', async () => {
+    const { service, product } = buildService();
+    product.findMany.mockResolvedValue([]);
+    product.count.mockResolvedValue(0);
+
+    await service.findAllForAdminPaginated({ page: 1, limit: 20 });
+
+    const [args] = product.findMany.mock.calls;
+    expect(args[0].orderBy).toEqual({ updatedAt: 'desc' });
   });
 });

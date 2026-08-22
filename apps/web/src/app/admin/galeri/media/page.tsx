@@ -1,9 +1,9 @@
 "use client";
 
-import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
-import type { GalleryCategory, GalleryItem, GalleryMediaType, Media } from "@ppn/shared-types";
+import { Badge, Button, Card, cn, EmptyState, Input, Label, Pagination, Select, Textarea } from "@ppn/ui-components";
+import type { GalleryCategory, GalleryItem, GalleryMediaType, Media, PaginationMeta } from "@ppn/shared-types";
 import Image from "next/image";
-import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
@@ -18,6 +18,18 @@ const MEDIA_TYPE_LABELS: Record<GalleryMediaType, string> = {
   tiktok: "TikTok",
 };
 
+// 50 (the max page size Phase 5C allows) rather than the usual 20 default — Gallery's manual
+// drag-reorder (see `canReorder` below) only works when the full result set fits on one page,
+// so the larger size keeps reorder available for as many real galleries as possible while
+// still being a bounded, real limit rather than "load everything."
+const LIMIT = 50;
+
+const STATUS_OPTIONS = [
+  { value: "", label: "Semua Status" },
+  { value: "active", label: "Aktif" },
+  { value: "inactive", label: "Nonaktif" },
+];
+
 interface PendingFile {
   id: string;
   file: File;
@@ -28,27 +40,64 @@ interface PendingFile {
 }
 
 export default function AdminGalleryMediaPage() {
-  const fetchItems = useCallback(() => adminApi.get<GalleryItem[]>("/admin/gallery"), []);
   const fetchCategories = useCallback(
     () => adminApi.get<GalleryCategory[]>("/admin/gallery/categories"),
     [],
   );
-  const { data: items, status: itemsStatus, reload: reloadItems } = useAdminResource(fetchItems);
   const { data: categories, status: categoriesStatus, reload: reloadCategories } = useAdminResource(fetchCategories);
   const { showToast } = useToast();
 
+  const [items, setItems] = useState<GalleryItem[] | null>(null);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [itemsStatus, setItemsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
-    await Promise.all([reloadItems(), reloadCategories()]);
-  }, [reloadItems, reloadCategories]);
+  const loadItems = useCallback(async () => {
+    setItemsStatus("loading");
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
+      if (search.trim()) params.set("q", search.trim());
+      if (categoryFilter !== "all") params.set("category_id", categoryFilter);
+      if (statusFilter) params.set("status", statusFilter);
+      const result = await adminApi.getPaginated<GalleryItem[]>(`/admin/gallery?${params}`);
+      setItems(result.data);
+      setMeta(result.meta);
+      setItemsStatus("ready");
+    } catch {
+      setItemsStatus("error");
+    }
+  }, [page, search, categoryFilter, statusFilter]);
 
-  const filteredItems = useMemo(() => {
-    if (!items) return null;
-    if (categoryFilter === "all") return items;
-    return items.filter((item) => item.category.id === categoryFilter);
-  }, [items, categoryFilter]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount/on-filter-change; loadItems() sets state only inside its own async body, not synchronously in this effect
+    void loadItems();
+  }, [loadItems]);
+
+  // A search/filter change always jumps back to page 1 — a stale page number past the new
+  // (smaller) result set would otherwise show an empty list with no way back.
+  const [prevFilters, setPrevFilters] = useState({ search, categoryFilter, statusFilter });
+  if (
+    prevFilters.search !== search ||
+    prevFilters.categoryFilter !== categoryFilter ||
+    prevFilters.statusFilter !== statusFilter
+  ) {
+    setPrevFilters({ search, categoryFilter, statusFilter });
+    if (page !== 1) setPage(1);
+  }
+
+  const reload = useCallback(async () => {
+    await Promise.all([loadItems(), reloadCategories()]);
+  }, [loadItems, reloadCategories]);
+
+  // Reordering swaps `order` between two rows adjacent in the full order-sorted list — that's
+  // only safe when `items` genuinely IS the full list: unfiltered, unsearched, and not spread
+  // across more than one page. Any of those narrow `items` to a subset where "adjacent in this
+  // array" no longer means "adjacent in the real order sequence."
+  const canReorder = categoryFilter === "all" && !search.trim() && !statusFilter && (meta?.total_pages ?? 1) <= 1;
 
   async function handleUpdate(id: string, patch: Record<string, unknown>) {
     try {
@@ -74,7 +123,7 @@ export default function AdminGalleryMediaPage() {
   }
 
   async function handleMove(index: number, direction: -1 | 1) {
-    if (!items || categoryFilter !== "all") return;
+    if (!items || !canReorder) return;
     const target = index + direction;
     if (target < 0 || target >= items.length) return;
     const a = items[index];
@@ -94,14 +143,6 @@ export default function AdminGalleryMediaPage() {
     return <AdminLoadError message="Gagal memuat pustaka media." onRetry={() => void reload()} />;
   }
 
-  if (itemsStatus === "loading" || categoriesStatus === "loading" || !items || !categories || !filteredItems) {
-    return (
-      <div className="mt-6">
-        <SkeletonListRows rows={4} />
-      </div>
-    );
-  }
-
   return (
     <div>
       <h1 className="text-h2 text-neutral-900">Pustaka Media</h1>
@@ -110,59 +151,81 @@ export default function AdminGalleryMediaPage() {
         halaman Galeri publik.
       </p>
 
-      <AddMediaPanel categories={categories} onAdded={() => void reload()} />
+      {categories && <AddMediaPanel categories={categories} onAdded={() => void reload()} />}
 
       <Card className="mt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-h3 text-neutral-900">Semua Item ({filteredItems.length})</h2>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="category-filter" className="text-small">
-              Filter Kategori
-            </Label>
-            <select
-              id="category-filter"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-field border border-neutral-300 px-3 py-2 text-small"
-            >
-              <option value="all">Semua Kategori</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari judul, keterangan, atau lokasi..."
+            className="min-w-[16rem] flex-1 rounded-field border border-neutral-300 px-4 py-2.5 text-body focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-100"
+          />
+          <Select
+            aria-label="Filter kategori"
+            className="w-auto"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            options={[{ value: "all", label: "Semua Kategori" }, ...(categories?.map((c) => ({ value: c.id, label: c.name })) ?? [])]}
+          />
+          <Select
+            aria-label="Filter status"
+            className="w-auto"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={STATUS_OPTIONS}
+          />
         </div>
-        {categoryFilter !== "all" && (
-          <p className="mt-2 text-small text-neutral-500">
-            Urutan hanya dapat diubah saat filter kategori = &ldquo;Semua Kategori&rdquo;.
+
+        {meta && (
+          <p className="mt-3 text-small text-neutral-500">
+            {meta.total} item{categoryFilter !== "all" || search.trim() || statusFilter ? " ditemukan" : ""}
+          </p>
+        )}
+        {!canReorder && (
+          <p className="mt-1 text-small text-neutral-500">
+            Urutan hanya dapat diubah saat menampilkan Semua Kategori, tanpa pencarian/filter, dan seluruh item muat dalam satu halaman.
           </p>
         )}
 
-        <div className="mt-4 flex flex-col gap-4">
-          {filteredItems.length === 0 && (
-            <div className="rounded-field border border-dashed border-neutral-300 p-8 text-center">
-              <p className="text-body text-neutral-600">Belum ada media di kategori ini.</p>
-            </div>
-          )}
-          {filteredItems.map((item) => {
-            const globalIndex = items.findIndex((i) => i.id === item.id);
-            return (
-              <GalleryItemRow
-                key={item.id}
-                item={item}
-                categories={categories}
-                canReorder={categoryFilter === "all"}
-                isFirst={globalIndex === 0}
-                isLast={globalIndex === items.length - 1}
-                onUpdate={(patch) => void handleUpdate(item.id, patch)}
-                onMove={(direction) => void handleMove(globalIndex, direction)}
-                onDelete={() => setDeleteTargetId(item.id)}
+        {itemsStatus === "loading" && (
+          <div className="mt-4">
+            <SkeletonListRows rows={4} />
+          </div>
+        )}
+
+        {itemsStatus === "ready" && items && categories && (
+          <div className="mt-4 flex flex-col gap-4">
+            {items.length === 0 ? (
+              <EmptyState
+                title={
+                  search.trim()
+                    ? `Tidak ada item yang cocok dengan "${search.trim()}".`
+                    : categoryFilter !== "all" || statusFilter
+                      ? "Tidak ada item yang cocok dengan filter ini."
+                      : "Belum ada media di galeri ini."
+                }
               />
-            );
-          })}
-        </div>
+            ) : (
+              items.map((item, index) => (
+                <GalleryItemRow
+                  key={item.id}
+                  item={item}
+                  categories={categories}
+                  canReorder={canReorder}
+                  isFirst={index === 0}
+                  isLast={index === items.length - 1}
+                  onUpdate={(patch) => void handleUpdate(item.id, patch)}
+                  onMove={(direction) => void handleMove(index, direction)}
+                  onDelete={() => setDeleteTargetId(item.id)}
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {meta && <Pagination page={page} totalPages={meta.total_pages} onPageChange={setPage} />}
       </Card>
 
       {deleteTargetId && (
@@ -464,6 +527,7 @@ function GalleryItemRow({
         </div>
         <Badge variant="neutral">{MEDIA_TYPE_LABELS[item.media_type]}</Badge>
         {item.featured && <Badge variant="primary">Unggulan</Badge>}
+        {!item.active && <Badge variant="neutral">Nonaktif</Badge>}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3 border-b border-neutral-100 pb-3">
