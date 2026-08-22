@@ -1,13 +1,42 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { Faq } from "@ppn/shared-types";
+import { SUPPORTED_LOCALES, type Faq, type Locale } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { useToast } from "@/components/admin/Toast";
+
+/** Compact per-locale presence indicator (EN/ID/ZH/TH/HI/VI, ✓ or —) — English is always ✓
+ * since it's the source of truth; the other 5 are ✓ only when at least one field has real
+ * translated text, matching the same "translated means real text, not just row-exists" rule
+ * Products' TranslationStatusPanel already uses. */
+function TranslationStatus({ translations }: { translations: Faq["translations"] }) {
+  return (
+    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium text-neutral-500">
+      {SUPPORTED_LOCALES.map((locale) => {
+        const complete =
+          locale === "en" ||
+          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
+            (v) => v.trim().length > 0,
+          );
+        return (
+          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
+            {locale.toUpperCase()} {complete ? "✓" : "—"}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 export function FaqEditor() {
   const [faqs, setFaqs] = useState<Faq[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<Faq[]>("/admin/faqs");
@@ -41,9 +70,17 @@ export function FaqEditor() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus FAQ ini?")) return;
-    await adminApi.delete(`/admin/faqs/${id}`);
-    await load();
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/faqs/${id}`);
+      await load();
+      showToast("FAQ berhasil dihapus.");
+      setDeleteTargetId(null);
+    } catch {
+      showToast("Gagal menghapus FAQ. Silakan coba lagi.", "error");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function toggleStatus(faq: Faq) {
@@ -51,6 +88,23 @@ export function FaqEditor() {
       status: faq.status === "published" ? "draft" : "published",
     });
     await load();
+  }
+
+  async function handleSaveTranslation(
+    faq: Faq,
+    locale: Exclude<Locale, "en">,
+    field: "question" | "answer",
+    value: string,
+  ) {
+    const current = faq.translations ?? {};
+    try {
+      await adminApi.put(`/admin/faqs/${faq.id}`, {
+        translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+      });
+      await load();
+    } catch {
+      showToast("Gagal menyimpan terjemahan. Silakan coba lagi.", "error");
+    }
   }
 
   return (
@@ -71,11 +125,52 @@ export function FaqEditor() {
                 <button type="button" onClick={() => void toggleStatus(faq)} className="text-small text-primary-700 underline">
                   {faq.status === "published" ? "Sembunyikan" : "Tampilkan"}
                 </button>
-                <button type="button" onClick={() => void handleDelete(faq.id)} className="text-small text-red-600 underline">
+                <button type="button" onClick={() => setDeleteTargetId(faq.id)} className="text-small text-red-600 underline">
                   Hapus
                 </button>
               </div>
             </div>
+
+            <details className="mt-3 border-t border-neutral-100 pt-3">
+              <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                🌐 Translations
+                <TranslationStatus translations={faq.translations} />
+              </summary>
+              <div className="mt-3">
+                <LocaleTabs>
+                  {(locale) =>
+                    locale === "en" ? (
+                      <p className="text-small text-neutral-500">
+                        Bahasa Inggris diedit langsung pada field di atas.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <Label className="text-small">Pertanyaan</Label>
+                          <Input
+                            defaultValue={faq.translations?.[locale]?.question ?? ""}
+                            placeholder={faq.question}
+                            onBlur={(e) => void handleSaveTranslation(faq, locale, "question", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Jawaban</Label>
+                          <Textarea
+                            rows={2}
+                            defaultValue={faq.translations?.[locale]?.answer ?? ""}
+                            placeholder={faq.answer}
+                            onBlur={(e) => void handleSaveTranslation(faq, locale, "answer", e.target.value)}
+                          />
+                        </div>
+                        <p className="text-small text-neutral-500">
+                          Kosongkan untuk memakai teks Inggris sebagai fallback.
+                        </p>
+                      </div>
+                    )
+                  }
+                </LocaleTabs>
+              </div>
+            </details>
           </div>
         ))}
       </div>
@@ -94,6 +189,18 @@ export function FaqEditor() {
           Tambah FAQ
         </Button>
       </form>
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus FAQ?"
+          message="Pertanyaan dan jawaban ini akan dihapus dari section FAQ. Tindakan ini tidak dapat dibatalkan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete(deleteTargetId);
+          }}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </Card>
   );
 }

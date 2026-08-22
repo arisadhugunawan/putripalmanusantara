@@ -1,15 +1,37 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
-import { getMediaPolicy } from "@ppn/shared-types";
-import type { HeroButtonStyle, HeroSlide, HeroTextAlignment } from "@ppn/shared-types";
+import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
+import type { HeroButtonStyle, HeroSlide, HeroTextAlignment, Locale } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { HeroSlidePreviewModal } from "@/components/admin/HeroSlidePreviewModal";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { useToast } from "@/components/admin/Toast";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+
+/** Compact per-locale presence indicator — English is always ✓ (it's the source of truth);
+ * the other 5 are ✓ only once at least one field actually has translated text. */
+function HeroSlideTranslationStatus({ translations }: { translations: HeroSlide["translations"] }) {
+  return (
+    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium normal-case tracking-normal text-neutral-500">
+      {SUPPORTED_LOCALES.map((locale) => {
+        const complete =
+          locale === "en" ||
+          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
+            (v) => v.trim().length > 0,
+          );
+        return (
+          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
+            {locale.toUpperCase()} {complete ? "✓" : "—"}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 const HERO_BUTTON_STYLES: { value: HeroButtonStyle; label: string }[] = [
   { value: "primary", label: "Primary (hijau solid)" },
@@ -224,6 +246,17 @@ export function HeroSlideCard({
 
   const button1Warn = slide.button_1_enabled && (!slide.button_1_text || !slide.button_1_link);
   const button2Warn = slide.button_2_enabled && (!slide.button_2_text || !slide.button_2_link);
+
+  function onUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "eyebrowText" | "heading" | "subheading" | "description" | "button1Text" | "button2Text",
+    value: string,
+  ) {
+    const current = slide.translations ?? {};
+    onUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
+  }
 
   return (
     <div className="rounded-field border border-neutral-200 p-4">
@@ -505,6 +538,81 @@ export function HeroSlideCard({
           />
         </div>
       </div>
+
+      {/* ── 6. Translations ── */}
+      <details className="mt-4 border-t border-neutral-100 pt-4">
+        <summary className="flex cursor-pointer items-center gap-2 text-small font-semibold uppercase tracking-wide text-neutral-500">
+          6. Translations
+          <HeroSlideTranslationStatus translations={slide.translations} />
+        </summary>
+        <div className="mt-3">
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <p className="text-small text-neutral-500">
+                  Bahasa Inggris diedit langsung pada field di atas (Section 1 &amp; 2).
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Label className="text-small">Eyebrow Text</Label>
+                    <Input
+                      defaultValue={slide.translations?.[locale]?.eyebrowText ?? ""}
+                      placeholder={slide.eyebrow_text ?? ""}
+                      onBlur={(e) => onUpdateTranslation(locale, "eyebrowText", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Heading</Label>
+                    <Input
+                      defaultValue={slide.translations?.[locale]?.heading ?? ""}
+                      placeholder={slide.heading}
+                      onBlur={(e) => onUpdateTranslation(locale, "heading", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Sub Heading</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={slide.translations?.[locale]?.subheading ?? ""}
+                      placeholder={slide.subheading}
+                      onBlur={(e) => onUpdateTranslation(locale, "subheading", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Deskripsi</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={slide.translations?.[locale]?.description ?? ""}
+                      placeholder={slide.description ?? ""}
+                      onBlur={(e) => onUpdateTranslation(locale, "description", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Button 1 — Teks</Label>
+                    <Input
+                      defaultValue={slide.translations?.[locale]?.button1Text ?? ""}
+                      placeholder={slide.button_1_text ?? ""}
+                      onBlur={(e) => onUpdateTranslation(locale, "button1Text", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Button 2 — Teks</Label>
+                    <Input
+                      defaultValue={slide.translations?.[locale]?.button2Text ?? ""}
+                      placeholder={slide.button_2_text ?? ""}
+                      onBlur={(e) => onUpdateTranslation(locale, "button2Text", e.target.value)}
+                    />
+                  </div>
+                  <p className="text-small text-neutral-500">
+                    Kosongkan untuk memakai teks Inggris sebagai fallback.
+                  </p>
+                </div>
+              )
+            }
+          </LocaleTabs>
+        </div>
+      </details>
     </div>
   );
 }

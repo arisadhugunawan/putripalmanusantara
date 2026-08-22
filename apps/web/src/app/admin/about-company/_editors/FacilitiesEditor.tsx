@@ -1,8 +1,8 @@
 "use client";
 
-import { Badge, Card, cn } from "@ppn/ui-components";
-import { getMediaPolicy } from "@ppn/shared-types";
-import type { Facility, Media } from "@ppn/shared-types";
+import { Badge, Card, cn, Input, Label } from "@ppn/ui-components";
+import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
+import type { Facility, Locale, Media } from "@ppn/shared-types";
 import Image from "next/image";
 import { useCallback, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
@@ -10,9 +10,32 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
+
+/** Compact per-locale presence indicator — English is always ✓ (it's the source of truth, and
+ * per this editor's own doc comment, seed-owned and never admin-edited); the other 5 are ✓
+ * only once at least one field actually has translated text. */
+function TranslationStatus({ translations }: { translations: Facility["translations"] }) {
+  return (
+    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium text-neutral-500">
+      {SUPPORTED_LOCALES.map((locale) => {
+        const complete =
+          locale === "en" ||
+          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
+            (v) => v.trim().length > 0,
+          );
+        return (
+          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
+            {locale.toUpperCase()} {complete ? "✓" : "—"}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 // Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
 const MAX_PHOTO_BYTES = getMediaPolicy("facility").maxBytes;
@@ -72,6 +95,23 @@ function FacilityCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const photoCount = facility.gallery.length;
+  const { showToast } = useToast();
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "name" | "description" | "facilityType" | "location" | "status",
+    value: string,
+  ) {
+    const current = facility.translations ?? {};
+    try {
+      await adminApi.put(`/admin/about-company/facilities/${facility.id}`, {
+        translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+      });
+      await onReload();
+    } catch {
+      showToast("Gagal menyimpan terjemahan.", "error");
+    }
+  }
 
   return (
     <div className="rounded-field border border-neutral-200 p-4">
@@ -104,6 +144,71 @@ function FacilityCard({
       </div>
 
       {expanded && <FacilityPhotoManager facility={facility} onReload={onReload} />}
+
+      <details className="mt-3 border-t border-neutral-100 pt-3">
+        <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+          🌐 Translations
+          <TranslationStatus translations={facility.translations} />
+        </summary>
+        <div className="mt-3">
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <p className="text-small text-neutral-500">
+                  Nama/deskripsi bahasa Inggris ditetapkan oleh daftar 10 fasilitas tetap dan
+                  tidak dapat diubah admin (lihat catatan di atas halaman ini).
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Label className="text-small">Nama</Label>
+                    <Input
+                      defaultValue={facility.translations?.[locale]?.name ?? ""}
+                      placeholder={facility.name}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "name", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Deskripsi</Label>
+                    <Input
+                      defaultValue={facility.translations?.[locale]?.description ?? ""}
+                      placeholder={facility.description}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "description", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Tipe Fasilitas (opsional)</Label>
+                    <Input
+                      defaultValue={facility.translations?.[locale]?.facilityType ?? ""}
+                      placeholder={facility.facility_type ?? ""}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "facilityType", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Lokasi (opsional)</Label>
+                    <Input
+                      defaultValue={facility.translations?.[locale]?.location ?? ""}
+                      placeholder={facility.location ?? ""}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "location", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Status (opsional)</Label>
+                    <Input
+                      defaultValue={facility.translations?.[locale]?.status ?? ""}
+                      placeholder={facility.status ?? ""}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "status", e.target.value)}
+                    />
+                  </div>
+                  <p className="text-small text-neutral-500">
+                    Kosongkan untuk memakai teks Inggris sebagai fallback.
+                  </p>
+                </div>
+              )
+            }
+          </LocaleTabs>
+        </div>
+      </details>
     </div>
   );
 }

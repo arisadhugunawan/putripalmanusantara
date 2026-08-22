@@ -98,8 +98,11 @@ export class HomepageService {
     const stats = await this.prisma.homepageStatistic.findMany({
       orderBy: { order: 'asc' },
     });
-    // Explicit reshape (not a raw pass-through) — omits the raw `translations` blob from
-    // the public response, matching the Product/Article/Facility mapper pattern.
+    // Explicit reshape (not a raw pass-through) — but `translations` is still included
+    // unconditionally, same as the HeroSlide/TeamMember/Facility/LegalDocument/FactoryProfile
+    // mappers, so the one admin route this method also serves (`GET /admin/homepage/statistics`)
+    // can populate LocaleTabs. Harmless on the public path: locale-resolved `label`/`value`
+    // above are what the site actually renders, this is just extra payload.
     return stats.map((stat) => {
       const t = translate(stat, stat.translations, locale, ['label', 'value']);
       return {
@@ -108,6 +111,7 @@ export class HomepageService {
         value: t.value,
         icon: stat.icon,
         order: stat.order,
+        translations: stat.translations as HomepageStatistic['translations'],
       };
     });
   }

@@ -4,6 +4,8 @@ import { Button, Card, Input, Label } from "@ppn/ui-components";
 import type { HomepageHighlight, HomepageHighlightIcon } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
 
 const HIGHLIGHT_ICONS: { value: HomepageHighlightIcon; label: string }[] = [
   { value: "quality", label: "Quality (centang)" },
@@ -18,6 +20,9 @@ const HIGHLIGHT_ICONS: { value: HomepageHighlightIcon; label: string }[] = [
 export function HighlightEditor() {
   const [highlights, setHighlights] = useState<HomepageHighlight[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<HomepageHighlight[]>("/admin/homepage/highlights");
@@ -58,9 +63,17 @@ export function HighlightEditor() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus highlight card ini?")) return;
-    await adminApi.delete(`/admin/homepage/highlights/${id}`);
-    await load();
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/homepage/highlights/${id}`);
+      await load();
+      showToast("Highlight card berhasil dihapus.");
+      setDeleteTargetId(null);
+    } catch {
+      showToast("Gagal menghapus highlight card. Silakan coba lagi.", "error");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -101,7 +114,7 @@ export function HighlightEditor() {
               />
               Aktif
             </label>
-            <button type="button" onClick={() => void handleDelete(highlight.id)} className="ml-auto text-small text-red-600 underline">
+            <button type="button" onClick={() => setDeleteTargetId(highlight.id)} className="ml-auto text-small text-red-600 underline">
               Hapus
             </button>
           </div>
@@ -133,6 +146,18 @@ export function HighlightEditor() {
           Tambah Highlight
         </Button>
       </form>
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus Highlight Card?"
+          message="Kartu keunggulan ini akan dihapus dari section About Company Preview. Tindakan ini tidak dapat dibatalkan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete(deleteTargetId);
+          }}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </Card>
   );
 }

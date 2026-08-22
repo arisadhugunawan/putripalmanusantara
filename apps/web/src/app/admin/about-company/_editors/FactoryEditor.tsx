@@ -1,8 +1,8 @@
 "use client";
 
 import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
-import { getMediaPolicy } from "@ppn/shared-types";
-import type { FactoryProfile } from "@ppn/shared-types";
+import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
+import type { FactoryProfile, Locale } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useCallback, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
@@ -11,9 +11,31 @@ import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DocumentUploadField } from "@/components/admin/DocumentUploadField";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
+
+/** Compact per-locale presence indicator — English is always ✓ (it's the source of truth);
+ * the other 5 are ✓ only once at least one field actually has translated text. */
+function FactoryTranslationStatus({ translations }: { translations: FactoryProfile["translations"] }) {
+  return (
+    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium text-neutral-500">
+      {SUPPORTED_LOCALES.map((locale) => {
+        const complete =
+          locale === "en" ||
+          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
+            (v) => v.trim().length > 0,
+          );
+        return (
+          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
+            {locale.toUpperCase()} {complete ? "✓" : "—"}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 // Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
 const MAX_IMAGE_BYTES = getMediaPolicy("facility").maxBytes;
@@ -41,6 +63,25 @@ export function FactoryEditor() {
     } catch {
       showToast("Changes could not be saved.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field:
+      | "eyebrow"
+      | "name"
+      | "shortDescription"
+      | "detailedDescription"
+      | "location"
+      | "operationalInfo"
+      | "capacity"
+      | "additionalNotes",
+    value: string,
+  ) {
+    const current = factory?.translations ?? {};
+    await handleUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleAddGalleryImage(mediaId: string) {
@@ -249,6 +290,98 @@ export function FactoryEditor() {
             </div>
           </div>
         </div>
+
+        <details className="mt-4 border-t border-neutral-100 pt-4">
+          <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+            🌐 Translations
+            <FactoryTranslationStatus translations={factory.translations} />
+          </summary>
+          <div className="mt-3">
+            <LocaleTabs>
+              {(locale) =>
+                locale === "en" ? (
+                  <p className="text-small text-neutral-500">
+                    Bahasa Inggris diedit langsung pada field-field di atas.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <Label className="text-small">Eyebrow</Label>
+                      <Input
+                        defaultValue={factory.translations?.[locale]?.eyebrow ?? ""}
+                        placeholder={factory.eyebrow}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "eyebrow", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Nama Factory (Heading)</Label>
+                      <Input
+                        defaultValue={factory.translations?.[locale]?.name ?? ""}
+                        placeholder={factory.name}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "name", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Deskripsi Singkat</Label>
+                      <Textarea
+                        rows={2}
+                        defaultValue={factory.translations?.[locale]?.shortDescription ?? ""}
+                        placeholder={factory.short_description}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "shortDescription", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Deskripsi Detail</Label>
+                      <Textarea
+                        rows={4}
+                        defaultValue={factory.translations?.[locale]?.detailedDescription ?? ""}
+                        placeholder={factory.detailed_description}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "detailedDescription", e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label className="text-small">Lokasi</Label>
+                        <Input
+                          defaultValue={factory.translations?.[locale]?.location ?? ""}
+                          placeholder={factory.location ?? ""}
+                          onBlur={(e) => void handleUpdateTranslation(locale, "location", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-small">Kapasitas</Label>
+                        <Input
+                          defaultValue={factory.translations?.[locale]?.capacity ?? ""}
+                          placeholder={factory.capacity ?? ""}
+                          onBlur={(e) => void handleUpdateTranslation(locale, "capacity", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-small">Informasi Operasional</Label>
+                        <Input
+                          defaultValue={factory.translations?.[locale]?.operationalInfo ?? ""}
+                          placeholder={factory.operational_info ?? ""}
+                          onBlur={(e) => void handleUpdateTranslation(locale, "operationalInfo", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-small">Catatan Tambahan</Label>
+                        <Input
+                          defaultValue={factory.translations?.[locale]?.additionalNotes ?? ""}
+                          placeholder={factory.additional_notes ?? ""}
+                          onBlur={(e) => void handleUpdateTranslation(locale, "additionalNotes", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-small text-neutral-500">
+                      Kosongkan untuk memakai teks Inggris sebagai fallback.
+                    </p>
+                  </div>
+                )
+              }
+            </LocaleTabs>
+          </div>
+        </details>
       </Card>
 
       <Card className="mt-6">

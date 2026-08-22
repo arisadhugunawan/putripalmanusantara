@@ -5,6 +5,7 @@ import type { Media, MediaFileType, MediaUsage, PaginationMeta } from "@ppn/shar
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { useAuth } from "@/lib/admin/auth-context";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
@@ -60,6 +61,10 @@ export default function AdminMediaLibraryPage() {
   const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<Media | null>(null);
   const [permanentDeleteError, setPermanentDeleteError] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { admin } = useAuth();
+  // Server-side is the real guard (RolesGuard on DELETE :id/permanent) — this only avoids
+  // showing an editor a button that would 403.
+  const canPermanentDelete = admin?.role === "super_admin";
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -242,6 +247,7 @@ export default function AdminMediaLibraryPage() {
         <MediaDetailModal
           media={detailTarget}
           isTrash={tab === "trash"}
+          canPermanentDelete={canPermanentDelete}
           onClose={() => setDetailTarget(null)}
           onTrash={() => setTrashTarget(detailTarget)}
           onRestore={() => void handleRestore(detailTarget)}
@@ -331,6 +337,7 @@ function MediaCard({ media, onOpen }: { media: Media; onOpen: () => void }) {
 function MediaDetailModal({
   media,
   isTrash,
+  canPermanentDelete,
   onClose,
   onTrash,
   onRestore,
@@ -338,6 +345,7 @@ function MediaDetailModal({
 }: {
   media: Media;
   isTrash: boolean;
+  canPermanentDelete: boolean;
   onClose: () => void;
   onTrash: () => void;
   onRestore: () => void;
@@ -449,9 +457,11 @@ function MediaDetailModal({
               <Button type="button" variant="secondary" onClick={onRestore}>
                 Restore
               </Button>
-              <button type="button" onClick={onPermanentDelete} className="text-small font-medium text-red-600 underline">
-                Permanent Delete
-              </button>
+              {canPermanentDelete && (
+                <button type="button" onClick={onPermanentDelete} className="text-small font-medium text-red-600 underline">
+                  Permanent Delete
+                </button>
+              )}
             </>
           ) : (
             <button type="button" onClick={onTrash} className="text-small font-medium text-red-600 underline">

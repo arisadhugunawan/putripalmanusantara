@@ -15,6 +15,8 @@ export interface HomepageStatistic {
   value: string;
   icon: string | null;
   order: number;
+  /** Admin-only — present so the CMS can populate LocaleTabs. */
+  translations?: Translations | null;
 }
 
 export interface Faq {
@@ -23,6 +25,8 @@ export interface Faq {
   answer: string;
   order: number;
   status: "draft" | "published";
+  /** Admin-only — present so the CMS can populate LocaleTabs. */
+  translations?: Translations | null;
 }
 
 /** Homepage hero carousel slide (Post-Launch). Zero slides is valid — the public site

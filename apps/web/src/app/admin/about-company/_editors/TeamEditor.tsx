@@ -1,8 +1,8 @@
 "use client";
 
 import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
-import { getMediaPolicy } from "@ppn/shared-types";
-import type { TeamMember } from "@ppn/shared-types";
+import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
+import type { Locale, TeamMember } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useCallback, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
@@ -11,16 +11,41 @@ import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin/ListToolbar";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
+
+/** Compact per-locale presence indicator, used as a `FieldGroup` title — English is always ✓
+ * (it's the source of truth); the other 5 are ✓ only once at least one field has real text. */
+function TranslationsGroupTitle({ translations }: { translations: TeamMember["translations"] }) {
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      6 · Translations
+      <span className="flex flex-wrap gap-1.5 normal-case tracking-normal text-neutral-500">
+        {SUPPORTED_LOCALES.map((locale) => {
+          const complete =
+            locale === "en" ||
+            Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
+              (v) => v.trim().length > 0,
+            );
+          return (
+            <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
+              {locale.toUpperCase()} {complete ? "✓" : "—"}
+            </span>
+          );
+        })}
+      </span>
+    </span>
+  );
+}
 
 // Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
 const MAX_PHOTO_BYTES = getMediaPolicy("team").maxBytes;
 
 /** One labelled group inside a member's form — keeps a member card from becoming a single
  * undifferentiated wall of inputs (brief item 79). */
-function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function FieldGroup({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <fieldset className="mt-4 border-t border-neutral-100 pt-3">
       <legend className="sr-only">{title}</legend>
@@ -105,6 +130,18 @@ export function TeamEditor() {
       );
       await reload();
     }
+  }
+
+  async function handleUpdateTranslation(
+    member: TeamMember,
+    locale: Exclude<Locale, "en">,
+    field: "name" | "position" | "biography" | "responsibilities",
+    value: string,
+  ) {
+    const current = member.translations ?? {};
+    await handleUpdate(member.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleDelete() {
@@ -399,6 +436,66 @@ export function TeamEditor() {
                 <p className="mt-1 text-small text-neutral-500">
                   Hanya field yang diisi yang tampil di halaman publik — tidak akan ada ikon kosong.
                 </p>
+              </FieldGroup>
+
+              <FieldGroup title={<TranslationsGroupTitle translations={member.translations} />}>
+                <LocaleTabs>
+                  {(locale) =>
+                    locale === "en" ? (
+                      <p className="text-small text-neutral-500">
+                        Bahasa Inggris diedit langsung pada field di atas (1–4).
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <Label className="text-small">Nama</Label>
+                          <Input
+                            defaultValue={member.translations?.[locale]?.name ?? ""}
+                            placeholder={member.name}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(member, locale, "name", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Posisi</Label>
+                          <Input
+                            defaultValue={member.translations?.[locale]?.position ?? ""}
+                            placeholder={member.position}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(member, locale, "position", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Biografi Singkat</Label>
+                          <Textarea
+                            rows={3}
+                            defaultValue={member.translations?.[locale]?.biography ?? ""}
+                            placeholder={member.biography}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(member, locale, "biography", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Responsibilities</Label>
+                          <Textarea
+                            rows={3}
+                            defaultValue={member.translations?.[locale]?.responsibilities ?? ""}
+                            placeholder={member.responsibilities}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(member, locale, "responsibilities", e.target.value)
+                            }
+                          />
+                        </div>
+                        <p className="text-small text-neutral-500">
+                          Kosongkan untuk memakai teks Inggris sebagai fallback.
+                        </p>
+                      </div>
+                    )
+                  }
+                </LocaleTabs>
               </FieldGroup>
             </div>
           );

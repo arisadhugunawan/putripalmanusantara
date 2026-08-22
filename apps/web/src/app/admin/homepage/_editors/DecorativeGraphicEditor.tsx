@@ -4,6 +4,8 @@ import { Button, Card, Input, Label } from "@ppn/ui-components";
 import type { DecorativeGraphic, DecorativeGraphicPlacement, DecorativeGraphicVariant } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { useToast } from "@/components/admin/Toast";
 
 const DECORATIVE_PLACEMENTS: { value: DecorativeGraphicPlacement; label: string }[] = [
   { value: "hero_behind_content", label: "Di Belakang Konten Hero" },
@@ -49,6 +51,9 @@ export function DecorativeGraphicEditor() {
   const [graphics, setGraphics] = useState<DecorativeGraphic[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pageFilter, setPageFilter] = useState<string>("home");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   async function load() {
     const data = await adminApi.get<DecorativeGraphic[]>("/admin/homepage/decorative-graphics");
@@ -87,9 +92,17 @@ export function DecorativeGraphicEditor() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus elemen dekoratif ini?")) return;
-    await adminApi.delete(`/admin/homepage/decorative-graphics/${id}`);
-    await load();
+    setDeleting(true);
+    try {
+      await adminApi.delete(`/admin/homepage/decorative-graphics/${id}`);
+      await load();
+      showToast("Elemen dekoratif berhasil dihapus.");
+      setDeleteTargetId(null);
+    } catch {
+      showToast("Gagal menghapus elemen dekoratif. Silakan coba lagi.", "error");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const filtered = graphics?.filter((g) => g.page === pageFilter) ?? [];
@@ -180,7 +193,7 @@ export function DecorativeGraphicEditor() {
               />
               Aktif
             </label>
-            <button type="button" onClick={() => void handleDelete(graphic.id)} className="ml-auto text-small text-red-600 underline">
+            <button type="button" onClick={() => setDeleteTargetId(graphic.id)} className="ml-auto text-small text-red-600 underline">
               Hapus
             </button>
           </div>
@@ -227,6 +240,18 @@ export function DecorativeGraphicEditor() {
         <Button type="submit">Tambah ke &ldquo;{PAGE_SCOPES.find((p) => p.value === pageFilter)?.label}&rdquo;</Button>
       </form>
       {error && <p className="mt-2 text-small text-red-600">{error}</p>}
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Hapus Elemen Dekoratif?"
+          message="Ilustrasi watermark ini akan dihapus dari section terkait. Tindakan ini tidak dapat dibatalkan."
+          confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+          onConfirm={() => {
+            if (!deleting) void handleDelete(deleteTargetId);
+          }}
+          onCancel={() => setDeleteTargetId(null)}
+        />
+      )}
     </Card>
   );
 }
