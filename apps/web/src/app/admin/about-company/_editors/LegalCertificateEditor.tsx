@@ -6,7 +6,6 @@ import {
   getMediaPolicy,
   isLegalDocumentExpired,
   legalDocumentCategoryLabel,
-  SUPPORTED_LOCALES,
 } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useCallback, useState } from "react";
@@ -20,32 +19,8 @@ import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
-
-/** Compact per-locale presence indicator — English is always ✓ (it's the source of truth);
- * the other 5 are ✓ only once at least one field actually has translated text. */
-function LegalDocTranslationStatus({
-  translations,
-}: {
-  translations: LegalCertificateDocument["translations"];
-}) {
-  return (
-    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium text-neutral-500">
-      {SUPPORTED_LOCALES.map((locale) => {
-        const complete =
-          locale === "en" ||
-          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
-            (v) => v.trim().length > 0,
-          );
-        return (
-          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
-            {locale.toUpperCase()} {complete ? "✓" : "—"}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
 
 // Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
 const MAX_PDF_BYTES = getMediaPolicy("document").maxBytes;
@@ -472,7 +447,10 @@ export function LegalCertificateEditor() {
               <details className="mt-3 border-t border-neutral-100 pt-3">
                 <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
                   🌐 Translations
-                  <LegalDocTranslationStatus translations={doc.translations} />
+                  <TranslationStatusBadges
+                    translations={doc.translations}
+                    base={{ title: doc.title, description: doc.description }}
+                  />
                 </summary>
                 <div className="mt-3">
                   <LocaleTabs>

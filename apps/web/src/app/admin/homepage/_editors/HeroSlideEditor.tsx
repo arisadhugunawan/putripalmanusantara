@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, EmptyState, Input, Label, Textarea } from "@ppn/ui-components";
-import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
+import { getMediaPolicy } from "@ppn/shared-types";
 import type { HeroButtonStyle, HeroSlide, HeroTextAlignment, Locale } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
@@ -9,28 +9,19 @@ import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { HeroSlidePreviewModal } from "@/components/admin/HeroSlidePreviewModal";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 
-/** Compact per-locale presence indicator — English is always ✓ (it's the source of truth);
- * the other 5 are ✓ only once at least one field actually has translated text. */
-function HeroSlideTranslationStatus({ translations }: { translations: HeroSlide["translations"] }) {
-  return (
-    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium normal-case tracking-normal text-neutral-500">
-      {SUPPORTED_LOCALES.map((locale) => {
-        const complete =
-          locale === "en" ||
-          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
-            (v) => v.trim().length > 0,
-          );
-        return (
-          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
-            {locale.toUpperCase()} {complete ? "✓" : "—"}
-          </span>
-        );
-      })}
-    </span>
-  );
+function heroSlideTranslationBase(slide: HeroSlide) {
+  return {
+    eyebrowText: slide.eyebrow_text,
+    heading: slide.heading,
+    subheading: slide.subheading,
+    description: slide.description,
+    button1Text: slide.button_1_text,
+    button2Text: slide.button_2_text,
+  };
 }
 
 const HERO_BUTTON_STYLES: { value: HeroButtonStyle; label: string }[] = [
@@ -539,7 +530,7 @@ export function HeroSlideCard({
       <details className="mt-4 border-t border-neutral-100 pt-4">
         <summary className="flex cursor-pointer items-center gap-2 text-small font-semibold uppercase tracking-wide text-neutral-500">
           6. Translations
-          <HeroSlideTranslationStatus translations={slide.translations} />
+          <TranslationStatusBadges translations={slide.translations} base={heroSlideTranslationBase(slide)} />
         </summary>
         <div className="mt-3">
           <LocaleTabs>

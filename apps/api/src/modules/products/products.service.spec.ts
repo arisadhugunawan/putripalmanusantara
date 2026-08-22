@@ -380,3 +380,43 @@ describe('ProductsService.findAllForAdminPaginated', () => {
     expect(args[0].orderBy).toEqual({ updatedAt: 'desc' });
   });
 });
+
+describe('ProductsService.update — translation preservation (Phase 5D)', () => {
+  it('persists a translations object spanning multiple locales unmodified — editing one locale must not drop the others', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' }); // assertExists
+    const translationsWithAllLocales = {
+      id: { name: 'Kopra' },
+      zh: { name: '椰干' },
+      th: { name: 'มะพร้าวแห้ง' },
+      vi: { name: 'Cùi dừa khô' }, // the locale being "edited" in this save
+    };
+    product.update.mockResolvedValue(stubProductRow());
+
+    await service.update('p1', {
+      translations: translationsWithAllLocales,
+    });
+
+    const [args] = product.update.mock.calls;
+    expect(args[0].data.translations).toEqual(translationsWithAllLocales);
+    // Explicitly: the other three locales are still present, unchanged, in what gets written —
+    // a regression that rebuilt `translations` from only the current locale would fail this.
+    expect(args[0].data.translations.id).toEqual({ name: 'Kopra' });
+    expect(args[0].data.translations.zh).toEqual({ name: '椰干' });
+    expect(args[0].data.translations.th).toEqual({ name: 'มะพร้าวแห้ง' });
+  });
+
+  it('does not touch the translations column at all when the caller omits it from the update', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' });
+    product.update.mockResolvedValue(stubProductRow());
+
+    await service.update('p1', { name: 'Copra (renamed)' });
+
+    const [args] = product.update.mock.calls;
+    // Prisma treats an `undefined` value as "leave this column alone" — asserting it here
+    // guards against a future change that starts always writing `translations: dto.translations
+    // ?? {}` (which WOULD silently wipe existing translations on any English-only edit).
+    expect(args[0].data.translations).toBeUndefined();
+  });
+});

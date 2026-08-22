@@ -1,35 +1,13 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
-import { SUPPORTED_LOCALES, type Faq, type Locale } from "@ppn/shared-types";
+import type { Faq, Locale } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
-
-/** Compact per-locale presence indicator (EN/ID/ZH/TH/HI/VI, ✓ or —) — English is always ✓
- * since it's the source of truth; the other 5 are ✓ only when at least one field has real
- * translated text, matching the same "translated means real text, not just row-exists" rule
- * Products' TranslationStatusPanel already uses. */
-function TranslationStatus({ translations }: { translations: Faq["translations"] }) {
-  return (
-    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium text-neutral-500">
-      {SUPPORTED_LOCALES.map((locale) => {
-        const complete =
-          locale === "en" ||
-          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
-            (v) => v.trim().length > 0,
-          );
-        return (
-          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
-            {locale.toUpperCase()} {complete ? "✓" : "—"}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
 
 export function FaqEditor() {
   const [faqs, setFaqs] = useState<Faq[] | null>(null);
@@ -134,7 +112,10 @@ export function FaqEditor() {
             <details className="mt-3 border-t border-neutral-100 pt-3">
               <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
                 🌐 Translations
-                <TranslationStatus translations={faq.translations} />
+                <TranslationStatusBadges
+                  translations={faq.translations}
+                  base={{ question: faq.question, answer: faq.answer }}
+                />
               </summary>
               <div className="mt-3">
                 <LocaleTabs>

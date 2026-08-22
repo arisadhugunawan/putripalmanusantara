@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, cn, FormField, Input, Label, Textarea } from "@ppn/ui-components";
-import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
+import { getMediaPolicy } from "@ppn/shared-types";
 import type { Locale, TeamMember } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useCallback, useState } from "react";
@@ -14,28 +14,30 @@ import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
-/** Compact per-locale presence indicator, used as a `FieldGroup` title — English is always ✓
- * (it's the source of truth); the other 5 are ✓ only once at least one field has real text. */
-function TranslationsGroupTitle({ translations }: { translations: TeamMember["translations"] }) {
+function teamMemberTranslationBase(member: TeamMember) {
+  return {
+    name: member.name,
+    position: member.position,
+    biography: member.biography,
+    responsibilities: member.responsibilities,
+    department: member.department,
+  };
+}
+
+/** `FieldGroup` title showing "6 · Translations" plus the shared per-locale completeness
+ * badges — used instead of a bare heading so a row's translation gaps are visible without
+ * expanding the group. */
+function TranslationsGroupTitle({ member }: { member: TeamMember }) {
   return (
     <span className="flex flex-wrap items-center gap-2">
       6 · Translations
-      <span className="flex flex-wrap gap-1.5 normal-case tracking-normal text-neutral-500">
-        {SUPPORTED_LOCALES.map((locale) => {
-          const complete =
-            locale === "en" ||
-            Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
-              (v) => v.trim().length > 0,
-            );
-          return (
-            <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
-              {locale.toUpperCase()} {complete ? "✓" : "—"}
-            </span>
-          );
-        })}
-      </span>
+      <TranslationStatusBadges
+        translations={member.translations}
+        base={teamMemberTranslationBase(member)}
+      />
     </span>
   );
 }
@@ -135,7 +137,7 @@ export function TeamEditor() {
   async function handleUpdateTranslation(
     member: TeamMember,
     locale: Exclude<Locale, "en">,
-    field: "name" | "position" | "biography" | "responsibilities",
+    field: "name" | "position" | "biography" | "responsibilities" | "department",
     value: string,
   ) {
     const current = member.translations ?? {};
@@ -438,7 +440,7 @@ export function TeamEditor() {
                 </p>
               </FieldGroup>
 
-              <FieldGroup title={<TranslationsGroupTitle translations={member.translations} />}>
+              <FieldGroup title={<TranslationsGroupTitle member={member} />}>
                 <LocaleTabs>
                   {(locale) =>
                     locale === "en" ? (
@@ -464,6 +466,16 @@ export function TeamEditor() {
                             placeholder={member.position}
                             onBlur={(e) =>
                               void handleUpdateTranslation(member, locale, "position", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Departemen</Label>
+                          <Input
+                            defaultValue={member.translations?.[locale]?.department ?? ""}
+                            placeholder={member.department ?? ""}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(member, locale, "department", e.target.value)
                             }
                           />
                         </div>

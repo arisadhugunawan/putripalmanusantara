@@ -1,31 +1,11 @@
 "use client";
 
 import { Button, Card, Input, Label } from "@ppn/ui-components";
-import { SUPPORTED_LOCALES, type HomepageStatistic, type Locale } from "@ppn/shared-types";
+import type { HomepageStatistic, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
-
-/** Compact per-locale presence indicator — English is always ✓ (it's the source of truth);
- * the other 5 are ✓ only once at least one field actually has translated text. */
-function TranslationStatus({ translations }: { translations: HomepageStatistic["translations"] }) {
-  return (
-    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium text-neutral-500">
-      {SUPPORTED_LOCALES.map((locale) => {
-        const complete =
-          locale === "en" ||
-          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
-            (v) => v.trim().length > 0,
-          );
-        return (
-          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
-            {locale.toUpperCase()} {complete ? "✓" : "—"}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
 export function StatisticsEditor() {
   const [stats, setStats] = useState<HomepageStatistic[]>([]);
@@ -121,7 +101,10 @@ export function StatisticsEditor() {
             <details className="mt-3 border-t border-neutral-100 pt-3">
               <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
                 🌐 Translations
-                <TranslationStatus translations={stat.translations} />
+                <TranslationStatusBadges
+                  translations={stat.translations}
+                  base={{ label: stat.label, value: stat.value }}
+                />
               </summary>
               <div className="mt-3">
                 <LocaleTabs>

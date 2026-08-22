@@ -2,7 +2,7 @@
 
 import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
-import { useState } from "react";
+import { KeyboardEvent, useId, useRef, useState } from "react";
 
 /**
  * Tab strip for editing a translatable field group across all 6 languages. Purely a UI/state
@@ -15,22 +15,65 @@ import { useState } from "react";
  * integration — see git history). The caller decides how each locale's fields bind to state
  * (English binds to the model's real scalar columns, the other 5 bind into a `translations`
  * object — see apps/web/src/app/admin/produk/[id]/page.tsx for the reference integration).
+ *
+ * Because every panel stays mounted, switching tabs never discards in-progress input in
+ * another tab — there is nothing for this component to warn about or confirm on tab switch.
+ *
+ * Follows the WAI-ARIA APG tab pattern: each tab/panel pair is linked via id/aria-controls/
+ * aria-labelledby, and Left/Right/Home/End move both focus and selection (automatic
+ * activation) instead of leaving all 6 buttons in the page's normal Tab order.
  */
 export function LocaleTabs({ children }: { children: (locale: Locale) => React.ReactNode }) {
   const [active, setActive] = useState<Locale>("en");
+  const baseId = useId();
+  const tabRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
+
+  function activate(code: Locale) {
+    setActive(code);
+    tabRefs.current[code]?.focus();
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const index = SUPPORTED_LOCALES.indexOf(active);
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      activate(SUPPORTED_LOCALES[(index + 1) % SUPPORTED_LOCALES.length]);
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      activate(SUPPORTED_LOCALES[(index - 1 + SUPPORTED_LOCALES.length) % SUPPORTED_LOCALES.length]);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      activate(SUPPORTED_LOCALES[0]);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      activate(SUPPORTED_LOCALES[SUPPORTED_LOCALES.length - 1]);
+    }
+  }
 
   return (
     <div>
-      <div role="tablist" className="flex flex-wrap gap-1 border-b border-neutral-200">
+      <div
+        role="tablist"
+        aria-label="Language"
+        onKeyDown={onKeyDown}
+        className="flex flex-wrap gap-1 border-b border-neutral-200"
+      >
         {SUPPORTED_LOCALES.map((code) => (
           <button
             key={code}
+            ref={(el) => {
+              tabRefs.current[code] = el;
+            }}
+            id={`${baseId}-tab-${code}`}
             type="button"
             role="tab"
             aria-selected={active === code}
-            onClick={() => setActive(code)}
+            aria-controls={`${baseId}-panel-${code}`}
+            tabIndex={active === code ? 0 : -1}
+            onClick={() => activate(code)}
             className={cn(
               "flex items-center gap-1.5 rounded-t-field px-3 py-2 text-small font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-1",
               active === code
                 ? "border-b-2 border-primary-600 text-neutral-900"
                 : "text-neutral-600 hover:text-neutral-900",
@@ -42,7 +85,20 @@ export function LocaleTabs({ children }: { children: (locale: Locale) => React.R
         ))}
       </div>
       {SUPPORTED_LOCALES.map((code) => (
-        <div key={code} className={cn("pt-4", active !== code && "hidden")}>
+        <div
+          key={code}
+          id={`${baseId}-panel-${code}`}
+          role="tabpanel"
+          aria-labelledby={`${baseId}-tab-${code}`}
+          tabIndex={0}
+          hidden={active !== code}
+          className="pt-4"
+        >
+          {active === code && (
+            <p className="mb-3 text-small font-medium text-neutral-500">
+              Editing: {LOCALE_LABELS[code].flag} {LOCALE_LABELS[code].name}
+            </p>
+          )}
           {children(code)}
         </div>
       ))}

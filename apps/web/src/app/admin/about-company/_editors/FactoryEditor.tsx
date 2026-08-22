@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
-import { getMediaPolicy, SUPPORTED_LOCALES } from "@ppn/shared-types";
+import { getMediaPolicy } from "@ppn/shared-types";
 import type { FactoryProfile, Locale } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useCallback, useState } from "react";
@@ -14,27 +14,20 @@ import { DocumentUploadField } from "@/components/admin/DocumentUploadField";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
-/** Compact per-locale presence indicator — English is always ✓ (it's the source of truth);
- * the other 5 are ✓ only once at least one field actually has translated text. */
-function FactoryTranslationStatus({ translations }: { translations: FactoryProfile["translations"] }) {
-  return (
-    <span className="flex flex-wrap gap-1.5 text-[11px] font-medium text-neutral-500">
-      {SUPPORTED_LOCALES.map((locale) => {
-        const complete =
-          locale === "en" ||
-          Object.values(translations?.[locale as Exclude<Locale, "en">] ?? {}).some(
-            (v) => v.trim().length > 0,
-          );
-        return (
-          <span key={locale} className={complete ? "text-primary-700" : "text-neutral-400"}>
-            {locale.toUpperCase()} {complete ? "✓" : "—"}
-          </span>
-        );
-      })}
-    </span>
-  );
+function factoryTranslationBase(factory: FactoryProfile) {
+  return {
+    eyebrow: factory.eyebrow,
+    name: factory.name,
+    shortDescription: factory.short_description,
+    detailedDescription: factory.detailed_description,
+    location: factory.location,
+    operationalInfo: factory.operational_info,
+    capacity: factory.capacity,
+    additionalNotes: factory.additional_notes,
+  };
 }
 
 // Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
@@ -294,7 +287,10 @@ export function FactoryEditor() {
         <details className="mt-4 border-t border-neutral-100 pt-4">
           <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
             🌐 Translations
-            <FactoryTranslationStatus translations={factory.translations} />
+            <TranslationStatusBadges
+              translations={factory.translations}
+              base={factoryTranslationBase(factory)}
+            />
           </summary>
           <div className="mt-3">
             <LocaleTabs>
