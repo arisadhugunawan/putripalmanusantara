@@ -1,15 +1,88 @@
 "use client";
 
 import { getMediaPolicy } from "@ppn/shared-types";
-import type { AboutCompanyProfile } from "@ppn/shared-types";
+import type { AboutCompanyProfile, Locale } from "@ppn/shared-types";
 import { Card, Input, Label, Textarea } from "@ppn/ui-components";
 import Link from "next/link";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
 // Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
 const MAX_IMAGE_BYTES = getMediaPolicy("general").maxBytes;
 
 type UpdateFn = (patch: Record<string, unknown>) => void;
+
+/** Merges one field of one locale into the profile's `translations` JSON without touching any
+ * other locale/field — the save-safety rule every translatable field in this file follows. */
+function withTranslation(
+  current: AboutCompanyProfile["translations"],
+  locale: Exclude<Locale, "en">,
+  field: string,
+  value: string,
+) {
+  return {
+    translations: { ...(current ?? {}), [locale]: { ...(current ?? {})[locale], [field]: value } },
+  };
+}
+
+/** Collapsible per-locale translation block shared by the blocks below — only the fields the
+ * public page actually renders in a non-English locale are exposed here (brief §4/§8: no point
+ * translating copy the public site never displays). */
+function TranslationsBlock({
+  profile,
+  onUpdate,
+  base,
+  fields,
+}: {
+  profile: AboutCompanyProfile;
+  onUpdate: UpdateFn;
+  /** camelCase keys matching `translations[locale]`, mapped to their English source value. */
+  base: Record<string, string>;
+  /** One row per field: [translationKey, label, englishValue, multiline?]. */
+  fields: Array<[string, string, string, boolean?]>;
+}) {
+  return (
+    <details className="mt-4 border-t border-neutral-100 pt-4">
+      <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+        🌐 Translations
+        <TranslationStatusBadges translations={profile.translations} base={base} />
+      </summary>
+      <div className="mt-3">
+        <LocaleTabs>
+          {(locale) =>
+            locale === "en" ? (
+              <p className="text-small text-neutral-500">
+                Bahasa Inggris diedit langsung pada field-field di atas.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {fields.map(([field, label, englishValue, multiline]) => {
+                  const value = profile.translations?.[locale]?.[field] ?? "";
+                  const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                    onUpdate(withTranslation(profile.translations, locale, field, e.target.value));
+                  return (
+                    <div key={field}>
+                      <Label className="text-small">{label}</Label>
+                      {multiline ? (
+                        <Textarea rows={3} defaultValue={value} placeholder={englishValue} onBlur={onBlur} />
+                      ) : (
+                        <Input defaultValue={value} placeholder={englishValue} onBlur={onBlur} />
+                      )}
+                    </div>
+                  );
+                })}
+                <p className="text-small text-neutral-500">
+                  Kosongkan untuk memakai teks Inggris sebagai fallback.
+                </p>
+              </div>
+            )
+          }
+        </LocaleTabs>
+      </div>
+    </details>
+  );
+}
 
 /** Shared header for a block card: title, one-line purpose, and the block's own on/off switch. */
 function BlockCard({
@@ -175,6 +248,25 @@ export function IntroductionEditor({
           Ikon sosial media dikelola di blok <strong>“Connect With PPN — Social Links”</strong> di bawah section ini.
         </p>
       </div>
+
+      <TranslationsBlock
+        profile={profile}
+        onUpdate={onUpdate}
+        base={{
+          eyebrow: profile.eyebrow,
+          headline: profile.headline,
+          subheading: profile.subheading,
+          shortDescription: profile.short_description,
+          socialLabel: profile.social_label,
+        }}
+        fields={[
+          ["eyebrow", "Eyebrow", profile.eyebrow],
+          ["headline", "Judul (Nama Perusahaan)", profile.headline],
+          ["subheading", "Subjudul", profile.subheading],
+          ["shortDescription", "Deskripsi Singkat", profile.short_description, true],
+          ["socialLabel", "Label Baris Sosial", profile.social_label],
+        ]}
+      />
     </BlockCard>
   );
 }
@@ -389,6 +481,16 @@ export function ExportReachEditor({
           />
         </div>
       </div>
+
+      <TranslationsBlock
+        profile={profile}
+        onUpdate={onUpdate}
+        base={{ exportLabel: profile.export_label, exportDescription: profile.export_description }}
+        fields={[
+          ["exportLabel", "Label Blok", profile.export_label],
+          ["exportDescription", "Deskripsi", profile.export_description, true],
+        ]}
+      />
     </BlockCard>
   );
 }
@@ -471,6 +573,27 @@ export function LegalInfoEditor({
           ; blok ini hanya menautkannya, tidak menduplikasi galerinya.
         </p>
       </div>
+
+      <TranslationsBlock
+        profile={profile}
+        onUpdate={onUpdate}
+        base={{
+          legalLabel: profile.legal_label,
+          legalHeading: profile.legal_heading,
+          businessType: profile.business_type,
+          registeredAddress: profile.registered_address,
+        }}
+        fields={[
+          ["legalLabel", "Label Blok", profile.legal_label],
+          ["legalHeading", "Judul", profile.legal_heading],
+          ["businessType", "Jenis Usaha", profile.business_type],
+          ["registeredAddress", "Alamat Terdaftar", profile.registered_address, true],
+        ]}
+      />
+      <p className="mt-2 text-small text-neutral-500">
+        Nomor Induk Berusaha (NIB) dan Tahun Berdiri tidak diterjemahkan — keduanya angka/identitas legal yang
+        sama di semua bahasa.
+      </p>
     </BlockCard>
   );
 }

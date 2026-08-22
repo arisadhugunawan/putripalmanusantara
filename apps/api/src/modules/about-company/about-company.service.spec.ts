@@ -136,6 +136,219 @@ describe('AboutCompanyService.restoreSnapshot', () => {
   });
 });
 
+function stubProfileRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'profile-1',
+    headline: 'CV. Putri Palma Nusantara',
+    shortDescription: '',
+    mainDescription: '',
+    vision: '',
+    mission: '',
+    companyOverview: '',
+    mainImage: null,
+    storyImage: null,
+    gallery: [],
+    eyebrow: 'Who We Are',
+    subheading: '',
+    ctaLabel: null,
+    ctaHref: null,
+    youtubeVideoUrl: null,
+    socialLabel: 'Connect With PPN',
+    socialVisible: true,
+    storyLabel: '',
+    storyHeading: '',
+    storyDescription: '',
+    storySecondaryDescription: '',
+    storyVisible: true,
+    scopeLabel: '',
+    scopeHeading: '',
+    scopeDescription: '',
+    scopeVisible: false,
+    factsLabel: '',
+    factsHeading: '',
+    factsVisible: true,
+    exportLabel: '',
+    exportHeading: '',
+    exportDescription: '',
+    exportVisible: true,
+    legalLabel: '',
+    legalHeading: '',
+    businessType: '',
+    registeredAddress: '',
+    businessIdNumber: '',
+    establishedYear: '',
+    legalVisible: true,
+    closingLabel: '',
+    closingHeading: '',
+    closingDescription: '',
+    closingCtaLabel: null,
+    closingCtaHref: null,
+    closingVisible: true,
+    translations: null,
+    ...overrides,
+  };
+}
+
+// Phase 5E-A: the Admin's LocaleTabs editors merge the full six-locale `translations` object
+// client-side before every save (see apps/web/.../ProfileBlockEditors.tsx `withTranslation`);
+// these tests guard the service half of that contract — a save must persist every locale key
+// it was given untouched, never silently dropping the ones the Admin wasn't actively editing.
+describe('AboutCompanyService.updateProfile — translation preservation (Phase 5E-A)', () => {
+  function buildProfileService() {
+    const aboutCompanyProfile = {
+      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const prisma = { aboutCompanyProfile };
+    return {
+      service: new AboutCompanyService(
+        prisma as unknown as PrismaService,
+        {} as unknown as MediaService,
+        { emit: jest.fn() } as unknown as EventEmitter2,
+      ),
+      aboutCompanyProfile,
+    };
+  }
+
+  it('a TH-only edit persists EN, ID, ZH, HI, and VI content unchanged', async () => {
+    const { service, aboutCompanyProfile } = buildProfileService();
+    aboutCompanyProfile.findFirst.mockResolvedValue(stubProfileRow());
+    // Simulates what the Admin UI sends: it read the existing translations, changed only `th`,
+    // and spread every other locale back in unmodified — id/zh/hi/vi below must reach Prisma
+    // exactly as they already were.
+    const mergedAfterThEdit = {
+      id: { eyebrow: 'Siapa Kami' },
+      zh: { eyebrow: '我们是谁' },
+      hi: { eyebrow: 'हम कौन हैं' },
+      vi: { eyebrow: 'Chúng tôi là ai' },
+      th: { eyebrow: 'เราคือใคร (แก้ไขแล้ว)' },
+    };
+    aboutCompanyProfile.update.mockResolvedValue(stubProfileRow());
+
+    await service.updateProfile({ translations: mergedAfterThEdit });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterThEdit);
+    expect(args[0].data.translations.id).toEqual({ eyebrow: 'Siapa Kami' });
+    expect(args[0].data.translations.zh).toEqual({ eyebrow: '我们是谁' });
+    expect(args[0].data.translations.hi).toEqual({ eyebrow: 'हम कौन हैं' });
+    expect(args[0].data.translations.vi).toEqual({
+      eyebrow: 'Chúng tôi là ai',
+    });
+  });
+
+  it('an ID-only edit persists EN(source columns untouched), ZH, TH, HI, and VI unchanged', async () => {
+    const { service, aboutCompanyProfile } = buildProfileService();
+    aboutCompanyProfile.findFirst.mockResolvedValue(stubProfileRow());
+    const mergedAfterIdEdit = {
+      id: { eyebrow: 'Siapa Kami (diedit)' },
+      zh: { eyebrow: '我们是谁' },
+      th: { eyebrow: 'เราคือใคร' },
+      hi: { eyebrow: 'हम कौन हैं' },
+      vi: { eyebrow: 'Chúng tôi là ai' },
+    };
+    aboutCompanyProfile.update.mockResolvedValue(stubProfileRow());
+
+    await service.updateProfile({
+      // The Admin's English-tab fields are untouched in this scenario.
+      headline: 'CV. Putri Palma Nusantara',
+      translations: mergedAfterIdEdit,
+    });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      {
+        data: {
+          headline: string;
+          translations: Record<string, Record<string, string>>;
+        };
+      },
+    ];
+    expect(args[0].data.headline).toBe('CV. Putri Palma Nusantara');
+    expect(args[0].data.translations).toEqual(mergedAfterIdEdit);
+    expect(args[0].data.translations.zh).toEqual({ eyebrow: '我们是谁' });
+    expect(args[0].data.translations.th).toEqual({ eyebrow: 'เราคือใคร' });
+    expect(args[0].data.translations.hi).toEqual({ eyebrow: 'हम कौन हैं' });
+    expect(args[0].data.translations.vi).toEqual({
+      eyebrow: 'Chúng tôi là ai',
+    });
+  });
+
+  it('does not touch the translations column when the caller omits it from the patch', async () => {
+    const { service, aboutCompanyProfile } = buildProfileService();
+    aboutCompanyProfile.findFirst.mockResolvedValue(stubProfileRow());
+    aboutCompanyProfile.update.mockResolvedValue(stubProfileRow());
+
+    await service.updateProfile({ headline: 'Renamed' });
+
+    const args = aboutCompanyProfile.update.mock.calls[0] as [
+      { data: { translations: unknown } },
+    ];
+    expect(args[0].data.translations).toBeUndefined();
+  });
+});
+
+describe('AboutCompanyService.updateFact — translation preservation (Phase 5E-A)', () => {
+  function buildFactService() {
+    const aboutCompanyFact = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const prisma = { aboutCompanyFact };
+    return {
+      service: new AboutCompanyService(
+        prisma as unknown as PrismaService,
+        {} as unknown as MediaService,
+        { emit: jest.fn() } as unknown as EventEmitter2,
+      ),
+      aboutCompanyFact,
+    };
+  }
+
+  it('a TH-only edit on a repeatable fact row persists the other five locales unchanged', async () => {
+    const { service, aboutCompanyFact } = buildFactService();
+    aboutCompanyFact.findUnique.mockResolvedValue({ id: 'fact-1' }); // assertExists
+    const mergedAfterThEdit = {
+      id: { value: 'Palu, Sulawesi Tengah' },
+      zh: { value: '帕卢，中苏拉威西' },
+      hi: { value: 'पालू, मध्य सुलावेसी' },
+      vi: { value: 'Palu, Trung Sulawesi' },
+      th: { value: 'ปาลู สุลาเวสีกลาง (แก้ไข)' },
+    };
+    aboutCompanyFact.update.mockResolvedValue({
+      id: 'fact-1',
+      label: 'Location',
+      value: 'Palu, Central Sulawesi',
+      icon: null,
+      order: 0,
+      active: true,
+      translations: mergedAfterThEdit,
+    });
+
+    await service.updateFact('fact-1', {
+      translations: mergedAfterThEdit,
+    });
+
+    const args = aboutCompanyFact.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations).toEqual(mergedAfterThEdit);
+    expect(args[0].data.translations.id).toEqual({
+      value: 'Palu, Sulawesi Tengah',
+    });
+    expect(args[0].data.translations.zh).toEqual({
+      value: '帕卢，中苏拉威西',
+    });
+    expect(args[0].data.translations.hi).toEqual({
+      value: 'पालू, मध्य सुलावेसी',
+    });
+    expect(args[0].data.translations.vi).toEqual({
+      value: 'Palu, Trung Sulawesi',
+    });
+  });
+});
+
 describe('resolveAboutCompanySectionStatus', () => {
   const publishedAt = '2026-08-12T00:00:00.000Z';
 

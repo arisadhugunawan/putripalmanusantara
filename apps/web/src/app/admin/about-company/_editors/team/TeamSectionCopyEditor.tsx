@@ -1,12 +1,14 @@
 "use client";
 
-import type { AboutCompanyTeamSection } from "@ppn/shared-types";
+import type { AboutCompanyTeamSection, Locale } from "@ppn/shared-types";
 import { Card, Input, Label, Textarea } from "@ppn/ui-components";
 import { useCallback } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonCard } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 /**
@@ -33,6 +35,17 @@ export function TeamSectionCopyEditor() {
       );
       await reload();
     }
+  }
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "eyebrow" | "heading" | "description",
+    value: string,
+  ) {
+    const current = section?.translations ?? {};
+    await handleUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   if (status === "error") {
@@ -124,6 +137,58 @@ export function TeamSectionCopyEditor() {
             </span>
           </span>
         </label>
+
+        <details className="border-t border-neutral-100 pt-4">
+          <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+            🌐 Translations
+            <TranslationStatusBadges
+              translations={section.translations}
+              base={{ eyebrow: section.eyebrow, heading: section.heading, description: section.description }}
+            />
+          </summary>
+          <div className="mt-3">
+            <LocaleTabs>
+              {(locale) =>
+                locale === "en" ? (
+                  <p className="text-small text-neutral-500">
+                    Bahasa Inggris diedit langsung pada field-field di atas.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <Label className="text-small">Eyebrow</Label>
+                      <Input
+                        defaultValue={section.translations?.[locale]?.eyebrow ?? ""}
+                        placeholder={section.eyebrow}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "eyebrow", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Judul</Label>
+                      <Input
+                        defaultValue={section.translations?.[locale]?.heading ?? ""}
+                        placeholder={section.heading}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "heading", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Deskripsi Pendukung</Label>
+                      <Textarea
+                        rows={3}
+                        defaultValue={section.translations?.[locale]?.description ?? ""}
+                        placeholder={section.description}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "description", e.target.value)}
+                      />
+                    </div>
+                    <p className="text-small text-neutral-500">
+                      Kosongkan untuk memakai teks Inggris sebagai fallback.
+                    </p>
+                  </div>
+                )
+              }
+            </LocaleTabs>
+          </div>
+        </details>
       </div>
     </Card>
   );

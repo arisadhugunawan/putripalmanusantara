@@ -1,12 +1,14 @@
 "use client";
 
-import type { AboutCompanyWhatWeDoSection } from "@ppn/shared-types";
+import type { AboutCompanyWhatWeDoSection, Locale } from "@ppn/shared-types";
 import { Card, Input, Label, Textarea } from "@ppn/ui-components";
 import { useCallback } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonCard } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 /**
@@ -45,6 +47,17 @@ export function WhatWeDoSectionCopyEditor() {
         <SkeletonCard rows={4} />
       </div>
     );
+  }
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "eyebrow" | "heading" | "description" | "whoHeading" | "whoDescription",
+    value: string,
+  ) {
+    const current = section?.translations ?? {};
+    await handleUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   return (
@@ -86,6 +99,58 @@ export function WhatWeDoSectionCopyEditor() {
             />
           </div>
         </div>
+
+        <details className="mt-4 border-t border-neutral-100 pt-4">
+          <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+            🌐 Translations
+            <TranslationStatusBadges
+              translations={section.translations}
+              base={{ eyebrow: section.eyebrow, heading: section.heading, description: section.description }}
+            />
+          </summary>
+          <div className="mt-3">
+            <LocaleTabs>
+              {(locale) =>
+                locale === "en" ? (
+                  <p className="text-small text-neutral-500">
+                    Bahasa Inggris diedit langsung pada field-field di atas.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <Label className="text-small">Eyebrow</Label>
+                      <Input
+                        defaultValue={section.translations?.[locale]?.eyebrow ?? ""}
+                        placeholder={section.eyebrow}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "eyebrow", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Judul</Label>
+                      <Input
+                        defaultValue={section.translations?.[locale]?.heading ?? ""}
+                        placeholder={section.heading}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "heading", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Deskripsi Pendukung</Label>
+                      <Textarea
+                        rows={3}
+                        defaultValue={section.translations?.[locale]?.description ?? ""}
+                        placeholder={section.description}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "description", e.target.value)}
+                      />
+                    </div>
+                    <p className="text-small text-neutral-500">
+                      Kosongkan untuk memakai teks Inggris sebagai fallback.
+                    </p>
+                  </div>
+                )
+              }
+            </LocaleTabs>
+          </div>
+        </details>
       </Card>
 
       <Card className="mt-6">
@@ -114,13 +179,58 @@ export function WhatWeDoSectionCopyEditor() {
             />
           </div>
         </div>
+
+        <details className="mt-4 border-t border-neutral-100 pt-4">
+          <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+            🌐 Translations
+            <TranslationStatusBadges
+              translations={section.translations}
+              base={{ whoHeading: section.who_heading, whoDescription: section.who_description }}
+            />
+          </summary>
+          <div className="mt-3">
+            <LocaleTabs>
+              {(locale) =>
+                locale === "en" ? (
+                  <p className="text-small text-neutral-500">
+                    Bahasa Inggris diedit langsung pada field-field di atas.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <Label className="text-small">Judul</Label>
+                      <Input
+                        defaultValue={section.translations?.[locale]?.whoHeading ?? ""}
+                        placeholder={section.who_heading}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "whoHeading", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Deskripsi Pendukung</Label>
+                      <Textarea
+                        rows={3}
+                        defaultValue={section.translations?.[locale]?.whoDescription ?? ""}
+                        placeholder={section.who_description}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "whoDescription", e.target.value)}
+                      />
+                    </div>
+                    <p className="text-small text-neutral-500">
+                      Kosongkan untuk memakai teks Inggris sebagai fallback.
+                    </p>
+                  </div>
+                )
+              }
+            </LocaleTabs>
+          </div>
+        </details>
       </Card>
 
       <Card className="mt-6">
         <h2 className="text-h3 text-neutral-900">Buyer CTA</h2>
         <p className="mt-1 text-small text-neutral-600">
           Blok ajakan untuk pembeli — tombol utama selalu mengarah ke halaman Products yang sudah ada. Kosongkan
-          Judul untuk menyembunyikan blok ini.
+          Judul untuk menyembunyikan blok ini. Blok ini tidak tampil di halaman About Company publik saat ini,
+          jadi belum tersedia terjemahannya.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4">
@@ -158,7 +268,8 @@ export function WhatWeDoSectionCopyEditor() {
         <h2 className="text-h3 text-neutral-900">Supplier CTA</h2>
         <p className="mt-1 text-small text-neutral-600">
           Blok ajakan untuk calon pemasok — tombol mengarah ke section &ldquo;Our Supply Network&rdquo; di
-          beranda. Kosongkan Judul untuk menyembunyikan blok ini.
+          beranda. Kosongkan Judul untuk menyembunyikan blok ini. Blok ini tidak tampil di halaman About Company
+          publik saat ini, jadi belum tersedia terjemahannya.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4">

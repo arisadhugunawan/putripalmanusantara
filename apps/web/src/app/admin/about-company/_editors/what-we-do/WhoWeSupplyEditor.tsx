@@ -1,6 +1,6 @@
 "use client";
 
-import type { WhoWeSupplyItem } from "@ppn/shared-types";
+import type { Locale, WhoWeSupplyItem } from "@ppn/shared-types";
 import { WHO_WE_SUPPLY_ICONS } from "@ppn/shared-types";
 import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
 import { FormEvent, useCallback, useState } from "react";
@@ -9,7 +9,9 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 /**
@@ -62,6 +64,18 @@ export function WhoWeSupplyEditor() {
     } catch {
       showToast("Changes could not be saved. Please try again.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(
+    item: WhoWeSupplyItem,
+    locale: Exclude<Locale, "en">,
+    field: "title" | "description",
+    value: string,
+  ) {
+    const current = item.translations ?? {};
+    await handleUpdate(item.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleDelete() {
@@ -212,6 +226,51 @@ export function WhoWeSupplyEditor() {
                     </select>
                   </div>
                 </div>
+
+                <details className="mt-3 border-t border-neutral-100 pt-3">
+                  <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                    🌐 Translations
+                    <TranslationStatusBadges
+                      translations={item.translations}
+                      base={{ title: item.title, description: item.description }}
+                    />
+                  </summary>
+                  <div className="mt-3">
+                    <LocaleTabs>
+                      {(locale) =>
+                        locale === "en" ? (
+                          <p className="text-small text-neutral-500">
+                            Bahasa Inggris diedit langsung pada field Judul &amp; Deskripsi di atas.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                              <Label className="text-small">Judul</Label>
+                              <Input
+                                defaultValue={item.translations?.[locale]?.title ?? ""}
+                                placeholder={item.title}
+                                onBlur={(e) => void handleUpdateTranslation(item, locale, "title", e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-small">Deskripsi</Label>
+                              <Input
+                                defaultValue={item.translations?.[locale]?.description ?? ""}
+                                placeholder={item.description}
+                                onBlur={(e) =>
+                                  void handleUpdateTranslation(item, locale, "description", e.target.value)
+                                }
+                              />
+                            </div>
+                            <p className="col-span-full text-small text-neutral-500">
+                              Kosongkan untuk memakai teks Inggris sebagai fallback.
+                            </p>
+                          </div>
+                        )
+                      }
+                    </LocaleTabs>
+                  </div>
+                </details>
               </div>
             );
           })}

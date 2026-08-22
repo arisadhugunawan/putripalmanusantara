@@ -2,7 +2,7 @@
 
 import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
 import { getMediaPolicy } from "@ppn/shared-types";
-import type { ProductDetail, WhatWeDoItem } from "@ppn/shared-types";
+import type { Locale, ProductDetail, WhatWeDoItem } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useCallback, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
@@ -11,8 +11,10 @@ import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin/ListToolbar";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 // Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
@@ -73,6 +75,13 @@ export function WhatWeDoEditor() {
     } catch {
       showToast("Changes could not be saved.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(item: WhatWeDoItem, locale: Exclude<Locale, "en">, value: string) {
+    const current = item.translations ?? {};
+    await handleUpdate(item.id, {
+      translations: { ...current, [locale]: { ...current[locale], title: value } },
+    });
   }
 
   async function handleDelete() {
@@ -309,6 +318,37 @@ export function WhatWeDoEditor() {
                   previewFit="contain"
                 />
               </div>
+
+              <details className="mt-3 border-t border-neutral-100 pt-3">
+                <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                  🌐 Translations
+                  <TranslationStatusBadges translations={item.translations} base={{ title: item.title }} />
+                </summary>
+                <div className="mt-3">
+                  <LocaleTabs>
+                    {(locale) =>
+                      locale === "en" ? (
+                        <p className="text-small text-neutral-500">
+                          Bahasa Inggris diedit langsung pada field Judul di atas.
+                        </p>
+                      ) : (
+                        <div>
+                          <Label className="text-small">Judul</Label>
+                          <Input
+                            defaultValue={item.translations?.[locale]?.title ?? ""}
+                            placeholder={item.title}
+                            onBlur={(e) => void handleUpdateTranslation(item, locale, e.target.value)}
+                          />
+                          <p className="mt-1 text-small text-neutral-500">
+                            Kosongkan untuk memakai teks Inggris sebagai fallback. Deskripsi singkat &amp; detail
+                            tidak tampil di halaman publik saat ini, jadi tidak diterjemahkan di sini.
+                          </p>
+                        </div>
+                      )
+                    }
+                  </LocaleTabs>
+                </div>
+              </details>
             </div>
           );
         })}
