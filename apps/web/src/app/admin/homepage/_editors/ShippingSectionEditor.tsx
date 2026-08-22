@@ -1,9 +1,11 @@
 "use client";
 
 import { Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { HomepageShippingSection } from "@ppn/shared-types";
+import type { HomepageShippingSection, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
 // Calibrated for a "premium, unhurried" feel at the current partner-card width/count (not
 // entertainment speed) — recalculate if the card size in ShippingPartnerCard.tsx or the
@@ -35,6 +37,17 @@ export function ShippingSectionEditor() {
     setSavedMessage("Tersimpan.");
     await load();
     setTimeout(() => setSavedMessage(null), 2000);
+  }
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "title" | "subtitle",
+    value: string,
+  ) {
+    const current = section?.translations ?? {};
+    await handleUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   if (!section) return null;
@@ -125,6 +138,50 @@ export function ShippingSectionEditor() {
           Tampilkan Relationship Type
         </label>
       </div>
+
+      <details className="mt-4 border-t border-neutral-100 pt-4">
+        <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+          🌐 Translations
+          <TranslationStatusBadges
+            translations={section.translations}
+            base={{ title: section.title, subtitle: section.subtitle }}
+          />
+        </summary>
+        <div className="mt-3">
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <p className="text-small text-neutral-500">
+                  Bahasa Inggris diedit langsung pada field-field di atas.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Label className="text-small">Judul</Label>
+                    <Input
+                      defaultValue={section.translations?.[locale]?.title ?? ""}
+                      placeholder={section.title}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "title", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Subjudul</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={section.translations?.[locale]?.subtitle ?? ""}
+                      placeholder={section.subtitle}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "subtitle", e.target.value)}
+                    />
+                  </div>
+                  <p className="text-small text-neutral-500">
+                    Kosongkan untuk memakai teks Inggris sebagai fallback.
+                  </p>
+                </div>
+              )
+            }
+          </LocaleTabs>
+        </div>
+      </details>
 
       {savedMessage && <p className="mt-3 text-small text-primary-700">{savedMessage}</p>}
     </Card>

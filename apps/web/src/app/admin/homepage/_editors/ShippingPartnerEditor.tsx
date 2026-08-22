@@ -1,13 +1,15 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label } from "@ppn/ui-components";
-import type { ShippingPartner, ShippingRelationshipType } from "@ppn/shared-types";
+import type { Locale, ShippingPartner, ShippingRelationshipType } from "@ppn/shared-types";
 import { SHIPPING_RELATIONSHIP_TYPE_LABELS, SHIPPING_RELATIONSHIP_TYPES } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { ShippingPartnerPreviewModal } from "@/components/admin/ShippingPartnerPreviewModal";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 
@@ -81,6 +83,13 @@ export function ShippingPartnerEditor() {
     } catch {
       showToast("Gagal menyimpan perubahan. Silakan coba lagi.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(partner: ShippingPartner, locale: Exclude<Locale, "en">, value: string) {
+    const current = partner.translations ?? {};
+    await handleUpdate(partner.id, {
+      translations: { ...current, [locale]: { ...current[locale], partnerName: value } },
+    });
   }
 
   async function handleToggle(partner: ShippingPartner, field: "enabled" | "featured") {
@@ -309,6 +318,9 @@ export function ShippingPartnerEditor() {
                     defaultValue={partner.description ?? ""}
                     onBlur={(e) => void handleUpdate(partner.id, { description: e.target.value })}
                   />
+                  <p className="mt-1 text-small text-neutral-500">
+                    Deskripsi ini tidak tampil di halaman publik saat ini, jadi belum tersedia terjemahannya.
+                  </p>
                 </div>
                 <div>
                   <Label className="text-small">Website URL</Label>
@@ -344,6 +356,39 @@ export function ShippingPartnerEditor() {
                   onChange={(media) => void handleUpdate(partner.id, { logo_id: media.id })}
                 />
               </div>
+
+              <details className="mt-3 border-t border-neutral-100 pt-3">
+                <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                  🌐 Translations
+                  <TranslationStatusBadges
+                    translations={partner.translations}
+                    base={{ partnerName: partner.partner_name }}
+                  />
+                </summary>
+                <div className="mt-3">
+                  <LocaleTabs>
+                    {(locale) =>
+                      locale === "en" ? (
+                        <p className="text-small text-neutral-500">
+                          Bahasa Inggris diedit langsung pada field Nama Partner di atas.
+                        </p>
+                      ) : (
+                        <div>
+                          <Label className="text-small">Nama Partner</Label>
+                          <Input
+                            defaultValue={partner.translations?.[locale]?.partnerName ?? ""}
+                            placeholder={partner.partner_name}
+                            onBlur={(e) => void handleUpdateTranslation(partner, locale, e.target.value)}
+                          />
+                          <p className="mt-1 text-small text-neutral-500">
+                            Kosongkan untuk memakai teks Inggris sebagai fallback.
+                          </p>
+                        </div>
+                      )
+                    }
+                  </LocaleTabs>
+                </div>
+              </details>
             </div>
           );
         })}

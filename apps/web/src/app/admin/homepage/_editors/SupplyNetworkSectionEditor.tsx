@@ -1,9 +1,11 @@
 "use client";
 
 import { Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { HomepageSupplyNetworkSection } from "@ppn/shared-types";
+import type { HomepageSupplyNetworkSection, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
 export function SupplyNetworkSectionEditor() {
   const [section, setSection] = useState<HomepageSupplyNetworkSection | null>(null);
@@ -24,6 +26,17 @@ export function SupplyNetworkSectionEditor() {
     setSavedMessage("Tersimpan.");
     await load();
     setTimeout(() => setSavedMessage(null), 2000);
+  }
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "eyebrow" | "heading" | "description" | "centerLabel" | "centerTitle",
+    value: string,
+  ) {
+    const current = section?.translations ?? {};
+    await handleUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   if (!section) return null;
@@ -78,8 +91,89 @@ export function SupplyNetworkSectionEditor() {
             defaultValue={section.center_description}
             onBlur={(e) => void handleUpdate({ center_description: e.target.value })}
           />
+          <p className="mt-1 text-small text-neutral-500">
+            Deskripsi Pusat tidak tampil di halaman Homepage publik saat ini, jadi belum tersedia
+            terjemahannya.
+          </p>
         </div>
       </div>
+
+      <details className="mt-6 border-t border-neutral-100 pt-4">
+        <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+          🌐 Translations
+          <TranslationStatusBadges
+            translations={section.translations}
+            base={{
+              eyebrow: section.eyebrow,
+              heading: section.heading,
+              description: section.description,
+              centerLabel: section.center_label,
+              centerTitle: section.center_title,
+            }}
+          />
+        </summary>
+        <p className="mt-1 text-small text-neutral-600">Judul header, deskripsi, dan node pusat.</p>
+        <div className="mt-3">
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <p className="text-small text-neutral-500">
+                  Bahasa Inggris diedit langsung pada field-field di atas.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Label className="text-small">Eyebrow</Label>
+                    <Input
+                      defaultValue={section.translations?.[locale]?.eyebrow ?? ""}
+                      placeholder={section.eyebrow}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "eyebrow", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Heading</Label>
+                    <Input
+                      defaultValue={section.translations?.[locale]?.heading ?? ""}
+                      placeholder={section.heading}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "heading", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Deskripsi</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={section.translations?.[locale]?.description ?? ""}
+                      placeholder={section.description}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "description", e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-small">Label Pusat</Label>
+                      <Input
+                        defaultValue={section.translations?.[locale]?.centerLabel ?? ""}
+                        placeholder={section.center_label}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "centerLabel", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-small">Judul Pusat</Label>
+                      <Input
+                        defaultValue={section.translations?.[locale]?.centerTitle ?? ""}
+                        placeholder={section.center_title}
+                        onBlur={(e) => void handleUpdateTranslation(locale, "centerTitle", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-small text-neutral-500">
+                    Kosongkan untuk memakai teks Inggris sebagai fallback.
+                  </p>
+                </div>
+              )
+            }
+          </LocaleTabs>
+        </div>
+      </details>
 
       <div className="mt-6 border-t border-neutral-100 pt-4">
         <p className="text-small font-medium text-neutral-900">Animasi</p>
@@ -138,6 +232,9 @@ export function SupplyNetworkSectionEditor() {
 
       <div className="mt-6 border-t border-neutral-100 pt-4">
         <p className="text-small font-medium text-neutral-900">Pernyataan Penutup (setelah node terakhir)</p>
+        <p className="mt-1 text-small text-neutral-500">
+          Blok ini tidak tampil di halaman Homepage publik saat ini, jadi belum tersedia terjemahannya.
+        </p>
         <div className="mt-3">
           <Label htmlFor="sn-final-heading">Judul Penutup</Label>
           <Input

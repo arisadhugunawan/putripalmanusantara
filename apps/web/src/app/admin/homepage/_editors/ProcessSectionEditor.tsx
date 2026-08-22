@@ -1,9 +1,11 @@
 "use client";
 
 import { Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { HomepageProcessSection } from "@ppn/shared-types";
+import type { HomepageProcessSection, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
 export function ProcessSectionEditor() {
   const [section, setSection] = useState<HomepageProcessSection | null>(null);
@@ -24,6 +26,17 @@ export function ProcessSectionEditor() {
     setSavedMessage("Tersimpan.");
     await load();
     setTimeout(() => setSavedMessage(null), 2000);
+  }
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "eyebrow" | "heading" | "description",
+    value: string,
+  ) {
+    const current = section?.translations ?? {};
+    await handleUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   if (!section) return null;
@@ -55,8 +68,63 @@ export function ProcessSectionEditor() {
         />
       </div>
 
+      <details className="mt-4 border-t border-neutral-100 pt-4">
+        <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+          🌐 Translations
+          <TranslationStatusBadges
+            translations={section.translations}
+            base={{ eyebrow: section.eyebrow, heading: section.heading, description: section.description }}
+          />
+        </summary>
+        <div className="mt-3">
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <p className="text-small text-neutral-500">
+                  Bahasa Inggris diedit langsung pada field-field di atas.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Label className="text-small">Eyebrow</Label>
+                    <Input
+                      defaultValue={section.translations?.[locale]?.eyebrow ?? ""}
+                      placeholder={section.eyebrow}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "eyebrow", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Heading</Label>
+                    <Input
+                      defaultValue={section.translations?.[locale]?.heading ?? ""}
+                      placeholder={section.heading}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "heading", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Deskripsi</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={section.translations?.[locale]?.description ?? ""}
+                      placeholder={section.description}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "description", e.target.value)}
+                    />
+                  </div>
+                  <p className="text-small text-neutral-500">
+                    Kosongkan untuk memakai teks Inggris sebagai fallback.
+                  </p>
+                </div>
+              )
+            }
+          </LocaleTabs>
+        </div>
+      </details>
+
       <div className="mt-6 border-t border-neutral-100 pt-4">
         <p className="text-small font-medium text-neutral-900">CTA Penutup (setelah tahap terakhir)</p>
+        <p className="mt-1 text-small text-neutral-500">
+          Blok ini tidak tampil di halaman Homepage publik saat ini, jadi belum tersedia terjemahannya.
+        </p>
         <div className="mt-3">
           <Label htmlFor="ps-final-heading">Judul CTA</Label>
           <Input

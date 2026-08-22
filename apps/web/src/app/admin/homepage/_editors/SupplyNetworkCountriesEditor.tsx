@@ -1,14 +1,16 @@
 "use client";
 
 import { Button, Card, cn, Input, Label } from "@ppn/ui-components";
-import type { SupplyNetworkCountry } from "@ppn/shared-types";
+import type { Locale, SupplyNetworkCountry } from "@ppn/shared-types";
 import { FormEvent, useCallback, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 /** Destination markers for the section's subtle background "global trade" motif — never a real
@@ -62,6 +64,18 @@ export function SupplyNetworkCountriesEditor() {
       showToast("Perubahan tidak dapat disimpan.", "error");
       await reload();
     }
+  }
+
+  async function handleUpdateTranslation(
+    country: SupplyNetworkCountry,
+    locale: Exclude<Locale, "en">,
+    field: "name" | "status",
+    value: string,
+  ) {
+    const current = country.translations ?? {};
+    await handleUpdate(country.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleDelete() {
@@ -130,46 +144,91 @@ export function SupplyNetworkCountriesEditor() {
               key={country.id}
               {...rowProps}
               className={cn(
-                "flex flex-wrap items-center gap-3 rounded-field border border-neutral-200 p-3 transition-opacity",
+                "rounded-field border border-neutral-200 p-3 transition-opacity",
                 rowProps.className,
               )}
             >
-              <span {...getHandleProps(index)}>
-                <DragHandle />
-              </span>
-              <Input
-                defaultValue={country.flag_emoji}
-                onBlur={(e) => void handleUpdate(country.id, { flag_emoji: e.target.value })}
-                className="w-16 text-center text-h3"
-              />
-              <div className="min-w-[10rem] flex-1">
-                <Input defaultValue={country.name} onBlur={(e) => void handleUpdate(country.id, { name: e.target.value })} placeholder="Nama negara" />
-              </div>
-              <div className="min-w-[10rem] flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <span {...getHandleProps(index)}>
+                  <DragHandle />
+                </span>
                 <Input
-                  defaultValue={country.status}
-                  onBlur={(e) => void handleUpdate(country.id, { status: e.target.value })}
-                  placeholder="mis. Active Market"
+                  defaultValue={country.flag_emoji}
+                  onBlur={(e) => void handleUpdate(country.id, { flag_emoji: e.target.value })}
+                  className="w-16 text-center text-h3"
                 />
+                <div className="min-w-[10rem] flex-1">
+                  <Input defaultValue={country.name} onBlur={(e) => void handleUpdate(country.id, { name: e.target.value })} placeholder="Nama negara" />
+                </div>
+                <div className="min-w-[10rem] flex-1">
+                  <Input
+                    defaultValue={country.status}
+                    onBlur={(e) => void handleUpdate(country.id, { status: e.target.value })}
+                    placeholder="mis. Active Market"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-small text-neutral-600">
+                  <input type="checkbox" checked={country.active} onChange={(e) => void handleUpdate(country.id, { active: e.target.checked })} className="h-4 w-4" />
+                  Aktif
+                </label>
+                <button type="button" onClick={() => void handleReorder(index, index - 1)} disabled={index === 0} className="text-small text-neutral-600 underline disabled:opacity-30">
+                  Naik
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleReorder(index, index + 1)}
+                  disabled={index === countries.length - 1}
+                  className="text-small text-neutral-600 underline disabled:opacity-30"
+                >
+                  Turun
+                </button>
+                <button type="button" onClick={() => setDeleteTargetId(country.id)} className="text-small text-red-600 underline">
+                  Hapus
+                </button>
               </div>
-              <label className="flex items-center gap-2 text-small text-neutral-600">
-                <input type="checkbox" checked={country.active} onChange={(e) => void handleUpdate(country.id, { active: e.target.checked })} className="h-4 w-4" />
-                Aktif
-              </label>
-              <button type="button" onClick={() => void handleReorder(index, index - 1)} disabled={index === 0} className="text-small text-neutral-600 underline disabled:opacity-30">
-                Naik
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleReorder(index, index + 1)}
-                disabled={index === countries.length - 1}
-                className="text-small text-neutral-600 underline disabled:opacity-30"
-              >
-                Turun
-              </button>
-              <button type="button" onClick={() => setDeleteTargetId(country.id)} className="text-small text-red-600 underline">
-                Hapus
-              </button>
+
+              <details className="mt-2">
+                <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                  🌐 Translations
+                  <TranslationStatusBadges
+                    translations={country.translations}
+                    base={{ name: country.name, status: country.status }}
+                  />
+                </summary>
+                <div className="mt-2">
+                  <LocaleTabs>
+                    {(locale) =>
+                      locale === "en" ? (
+                        <p className="text-small text-neutral-500">
+                          Bahasa Inggris diedit langsung pada field Nama &amp; Status di atas.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <Label className="text-small">Nama Negara</Label>
+                            <Input
+                              defaultValue={country.translations?.[locale]?.name ?? ""}
+                              placeholder={country.name}
+                              onBlur={(e) => void handleUpdateTranslation(country, locale, "name", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-small">Status</Label>
+                            <Input
+                              defaultValue={country.translations?.[locale]?.status ?? ""}
+                              placeholder={country.status}
+                              onBlur={(e) => void handleUpdateTranslation(country, locale, "status", e.target.value)}
+                            />
+                          </div>
+                          <p className="col-span-full text-small text-neutral-500">
+                            Kosongkan untuk memakai teks Inggris sebagai fallback.
+                          </p>
+                        </div>
+                      )
+                    }
+                  </LocaleTabs>
+                </div>
+              </details>
             </div>
           );
         })}

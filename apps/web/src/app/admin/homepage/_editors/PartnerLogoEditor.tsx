@@ -1,13 +1,15 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label } from "@ppn/ui-components";
-import type { PartnerLogo } from "@ppn/shared-types";
+import type { PartnerLogo, Locale } from "@ppn/shared-types";
 import { PARTNER_LOGO_SUGGESTED_CATEGORIES } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { PartnerLogoPreviewModal } from "@/components/admin/PartnerLogoPreviewModal";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 
@@ -80,6 +82,18 @@ export function PartnerLogoEditor() {
     } catch {
       showToast("Gagal menyimpan perubahan. Silakan coba lagi.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(
+    logo: PartnerLogo,
+    locale: Exclude<Locale, "en">,
+    field: "partnerName" | "description",
+    value: string,
+  ) {
+    const current = logo.translations ?? {};
+    await handleUpdate(logo.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleToggle(logo: PartnerLogo, field: "enabled" | "featured") {
@@ -286,6 +300,54 @@ export function PartnerLogoEditor() {
                   onChange={(media) => void handleUpdate(logo.id, { logo_id: media.id })}
                 />
               </div>
+
+              <details className="mt-3 border-t border-neutral-100 pt-3">
+                <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                  🌐 Translations
+                  <TranslationStatusBadges
+                    translations={logo.translations}
+                    base={{ partnerName: logo.partner_name, description: logo.description }}
+                  />
+                </summary>
+                <div className="mt-3">
+                  <LocaleTabs>
+                    {(locale) =>
+                      locale === "en" ? (
+                        <p className="text-small text-neutral-500">
+                          Bahasa Inggris diedit langsung pada field Nama Mitra &amp; Deskripsi di atas.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <Label className="text-small">Nama Mitra/Institusi</Label>
+                            <Input
+                              defaultValue={logo.translations?.[locale]?.partnerName ?? ""}
+                              placeholder={logo.partner_name}
+                              onBlur={(e) =>
+                                void handleUpdateTranslation(logo, locale, "partnerName", e.target.value)
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-small">Deskripsi Singkat</Label>
+                            <Input
+                              defaultValue={logo.translations?.[locale]?.description ?? ""}
+                              placeholder={logo.description ?? ""}
+                              onBlur={(e) =>
+                                void handleUpdateTranslation(logo, locale, "description", e.target.value)
+                              }
+                            />
+                          </div>
+                          <p className="col-span-full text-small text-neutral-500">
+                            Deskripsi hanya dibacakan oleh pembaca layar (screen reader) — tidak tampil secara
+                            visual. Kosongkan untuk memakai teks Inggris sebagai fallback.
+                          </p>
+                        </div>
+                      )
+                    }
+                  </LocaleTabs>
+                </div>
+              </details>
             </div>
           );
         })}

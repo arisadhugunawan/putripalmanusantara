@@ -1,12 +1,14 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { ProductionStep, ProductionStepIcon } from "@ppn/shared-types";
+import type { Locale, ProductionStep, ProductionStepIcon } from "@ppn/shared-types";
 import { PRODUCTION_STEP_ICON_LABELS, PRODUCTION_STEP_ICON_KEYS } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 const ICON_OPTIONS = PRODUCTION_STEP_ICON_KEYS.map((value) => ({
@@ -77,6 +79,18 @@ export function ProductionProcessEditor() {
     } catch {
       showToast("Gagal menyimpan perubahan. Silakan coba lagi.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(
+    step: ProductionStep,
+    locale: Exclude<Locale, "en">,
+    field: "label" | "title" | "description",
+    value: string,
+  ) {
+    const current = step.translations ?? {};
+    await handleUpdate(step.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleDelete() {
@@ -240,6 +254,60 @@ export function ProductionProcessEditor() {
                   previewFit="cover"
                 />
               </div>
+
+              <details className="mt-3 border-t border-neutral-100 pt-3">
+                <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                  🌐 Translations
+                  <TranslationStatusBadges
+                    translations={step.translations}
+                    base={{ label: step.label, title: step.title, description: step.description }}
+                  />
+                </summary>
+                <div className="mt-3">
+                  <LocaleTabs>
+                    {(locale) =>
+                      locale === "en" ? (
+                        <p className="text-small text-neutral-500">
+                          Bahasa Inggris diedit langsung pada field Eyebrow/Title/Description di atas.
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          <div>
+                            <Label className="text-small">Eyebrow / Label</Label>
+                            <Input
+                              defaultValue={step.translations?.[locale]?.label ?? ""}
+                              placeholder={step.label}
+                              onBlur={(e) => void handleUpdateTranslation(step, locale, "label", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-small">Title</Label>
+                            <Input
+                              defaultValue={step.translations?.[locale]?.title ?? ""}
+                              placeholder={step.title}
+                              onBlur={(e) => void handleUpdateTranslation(step, locale, "title", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-small">Description</Label>
+                            <Textarea
+                              rows={3}
+                              defaultValue={step.translations?.[locale]?.description ?? ""}
+                              placeholder={step.description}
+                              onBlur={(e) =>
+                                void handleUpdateTranslation(step, locale, "description", e.target.value)
+                              }
+                            />
+                          </div>
+                          <p className="text-small text-neutral-500">
+                            Kosongkan untuk memakai teks Inggris sebagai fallback.
+                          </p>
+                        </div>
+                      )
+                    }
+                  </LocaleTabs>
+                </div>
+              </details>
             </div>
           );
         })}

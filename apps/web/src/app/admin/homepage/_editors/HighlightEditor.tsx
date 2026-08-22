@@ -1,10 +1,12 @@
 "use client";
 
-import { Button, Card, FormField, Input, Select } from "@ppn/ui-components";
-import type { HomepageHighlight, HomepageHighlightIcon } from "@ppn/shared-types";
+import { Button, Card, FormField, Input, Label, Select, Textarea } from "@ppn/ui-components";
+import type { HomepageHighlight, HomepageHighlightIcon, Locale } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 const HIGHLIGHT_ICONS: { value: HomepageHighlightIcon; label: string }[] = [
@@ -62,6 +64,18 @@ export function HighlightEditor() {
     await load();
   }
 
+  async function handleUpdateTranslation(
+    highlight: HomepageHighlight,
+    locale: Exclude<Locale, "en">,
+    field: "title" | "description",
+    value: string,
+  ) {
+    const current = highlight.translations ?? {};
+    await handleUpdate(highlight.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
+  }
+
   async function handleDelete(id: string) {
     setDeleting(true);
     try {
@@ -83,36 +97,84 @@ export function HighlightEditor() {
 
       <div className="mt-4 flex flex-col gap-3">
         {highlights?.map((highlight) => (
-          <div key={highlight.id} className="flex flex-wrap items-center gap-3 rounded-field border border-neutral-200 p-3">
-            <Select
-              aria-label="Ikon"
-              className="w-auto text-small"
-              defaultValue={highlight.icon}
-              onChange={(e) => void handleUpdate(highlight.id, { icon: e.target.value })}
-              options={HIGHLIGHT_ICONS}
-            />
-            <Input
-              className="max-w-[200px]"
-              defaultValue={highlight.title}
-              onBlur={(e) => void handleUpdate(highlight.id, { title: e.target.value })}
-            />
-            <Input
-              className="max-w-[280px]"
-              defaultValue={highlight.description}
-              onBlur={(e) => void handleUpdate(highlight.id, { description: e.target.value })}
-            />
-            <label className="flex items-center gap-2 text-small text-neutral-600">
-              <input
-                type="checkbox"
-                checked={highlight.enabled}
-                onChange={(e) => void handleUpdate(highlight.id, { enabled: e.target.checked })}
-                className="h-4 w-4"
+          <div key={highlight.id} className="rounded-field border border-neutral-200 p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                aria-label="Ikon"
+                className="w-auto text-small"
+                defaultValue={highlight.icon}
+                onChange={(e) => void handleUpdate(highlight.id, { icon: e.target.value })}
+                options={HIGHLIGHT_ICONS}
               />
-              Aktif
-            </label>
-            <button type="button" onClick={() => setDeleteTargetId(highlight.id)} className="ml-auto text-small text-red-600 underline">
-              Hapus
-            </button>
+              <Input
+                className="max-w-[200px]"
+                defaultValue={highlight.title}
+                onBlur={(e) => void handleUpdate(highlight.id, { title: e.target.value })}
+              />
+              <Input
+                className="max-w-[280px]"
+                defaultValue={highlight.description}
+                onBlur={(e) => void handleUpdate(highlight.id, { description: e.target.value })}
+              />
+              <label className="flex items-center gap-2 text-small text-neutral-600">
+                <input
+                  type="checkbox"
+                  checked={highlight.enabled}
+                  onChange={(e) => void handleUpdate(highlight.id, { enabled: e.target.checked })}
+                  className="h-4 w-4"
+                />
+                Aktif
+              </label>
+              <button type="button" onClick={() => setDeleteTargetId(highlight.id)} className="ml-auto text-small text-red-600 underline">
+                Hapus
+              </button>
+            </div>
+
+            <details className="mt-2">
+              <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                🌐 Translations
+                <TranslationStatusBadges
+                  translations={highlight.translations}
+                  base={{ title: highlight.title, description: highlight.description }}
+                />
+              </summary>
+              <div className="mt-2">
+                <LocaleTabs>
+                  {(locale) =>
+                    locale === "en" ? (
+                      <p className="text-small text-neutral-500">
+                        Bahasa Inggris diedit langsung pada field Judul &amp; Deskripsi di atas.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label className="text-small">Judul</Label>
+                          <Input
+                            defaultValue={highlight.translations?.[locale]?.title ?? ""}
+                            placeholder={highlight.title}
+                            onBlur={(e) => void handleUpdateTranslation(highlight, locale, "title", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Deskripsi</Label>
+                          <Textarea
+                            rows={2}
+                            defaultValue={highlight.translations?.[locale]?.description ?? ""}
+                            placeholder={highlight.description}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(highlight, locale, "description", e.target.value)
+                            }
+                          />
+                        </div>
+                        <p className="col-span-full text-small text-neutral-500">
+                          Kosongkan untuk memakai teks Inggris sebagai fallback.
+                        </p>
+                      </div>
+                    )
+                  }
+                </LocaleTabs>
+              </div>
+            </details>
           </div>
         ))}
       </div>

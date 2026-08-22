@@ -1,10 +1,12 @@
 "use client";
 
 import { Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { HomepageAboutPreview, HomepageVideoSource } from "@ppn/shared-types";
+import type { HomepageAboutPreview, HomepageVideoSource, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
 const VIDEO_SOURCES: { value: HomepageVideoSource; label: string }[] = [
   { value: "none", label: "Belum ada video" },
@@ -33,6 +35,17 @@ export function AboutPreviewEditor() {
     setSavedMessage("Tersimpan.");
     await load();
     setTimeout(() => setSavedMessage(null), 2000);
+  }
+
+  async function handleUpdateTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "label" | "heading" | "paragraph1" | "paragraph2" | "paragraph3" | "ctaText",
+    value: string,
+  ) {
+    const current = preview?.translations ?? {};
+    await handleUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   if (!preview) return null;
@@ -145,6 +158,91 @@ export function AboutPreviewEditor() {
           </div>
         )}
       </div>
+
+      <details className="mt-6 border-t border-neutral-100 pt-4">
+        <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+          🌐 Translations
+          <TranslationStatusBadges
+            translations={preview.translations}
+            base={{
+              label: preview.label,
+              heading: preview.heading,
+              paragraph1: preview.paragraph_1,
+              paragraph2: preview.paragraph_2,
+              paragraph3: preview.paragraph_3,
+              ctaText: preview.cta_text,
+            }}
+          />
+        </summary>
+        <div className="mt-3">
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <p className="text-small text-neutral-500">
+                  Bahasa Inggris diedit langsung pada field-field di atas.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Label className="text-small">Label Kecil</Label>
+                    <Input
+                      defaultValue={preview.translations?.[locale]?.label ?? ""}
+                      placeholder={preview.label}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "label", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Heading Utama</Label>
+                    <Input
+                      defaultValue={preview.translations?.[locale]?.heading ?? ""}
+                      placeholder={preview.heading}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "heading", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Paragraf 1</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={preview.translations?.[locale]?.paragraph1 ?? ""}
+                      placeholder={preview.paragraph_1}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "paragraph1", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Paragraf 2</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={preview.translations?.[locale]?.paragraph2 ?? ""}
+                      placeholder={preview.paragraph_2}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "paragraph2", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Paragraf 3</Label>
+                    <Textarea
+                      rows={2}
+                      defaultValue={preview.translations?.[locale]?.paragraph3 ?? ""}
+                      placeholder={preview.paragraph_3}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "paragraph3", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Teks Tombol CTA</Label>
+                    <Input
+                      defaultValue={preview.translations?.[locale]?.ctaText ?? ""}
+                      placeholder={preview.cta_text}
+                      onBlur={(e) => void handleUpdateTranslation(locale, "ctaText", e.target.value)}
+                    />
+                  </div>
+                  <p className="text-small text-neutral-500">
+                    Kosongkan untuk memakai teks Inggris sebagai fallback.
+                  </p>
+                </div>
+              )
+            }
+          </LocaleTabs>
+        </div>
+      </details>
 
       {savedMessage && <p className="mt-3 text-small text-primary-700">{savedMessage}</p>}
     </Card>

@@ -1,11 +1,13 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
-import type { ExportDestination, ExportStatus, ProductDetail } from "@ppn/shared-types";
+import type { ExportDestination, ExportStatus, Locale, ProductDetail } from "@ppn/shared-types";
 import { WORLD_COUNTRIES } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 import { getFlagEmoji } from "@/components/home/export-reach/flag-emoji";
 
@@ -77,6 +79,18 @@ export function ExportDestinationEditor() {
     } catch {
       showToast("Gagal menyimpan perubahan. Silakan coba lagi.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(
+    destination: ExportDestination,
+    locale: Exclude<Locale, "en">,
+    field: "countryName" | "description",
+    value: string,
+  ) {
+    const current = destination.translations ?? {};
+    await handleUpdate(destination.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleToggle(destination: ExportDestination, field: "enabled" | "featured") {
@@ -287,6 +301,55 @@ export function ExportDestinationEditor() {
                 </div>
               </div>
             )}
+
+            <details className="mt-3 border-t border-neutral-100 pt-3">
+              <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                🌐 Translations
+                <TranslationStatusBadges
+                  translations={destination.translations}
+                  base={{ countryName: destination.country_name, description: destination.description }}
+                />
+              </summary>
+              <div className="mt-3">
+                <LocaleTabs>
+                  {(locale) =>
+                    locale === "en" ? (
+                      <p className="text-small text-neutral-500">
+                        Bahasa Inggris memakai nama negara resmi (dari daftar negara) dan Deskripsi Singkat di
+                        atas.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <Label className="text-small">Nama Negara</Label>
+                          <Input
+                            defaultValue={destination.translations?.[locale]?.countryName ?? ""}
+                            placeholder={destination.country_name}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(destination, locale, "countryName", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Deskripsi Singkat</Label>
+                          <Textarea
+                            rows={2}
+                            defaultValue={destination.translations?.[locale]?.description ?? ""}
+                            placeholder={destination.description ?? ""}
+                            onBlur={(e) =>
+                              void handleUpdateTranslation(destination, locale, "description", e.target.value)
+                            }
+                          />
+                        </div>
+                        <p className="text-small text-neutral-500">
+                          Kosongkan untuk memakai teks Inggris sebagai fallback.
+                        </p>
+                      </div>
+                    )
+                  }
+                </LocaleTabs>
+              </div>
+            </details>
           </div>
         ))}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
-import type { SupplyNetworkIcon, SupplyNetworkItem, SupplyNetworkPosition } from "@ppn/shared-types";
+import type { Locale, SupplyNetworkIcon, SupplyNetworkItem, SupplyNetworkPosition } from "@ppn/shared-types";
 import {
   SUPPLY_NETWORK_ICON_LABELS,
   SUPPLY_NETWORK_ICON_KEYS,
@@ -12,7 +12,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 const ICON_OPTIONS = SUPPLY_NETWORK_ICON_KEYS.map((value) => ({
@@ -94,6 +96,18 @@ export function SupplyNetworkEditor() {
     } catch {
       showToast("Gagal menyimpan perubahan. Silakan coba lagi.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(
+    item: SupplyNetworkItem,
+    locale: Exclude<Locale, "en">,
+    field: "title" | "shortTitle" | "description",
+    value: string,
+  ) {
+    const current = item.translations ?? {};
+    await handleUpdate(item.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleDelete() {
@@ -303,6 +317,63 @@ export function SupplyNetworkEditor() {
                   previewFit="cover"
                 />
               </div>
+
+              <details className="mt-3 border-t border-neutral-100 pt-3">
+                <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                  🌐 Translations
+                  <TranslationStatusBadges
+                    translations={item.translations}
+                    base={{ title: item.title, shortTitle: item.short_title, description: item.description }}
+                  />
+                </summary>
+                <div className="mt-3">
+                  <LocaleTabs>
+                    {(locale) =>
+                      locale === "en" ? (
+                        <p className="text-small text-neutral-500">
+                          Bahasa Inggris diedit langsung pada field Title/Short Title/Description di atas.
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          <div>
+                            <Label className="text-small">Title</Label>
+                            <Input
+                              defaultValue={item.translations?.[locale]?.title ?? ""}
+                              placeholder={item.title}
+                              onBlur={(e) => void handleUpdateTranslation(item, locale, "title", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-small">Short Title</Label>
+                            <Input
+                              defaultValue={item.translations?.[locale]?.shortTitle ?? ""}
+                              placeholder={item.short_title}
+                              onBlur={(e) =>
+                                void handleUpdateTranslation(item, locale, "shortTitle", e.target.value)
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-small">Description</Label>
+                            <Textarea
+                              rows={2}
+                              defaultValue={item.translations?.[locale]?.description ?? ""}
+                              placeholder={item.description}
+                              onBlur={(e) =>
+                                void handleUpdateTranslation(item, locale, "description", e.target.value)
+                              }
+                            />
+                          </div>
+                          <p className="text-small text-neutral-500">
+                            Kosongkan untuk memakai teks Inggris sebagai fallback. Eyebrow/Label tidak tampil di
+                            halaman publik saat ini, jadi tidak diterjemahkan di sini.
+                          </p>
+                        </div>
+                      )
+                    }
+                  </LocaleTabs>
+                </div>
+              </details>
             </div>
           );
         })}
