@@ -40,7 +40,7 @@ export function HeroSlider({
  * blank Hero. Carries no image/CTA dependency on the database at all. */
 function HeroFallback() {
   return (
-    <section className="relative flex min-h-[60vh] items-center justify-center overflow-hidden bg-linear-to-b from-primary-700 to-primary-900 text-center sm:min-h-[70vh]">
+    <section className="relative flex min-h-[60vh] items-center justify-center overflow-hidden bg-linear-to-b from-primary-700 to-neutral-900 text-center sm:min-h-[70vh]">
       <Container className="relative z-10 py-24">
         <h1 className="mx-auto max-w-2xl text-h1 text-white">CV Putri Palma Nusantara</h1>
         <p className="mx-auto mt-4 max-w-xl text-body-lg text-primary-50">
@@ -195,8 +195,8 @@ function SlideContent({ slide }: { slide: HeroSlide }) {
             {slide.eyebrow_text}
           </p>
         )}
-        <h1 className="animate-fade-in-up mt-2 max-w-3xl text-h1 text-white">{slide.heading}</h1>
-        <p className="animate-fade-in-up mt-5 max-w-xl text-body-lg text-neutral-100/90 [animation-delay:100ms]">
+        <h1 className="animate-fade-in-up mt-3 max-w-3xl text-hero text-white">{slide.heading}</h1>
+        <p className="animate-fade-in-up mt-6 max-w-xl text-body-lg text-neutral-100/90 [animation-delay:100ms]">
           {slide.subheading}
         </p>
         {slide.description && (

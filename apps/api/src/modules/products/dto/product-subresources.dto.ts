@@ -1,3 +1,4 @@
+import { PRODUCT_MEDIA_SECTIONS } from '@ppn/shared-types';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
 
@@ -7,12 +8,28 @@ export class AddProductGalleryItemDto {
   media_id!: string;
 
   @IsOptional()
+  @IsIn(PRODUCT_MEDIA_SECTIONS)
+  section?: string;
+
+  @IsOptional()
+  @IsString()
+  caption?: string | null;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   order?: number;
 }
 
 export class UpdateProductGalleryItemDto {
+  @IsOptional()
+  @IsIn(PRODUCT_MEDIA_SECTIONS)
+  section?: string;
+
+  @IsOptional()
+  @IsString()
+  caption?: string | null;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -34,8 +51,12 @@ export class UpsertProductSpecificationDto {
   order?: number;
 
   @IsOptional()
-  @IsIn(['specification', 'export_info'])
-  group?: 'specification' | 'export_info';
+  @IsIn(['specification', 'export_info', 'detail_info'])
+  group?: 'specification' | 'export_info' | 'detail_info';
+
+  @IsOptional()
+  @IsString()
+  variant_label?: string | null;
 }
 
 export class UpsertProductDownloadDto {
@@ -63,4 +84,29 @@ export class UpsertProductPackagingApplicationDto {
   @IsOptional()
   @IsString()
   media_id?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  order?: number;
+}
+
+export class UpsertProductShapeDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  media_id?: string | null;
+
+  /** Free text, one size per line — kept verbatim (see ProductShape in the schema). */
+  @IsOptional()
+  @IsString()
+  sizes?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  order?: number;
 }

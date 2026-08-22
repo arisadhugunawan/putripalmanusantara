@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   DEFAULT_LOCALE,
   HOMEPAGE_SECTION_KEYS,
@@ -6,8 +7,24 @@ import {
   type HomepageStatistic,
 } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
+import {
+  CONTENT_PUBLISHED_EVENT,
+  type ContentPublishedEvent,
+} from '../../common/events/content-published.event';
 import { translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  toHomepageProcessSection,
+  toProductionStep,
+} from '../production-steps/production-step.mapper';
+import { ProductionStepsService } from '../production-steps/production-steps.service';
+import {
+  toHomepageSupplyNetworkSection,
+  toSupplyNetworkConnection,
+  toSupplyNetworkCountry,
+  toSupplyNetworkItem,
+} from '../supply-network/supply-network.mapper';
+import { SupplyNetworkService } from '../supply-network/supply-network.service';
 import type { UpdateAboutPreviewDto } from './dto/about-preview.dto';
 import type {
   CreateDecorativeGraphicDto,
@@ -68,7 +85,12 @@ const EXPORT_DESTINATION_INCLUDE = {
 
 @Injectable()
 export class HomepageService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly productionSteps: ProductionStepsService,
+    private readonly supplyNetwork: SupplyNetworkService,
+    private readonly events: EventEmitter2,
+  ) {}
 
   async findStatistics(
     locale: string = DEFAULT_LOCALE,
@@ -726,6 +748,7 @@ export class HomepageService {
         countryCodeAlpha3: countryMeta.alpha3,
         countryName: countryMeta.name,
         exportStatus: (dto.export_status as never) ?? 'active_destination',
+        region: dto.region,
         description: dto.description,
         exportVolume: dto.export_volume,
         exportFrequency: dto.export_frequency,
@@ -755,6 +778,7 @@ export class HomepageService {
         countryCodeAlpha3: countryMeta?.alpha3,
         countryName: countryMeta?.name,
         exportStatus: dto.export_status as never,
+        region: dto.region,
         description: dto.description,
         exportVolume: dto.export_volume,
         exportFrequency: dto.export_frequency,
@@ -900,7 +924,6 @@ export class HomepageService {
       findLatest(this.prisma.homepagePartnersSection),
       findLatest(this.prisma.homepageAboutPreview),
       findLatest(this.prisma.homepageHighlight),
-      findLatest(this.prisma.homepageWhyChooseUs),
       findLatest(this.prisma.exportDestination),
       findLatest(this.prisma.homepageExportReach),
       findLatest(this.prisma.shippingPartner),
@@ -908,6 +931,12 @@ export class HomepageService {
       findLatest(this.prisma.homepageStatistic),
       findLatest(this.prisma.faq),
       findLatest(this.prisma.homepageSectionConfig),
+      findLatest(this.prisma.productionStep),
+      findLatest(this.prisma.homepageProcessSection),
+      findLatest(this.prisma.supplyNetworkItem),
+      findLatest(this.prisma.supplyNetworkConnection),
+      findLatest(this.prisma.supplyNetworkCountry),
+      findLatest(this.prisma.homepageSupplyNetworkSection),
     ]);
     const dates = results
       .map((r) => r?.updatedAt)
@@ -928,7 +957,10 @@ export class HomepageService {
       partnerLogos,
       aboutPreview,
       highlights,
-      whyChooseUs,
+      supplyNetworkItems,
+      supplyNetworkConnections,
+      supplyNetworkCountries,
+      supplyNetworkSection,
       exportReachSection,
       exportDestinations,
       shippingSection,
@@ -936,6 +968,8 @@ export class HomepageService {
       statistics,
       faqs,
       sectionConfig,
+      productionSteps,
+      processSection,
     ] = await Promise.all([
       this.prisma.heroSlide.findMany({
         where: {
@@ -956,10 +990,10 @@ export class HomepageService {
         where: { enabled: true },
         orderBy: { order: 'asc' },
       }),
-      this.prisma.homepageWhyChooseUs.findMany({
-        where: { enabled: true, featured: true },
-        orderBy: { order: 'asc' },
-      }),
+      this.supplyNetwork.findAllActiveRaw(),
+      this.supplyNetwork.findAllConnectionsRaw(),
+      this.supplyNetwork.findAllCountriesActiveRaw(),
+      this.supplyNetwork.getOrCreateSection(),
       this.getOrCreateExportReachSection(),
       this.prisma.exportDestination.findMany({
         where: { enabled: true, exportStatus: 'active_destination' },
@@ -978,6 +1012,8 @@ export class HomepageService {
         orderBy: { order: 'asc' },
       }),
       this.prisma.homepageSectionConfig.findMany({ orderBy: { order: 'asc' } }),
+      this.productionSteps.findAllActiveRaw(),
+      this.productionSteps.getOrCreateSection(),
     ]);
 
     return {
@@ -986,7 +1022,10 @@ export class HomepageService {
       partnerLogos,
       aboutPreview,
       highlights,
-      whyChooseUs,
+      supplyNetworkItems,
+      supplyNetworkConnections,
+      supplyNetworkCountries,
+      supplyNetworkSection,
       exportReachSection,
       exportDestinations,
       shippingSection,
@@ -994,6 +1033,8 @@ export class HomepageService {
       statistics,
       faqs,
       sectionConfig,
+      productionSteps,
+      processSection,
     };
   }
 
@@ -1008,6 +1049,10 @@ export class HomepageService {
         data: { data: payload as never },
       }),
     ]);
+    // Emitted only after the transaction above has committed — a failed publish must never
+    // trigger an AI resync (see `content-published.event.ts`).
+    const event: ContentPublishedEvent = { source: 'home' };
+    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
     return {
       id: snapshot.id,
       published_at: snapshot.publishedAt.toISOString(),
@@ -1067,7 +1112,13 @@ export class HomepageService {
           locale,
         ),
         highlights: [],
-        why_choose_us: [],
+        supply_network_items: [],
+        supply_network_connections: [],
+        supply_network_countries: [],
+        supply_network_section: toHomepageSupplyNetworkSection(
+          await this.supplyNetwork.getOrCreateSection(),
+          locale,
+        ),
         export_reach_section: toExportReachSection(
           await this.getOrCreateExportReachSection(),
           locale,
@@ -1081,6 +1132,11 @@ export class HomepageService {
         statistics: [],
         faqs: [],
         section_config: await this.getSections(),
+        production_steps: [],
+        process_section: toHomepageProcessSection(
+          await this.productionSteps.getOrCreateSection(),
+          locale,
+        ),
       };
     }
 
@@ -1094,7 +1150,24 @@ export class HomepageService {
       partner_logos: raw.partnerLogos.map((l) => toPartnerLogo(l, locale)),
       about_preview: toAboutPreview(raw.aboutPreview, locale),
       highlights: raw.highlights.map((h) => toHighlight(h, locale)),
-      why_choose_us: raw.whyChooseUs.map((w) => toWhyChooseUs(w, locale)),
+      // `raw.supplyNetworkItems`/`raw.supplyNetworkConnections`/`raw.supplyNetworkCountries`/
+      // `raw.supplyNetworkSection` are absent on any snapshot published before this section (or
+      // the connections/countries redesign) existed — same fallback pattern as production_steps
+      // below, so old, not-yet-republished snapshots keep loading instead of throwing.
+      supply_network_items: (raw.supplyNetworkItems ?? []).map((item) =>
+        toSupplyNetworkItem(item, locale),
+      ),
+      supply_network_connections: (raw.supplyNetworkConnections ?? []).map(
+        toSupplyNetworkConnection,
+      ),
+      supply_network_countries: (raw.supplyNetworkCountries ?? []).map(
+        (country) => toSupplyNetworkCountry(country, locale),
+      ),
+      supply_network_section: toHomepageSupplyNetworkSection(
+        raw.supplyNetworkSection ??
+          (await this.supplyNetwork.getOrCreateSection()),
+        locale,
+      ),
       export_reach_section: toExportReachSection(
         raw.exportReachSection,
         locale,
@@ -1133,6 +1206,16 @@ export class HomepageService {
         };
       }),
       section_config: raw.sectionConfig.map(toHomepageSectionConfig),
+      // `raw.productionSteps`/`raw.processSection` are absent on any snapshot published
+      // before Production Process joined this payload — fall back to empty/default rather
+      // than throwing, so old, not-yet-republished snapshots keep loading.
+      production_steps: (raw.productionSteps ?? []).map((s) =>
+        toProductionStep(s, locale),
+      ),
+      process_section: toHomepageProcessSection(
+        raw.processSection ?? (await this.productionSteps.getOrCreateSection()),
+        locale,
+      ),
     };
   }
 }

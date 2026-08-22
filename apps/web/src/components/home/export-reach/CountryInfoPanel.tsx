@@ -36,6 +36,7 @@ export function CountryInfoPanel({ destination }: { destination: ExportDestinati
         </span>
         <div>
           <h3 className="text-h3 text-neutral-900">{destination.country_name}</h3>
+          {destination.region && <p className="text-small text-neutral-500">{destination.region}</p>}
           <p
             className={cn(
               "text-small font-medium",

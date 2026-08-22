@@ -1,48 +1,143 @@
 "use client";
 
-import { cn } from "@ppn/ui-components";
-import type { GalleryCategory, GalleryItem } from "@ppn/shared-types";
-import { useMemo, useState } from "react";
-import { GalleryGrid } from "./GalleryGrid";
+import type { GalleryCategory, GalleryItem, ProductSummary, TeamMember } from "@ppn/shared-types";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
+import { GalleryCategoryFilter } from "./GalleryCategoryFilter";
+import { GalleryCategoryEmptyState, GalleryEmptyState } from "./GalleryEmptyState";
+import { GalleryFeaturedSection } from "./GalleryFeaturedSection";
+import { GalleryJourneySection, type JourneyPanel } from "./GalleryJourneySection";
+import { GalleryLightbox } from "./GalleryLightbox";
+import { GalleryMasonryGrid } from "./GalleryMasonryGrid";
+import { GalleryProductCategoryPanel } from "./GalleryProductCategoryPanel";
+import { GalleryTeamCategoryPanel } from "./GalleryTeamCategoryPanel";
 
-const CATEGORIES: { value: GalleryCategory | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "product", label: "Products" },
-  { value: "facility", label: "Facilities" },
-  { value: "production", label: "Production" },
-  { value: "drone", label: "Drone" },
-];
+const PRODUCTS_SLUG = "products";
+const TEAM_SLUG = "team";
 
-/** FR-GAL-01 — client-side category filter so the page itself stays static (SSG+ISR). */
-export function GalleryPageClient({ items }: { items: GalleryItem[] }) {
-  const [category, setCategory] = useState<GalleryCategory | "all">("all");
+/**
+ * Client-side category filter + state orchestration (page itself stays a plain server
+ * component/SSG). Composes the journey section, featured showcase, filter + masonry grid, and
+ * the two "virtual" category panels (Products/Team — real data from those modules, never
+ * duplicated into GalleryItem rows, per brief §29/§30).
+ */
+export function GalleryPageClient({
+  categories,
+  items,
+  products,
+  teamMembers,
+}: {
+  categories: GalleryCategory[];
+  items: GalleryItem[];
+  products: ProductSummary[];
+  teamMembers: TeamMember[];
+}) {
+  const searchParams = useSearchParams();
+  const initialCategory = searchParams.get("category") ?? "all";
+  const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const [lightbox, setLightbox] = useState<{ source: "grid" | "featured"; index: number } | null>(null);
+  const gridAnchorRef = useRef<HTMLDivElement>(null);
 
-  const filtered = useMemo(
-    () => (category === "all" ? items : items.filter((item) => item.category === category)),
-    [items, category],
-  );
+  const activeMembers = useMemo(() => teamMembers.filter((m) => m.active), [teamMembers]);
+  const featuredItems = useMemo(() => items.filter((item) => item.featured), [items]);
+
+  const journeyPanels = useMemo<JourneyPanel[]>(() => {
+    return categories.map((category) => {
+      if (category.slug === PRODUCTS_SLUG) {
+        return {
+          id: category.slug,
+          name: category.name,
+          description: "Every product we export, ready for your order.",
+          previewImage: products[0]?.cover_image ?? null,
+          itemCount: products.length,
+        };
+      }
+      if (category.slug === TEAM_SLUG) {
+        return {
+          id: category.slug,
+          name: category.name,
+          description: "The people behind every shipment.",
+          previewImage: activeMembers[0]?.photo ?? null,
+          itemCount: activeMembers.length,
+        };
+      }
+      const categoryItems = items.filter((item) => item.category.id === category.id);
+      return {
+        id: category.slug,
+        name: category.name,
+        previewImage: categoryItems[0]?.media ?? null,
+        itemCount: categoryItems.length,
+      };
+    });
+  }, [categories, items, products, activeMembers]);
+
+  const totalRealItems = items.length;
+  const hasAnyContent = totalRealItems > 0 || products.length > 0 || activeMembers.length > 0;
+
+  function handleViewCategory(slug: string) {
+    setActiveCategory(slug);
+    gridAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const filteredItems = useMemo(() => {
+    if (activeCategory === "all") return items;
+    if (activeCategory === PRODUCTS_SLUG || activeCategory === TEAM_SLUG) return [];
+    return items.filter((item) => item.category.slug === activeCategory);
+  }, [items, activeCategory]);
+
+  if (!hasAnyContent) return <GalleryEmptyState />;
 
   return (
     <div>
-      <div className="mb-8 flex flex-wrap gap-2" role="group" aria-label="Filter by category">
-        {CATEGORIES.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setCategory(option.value)}
-            aria-pressed={category === option.value}
-            className={cn(
-              "rounded-button px-4 py-2 text-body font-medium transition-colors",
-              category === option.value
-                ? "bg-primary-500 text-neutral-900"
-                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
+      <GalleryJourneySection panels={journeyPanels} onViewCategory={handleViewCategory} />
+
+      <GalleryFeaturedSection
+        items={featuredItems}
+        onOpen={(item) => setLightbox({ source: "featured", index: featuredItems.findIndex((i) => i.id === item.id) })}
+      />
+
+      <div ref={gridAnchorRef} className="scroll-mt-24 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <GalleryCategoryFilter categories={categories} active={activeCategory} onChange={setActiveCategory} />
+
+          <div className="mt-8">
+            {activeCategory === PRODUCTS_SLUG ? (
+              <GalleryProductCategoryPanel products={products} />
+            ) : activeCategory === TEAM_SLUG ? (
+              <GalleryTeamCategoryPanel members={activeMembers} />
+            ) : filteredItems.length === 0 ? (
+              <GalleryCategoryEmptyState
+                categoryName={
+                  activeCategory === "all" ? "gallery" : (categories.find((c) => c.slug === activeCategory)?.name ?? "gallery")
+                }
+              />
+            ) : (
+              <GalleryMasonryGrid
+                items={filteredItems}
+                onOpen={(index) => setLightbox({ source: "grid", index })}
+              />
             )}
-          >
-            {option.label}
-          </button>
-        ))}
+          </div>
+        </div>
       </div>
-      <GalleryGrid items={filtered.map((item) => ({ id: item.id, media: item.media, caption: item.caption }))} />
+
+      {lightbox && (
+        <GalleryLightbox
+          images={(lightbox.source === "grid" ? filteredItems : featuredItems).map((item) => ({
+            id: item.id,
+            media: item.media,
+            media_type: item.media_type,
+            external_url: item.external_url,
+            title: item.title,
+            caption: item.caption,
+            category: item.category.name,
+            alt_text: item.alt_text,
+          }))}
+          startIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+          fallbackAlt="PPN gallery photo"
+        />
+      )}
     </div>
   );
 }

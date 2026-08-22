@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
+import { getMediaPolicy } from "@ppn/shared-types";
 import type { HeroButtonStyle, HeroSlide, HeroTextAlignment } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
@@ -22,7 +23,8 @@ const HERO_TEXT_ALIGNMENTS: { value: HeroTextAlignment; label: string }[] = [
 ];
 
 const MAX_RECOMMENDED_ACTIVE_SLIDES = 7;
-const HERO_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+// Centralized in @ppn/shared-types' MEDIA_POLICY (Post-Launch Phase 3).
+const HERO_IMAGE_MAX_BYTES = getMediaPolicy("hero").maxBytes;
 
 export function HeroSlideEditor() {
   const [slides, setSlides] = useState<HeroSlide[] | null>(null);
@@ -43,7 +45,11 @@ export function HeroSlideEditor() {
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    // Captured before the `await` below — React nulls `event.currentTarget` once the
+    // synchronous event-dispatch task finishes, so reading it after an `await` throws even
+    // though the request already succeeded.
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     setError(null);
     try {
       await adminApi.post("/admin/homepage/hero-slides", {
@@ -52,7 +58,7 @@ export function HeroSlideEditor() {
         order: slides?.length ?? 0,
         enabled: false,
       });
-      event.currentTarget.reset();
+      form.reset();
       await load();
       showToast("Slide berhasil ditambahkan.");
     } catch (err) {

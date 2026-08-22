@@ -45,7 +45,11 @@ export function ExportDestinationEditor() {
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    const formData = new FormData(event.currentTarget);
+    // Captured before the `await` below — React nulls `event.currentTarget` once the
+    // synchronous event-dispatch task finishes, so reading it after an `await` throws even
+    // though the request already succeeded.
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const countryCode = formData.get("country_code");
     if (!countryCode) {
       setError("Pilih negara terlebih dahulu.");
@@ -58,7 +62,7 @@ export function ExportDestinationEditor() {
         enabled: true,
         featured: false,
       });
-      event.currentTarget.reset();
+      form.reset();
       await load();
       showToast("Negara tujuan berhasil ditambahkan.");
     } catch (err) {
@@ -215,6 +219,18 @@ export function ExportDestinationEditor() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="mt-3">
+              <Label className="text-small">Region (opsional)</Label>
+              <Input
+                defaultValue={destination.region ?? ""}
+                placeholder="cth. Southeast Asia"
+                onBlur={(e) => void handleUpdate(destination.id, { region: e.target.value })}
+              />
+              <p className="mt-1 text-small text-neutral-500">
+                Label pengelompokan yang tampil di kartu negara pada beranda maupun halaman About Company.
+              </p>
             </div>
 
             <div className="mt-3">

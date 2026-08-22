@@ -21,7 +21,11 @@ export function FaqEditor() {
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    // Captured before the `await` below — React nulls `event.currentTarget` once the
+    // synchronous event-dispatch task finishes, so reading it after an `await` throws even
+    // though the request already succeeded.
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     setError(null);
     try {
       await adminApi.post("/admin/faqs", {
@@ -29,7 +33,7 @@ export function FaqEditor() {
         answer: formData.get("answer"),
         status: "published",
       });
-      event.currentTarget.reset();
+      form.reset();
       await load();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "Gagal menambah FAQ.");

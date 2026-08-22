@@ -1,4 +1,10 @@
-import type { ArticleDetail, Faq, ProductDetail, PublicSiteSettings } from "@ppn/shared-types";
+import type {
+  ArticleDetail,
+  ContactLocation,
+  ContactPageSettings,
+  ProductDetail,
+  PublicSiteSettings,
+} from "@ppn/shared-types";
 import { SITE_NAME, SITE_URL } from "./seo";
 
 /** NFR-SEO-01 — Organization schema, present on every page. */
@@ -13,8 +19,9 @@ export function organizationJsonLd() {
   };
 }
 
-/** Contact page only — LocalBusiness schema built entirely from real Settings data (address,
- * phone, email); fields with no value on file are simply omitted, never fabricated. */
+/** Homepage's LocalBusiness schema — built from the generic Settings key/value store. Used
+ * only by `[locale]/page.tsx`; the Contact page has its own dedicated CMS data and uses
+ * `contactPageLocalBusinessJsonLd` below instead, so this stays untouched. */
 export function localBusinessJsonLd(settings: PublicSiteSettings | null, locale: string) {
   return {
     "@context": "https://schema.org",
@@ -24,6 +31,25 @@ export function localBusinessJsonLd(settings: PublicSiteSettings | null, locale:
     email: settings?.contact_email,
     telephone: settings?.contact_phone,
     address: settings?.address ? { "@type": "PostalAddress", streetAddress: settings.address } : undefined,
+  };
+}
+
+/** Contact page only — LocalBusiness schema built entirely from real Contact Page CMS data
+ * (email, WhatsApp number, main map location's address); fields with no value on file are
+ * simply omitted, never fabricated. */
+export function contactPageLocalBusinessJsonLd(
+  settings: ContactPageSettings | null,
+  mainLocation: ContactLocation | null,
+  locale: string,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: SITE_NAME,
+    url: `${SITE_URL}/${locale}/contact`,
+    email: settings?.email || undefined,
+    telephone: settings?.whatsapp_number || undefined,
+    address: mainLocation ? { "@type": "PostalAddress", streetAddress: mainLocation.address } : undefined,
   };
 }
 
@@ -88,8 +114,10 @@ export function articleJsonLd(article: ArticleDetail, locale: string) {
   };
 }
 
-/** NFR-SEO-01 — FAQPage schema for the Home page FAQ section. */
-export function faqPageJsonLd(faqs: Faq[]) {
+/** NFR-SEO-01 — FAQPage schema, reused by both the Homepage FAQ section (passes `Faq[]`) and
+ * the Facilities FAQ section (passes `FacilitiesFaqItem[]`) — a minimal structural type keeps
+ * this one generator shared without coupling it to either model. */
+export function faqPageJsonLd(faqs: { question: string; answer: string }[]) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",

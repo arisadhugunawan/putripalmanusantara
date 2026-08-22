@@ -13,7 +13,15 @@ export class RevalidationService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async revalidate(paths: string[]): Promise<void> {
+  /**
+   * `type: 'layout'` invalidates every page rendered through the layout matching the given
+   * path(s), not just that one page — needed for Branding (Header/Footer live in the shared
+   * `[locale]/layout.tsx`, which wraps every public route, not only `/`).
+   */
+  async revalidate(
+    paths: string[],
+    type: 'page' | 'layout' = 'page',
+  ): Promise<void> {
     const webAppUrl = this.config.get<string>('WEB_APP_URL');
     const secret = this.config.get<string>('REVALIDATE_SECRET');
     if (!webAppUrl || !secret) return;
@@ -22,7 +30,7 @@ export class RevalidationService {
       const response = await fetch(`${webAppUrl}/api/revalidate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret, paths }),
+        body: JSON.stringify({ secret, paths, type }),
       });
       if (!response.ok) {
         this.logger.warn(

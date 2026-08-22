@@ -1,6 +1,7 @@
 import "server-only";
 import type {
   ApiResponse,
+  ArticleCategory,
   ArticleDetail,
   ArticleSummary,
   DecorativeGraphic,
@@ -16,27 +17,41 @@ import type {
   HomepagePartnersSection,
   HomepageShippingSection,
   HomepageStatistic,
-  HomepageWhyChooseUs,
   PaginationMeta,
   PartnerLogo,
   ProductDetail,
   ProductSummary,
-  ProductionStep,
+  PublicSiteBranding,
   PublicSiteSettings,
+  PublishedAboutCompanyPayload,
+  PublishedContactPagePayload,
+  PublicFooterSettings,
   PublishedHomepagePayload,
+  ResolvedPageHeader,
   ShippingPartner,
 } from "@ppn/shared-types";
 import { ApiRequestError } from "./api-error";
+import { DEFAULT_ABOUT_NAV_STATE, type AboutNavState } from "./nav-config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 /** docs/06-architecture.md §4 — SSG + periodic ISR for content that changes occasionally. */
 const DEFAULT_REVALIDATE_SECONDS = 3600;
 
+// In development, always fetch fresh instead of using ISR's time-based cache. `next dev`
+// (Turbopack) persists its data/route cache to disk across requests and — unlike production —
+// on-demand revalidatePath() calls don't reliably invalidate it, so an Admin save could still
+// serve stale content on localhost until a manual `.next` wipe. Skipping the cache entirely in
+// dev sidesteps that: every request re-fetches, so Admin changes always show up immediately.
+// Production is unaffected — it still uses `next: { revalidate }` + on-demand revalidatePath()
+// exactly as before.
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 async function request<T>(path: string, revalidate: number | false = DEFAULT_REVALIDATE_SECONDS) {
+  const noStore = revalidate === false || IS_DEV;
   const res = await fetch(`${API_URL}${path}`, {
-    next: revalidate === false ? undefined : { revalidate },
-    cache: revalidate === false ? "no-store" : undefined,
+    next: noStore ? undefined : { revalidate },
+    cache: noStore ? "no-store" : undefined,
   });
 
   const json = (await res.json()) as ApiResponse<T>;
@@ -82,10 +97,16 @@ export async function getArticles(
   page = 1,
   limit = 9,
   locale?: string,
+  filters?: { q?: string; categoryId?: string; featured?: boolean },
 ): Promise<{ items: ArticleSummary[]; meta: PaginationMeta }> {
-  const json = await request<ArticleSummary[]>(
-    withLocale(`/articles?page=${page}&limit=${limit}`, locale),
-  );
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (filters?.q?.trim()) params.set("q", filters.q.trim());
+  if (filters?.categoryId) params.set("category_id", filters.categoryId);
+  if (filters?.featured !== undefined) params.set("featured", String(filters.featured));
+  // Search/filtered results must never serve a stale cached page — only the plain, unfiltered
+  // listing benefits from ISR.
+  const revalidate = filters?.q || filters?.categoryId ? (false as const) : undefined;
+  const json = await request<ArticleSummary[]>(withLocale(`/articles?${params}`, locale), revalidate);
   return { items: json.data, meta: json.meta as PaginationMeta };
 }
 
@@ -94,24 +115,39 @@ export async function getLatestArticles(locale?: string): Promise<ArticleSummary
   return json.data;
 }
 
+export async function getArticleCategories(locale?: string): Promise<ArticleCategory[]> {
+  const json = await request<ArticleCategory[]>(withLocale("/articles/categories", locale));
+  return json.data;
+}
+
 export async function getArticleBySlug(slug: string, locale?: string): Promise<ArticleDetail | null> {
   return requestOrNull<ArticleDetail>(withLocale(`/articles/${encodeURIComponent(slug)}`, locale));
 }
 
-export async function getGallery(category?: GalleryCategory, locale?: string): Promise<GalleryItem[]> {
-  const query = category ? `?category=${category}` : "";
+export async function getRelatedArticles(slug: string, locale?: string): Promise<ArticleSummary[]> {
+  const json = await request<ArticleSummary[]>(withLocale(`/articles/${encodeURIComponent(slug)}/related`, locale));
+  return json.data;
+}
+
+export async function getGallery(categorySlug?: string, locale?: string): Promise<GalleryItem[]> {
+  const query = categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : "";
   const json = await request<GalleryItem[]>(withLocale(`/gallery${query}`, locale));
   return json.data;
 }
 
-export async function getFacilities(locale?: string): Promise<Facility[]> {
-  const json = await request<Facility[]>(withLocale("/facilities", locale));
+export async function getGalleryCategories(locale?: string): Promise<GalleryCategory[]> {
+  const json = await request<GalleryCategory[]>(withLocale("/gallery/categories", locale));
   return json.data;
 }
 
-export async function getProductionSteps(locale?: string): Promise<ProductionStep[]> {
-  const json = await request<ProductionStep[]>(withLocale("/production-steps", locale));
-  return json.data;
+/** Facilities moved under the About Company Draft/Publish system (see README "About Company →
+ * Facilities") — this now reads from the same published snapshot `/about` uses, instead of a
+ * standalone always-live endpoint. Next's fetch cache dedupes this against `/about`'s own
+ * `getPublishedAboutCompany()` call within one render pass, so the `/facilities` page pays for
+ * the request only once even though it (and `/about`, and the Homepage teaser) all call this. */
+export async function getFacilities(locale?: string): Promise<Facility[]> {
+  const data = await getPublishedAboutCompany(locale);
+  return data.facilities;
 }
 
 export async function getHomepageStatistics(locale?: string): Promise<HomepageStatistic[]> {
@@ -126,6 +162,37 @@ export async function getFaqs(locale?: string): Promise<Faq[]> {
 
 export async function getPublicSettings(locale?: string): Promise<PublicSiteSettings> {
   const json = await request<PublicSiteSettings>(withLocale("/settings/public", locale));
+  return json.data;
+}
+
+/** Header/Footer/Mobile logo + Favicon — rendered on every page via [locale]/layout.tsx and
+ * the root layout, so this is cached like any other rarely-changing CMS content. */
+export async function getPublicBranding(): Promise<PublicSiteBranding> {
+  const json = await request<PublicSiteBranding>("/branding");
+  return json.data;
+}
+
+/** Inner Page Header (Admin → Settings → Inner Page Header) — already fully resolved through
+ * the page-specific → global-default → system-constant chain, ready to pass straight into
+ * `PageHeader`'s `headerConfig` prop. Never throws: a page whose header module is unreachable
+ * should still render with its plain default look rather than fail the whole page. */
+export async function getPageHeader(
+  pageKey: string,
+  locale?: string,
+): Promise<ResolvedPageHeader | null> {
+  try {
+    const json = await request<ResolvedPageHeader>(withLocale(`/page-headers/${pageKey}`, locale));
+    return json.data;
+  } catch {
+    return null;
+  }
+}
+
+/** Footer Management (Admin → Settings → Footer) — enable toggles, brand-area copy, background
+ * treatment, CTA copy. Contact info/social links/office locations are deliberately NOT part of
+ * this payload; the Footer component fetches those separately via `getPublicContactPage()`. */
+export async function getFooterSettings(): Promise<PublicFooterSettings> {
+  const json = await request<PublicFooterSettings>("/footer");
   return json.data;
 }
 
@@ -161,11 +228,6 @@ export async function getPartnersSection(locale?: string): Promise<HomepagePartn
   return json.data;
 }
 
-export async function getWhyChooseUs(locale?: string): Promise<HomepageWhyChooseUs[]> {
-  const json = await request<HomepageWhyChooseUs[]>(withLocale("/homepage/why-choose-us", locale));
-  return json.data;
-}
-
 export async function getExportDestinations(locale?: string): Promise<ExportDestination[]> {
   const json = await request<ExportDestination[]>(withLocale("/homepage/export-destinations", locale));
   return json.data;
@@ -194,4 +256,45 @@ export async function getShippingSection(locale?: string): Promise<HomepageShipp
 export async function getPublishedHomepage(locale?: string): Promise<PublishedHomepagePayload> {
   const json = await request<PublishedHomepagePayload>(withLocale("/homepage/published-snapshot", locale));
   return json.data;
+}
+
+/** The About Company page's single data source (Draft/Publish — see README "About Company
+ * Manager"), mirrors `getPublishedHomepage` exactly. */
+export async function getPublishedAboutCompany(locale?: string): Promise<PublishedAboutCompanyPayload> {
+  const json = await request<PublishedAboutCompanyPayload>(
+    withLocale("/about-company/published-snapshot", locale),
+  );
+  return json.data;
+}
+
+/** The Contact page's single data source (Draft/Publish — see README "Contact Page — Full
+ * Redesign"). No `locale` param: unlike Homepage/About Company, none of this payload's fields
+ * are ever translated — real addresses/email/phone numbers/URLs stay identical in every
+ * language (brief §32). Returns `null` when nothing has ever been published, or after an
+ * explicit Unpublish — callers should render the page as if no data exists rather than
+ * throwing, exactly like every other "not yet configured" gap in this project. */
+export async function getPublicContactPage(): Promise<PublishedContactPagePayload | null> {
+  const json = await request<PublishedContactPagePayload | null>("/contact-page");
+  return json.data;
+}
+
+/**
+ * Header/Footer view of the same published About Company snapshot: just enough to decide
+ * whether the About Company menu (and each of its anchors) should appear at all.
+ *
+ * Best-effort — a failure falls back to showing the full menu rather than dropping items out of
+ * the site's main navigation because of one API blip. Within a single render this shares
+ * Next's fetch cache with `getPublishedAboutCompany()` on the `/about` route, so the About page
+ * itself does not pay for a second request.
+ */
+export async function getPublicAboutCompanyNav(locale?: string): Promise<AboutNavState> {
+  try {
+    const data = await getPublishedAboutCompany(locale);
+    return {
+      pageVisible: data.settings.visible,
+      visibleSections: data.section_config.filter((section) => section.visible).map((section) => section.key),
+    };
+  } catch {
+    return DEFAULT_ABOUT_NAV_STATE;
+  }
 }

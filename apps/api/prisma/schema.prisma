@@ -32,6 +32,33 @@ model Admin {
   @@map("admins")
 }
 
+// Centralized admin audit trail — one row per mutating admin action, written by a global
+// interceptor (`ActivityLogInterceptor`) rather than scattered per-service calls, so every
+// current and future admin controller is covered automatically. Deliberately never stores
+// request/response bodies (no secrets, tokens, or passwords ever land here) — only who did
+// what to which entity, when, and with what outcome.
+model AdminActivityLog {
+  id         String   @id @default(cuid())
+  actorId    String   @map("actor_id")
+  actorName  String   @map("actor_name")
+  actorRole  String   @map("actor_role")
+  action     String
+  module     String
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  method     String
+  path       String
+  statusCode Int      @map("status_code")
+  summary    String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([action])
+  @@index([module])
+  @@map("admin_activity_logs")
+}
+
 // ── 3.14 Media ───────────────────────────────────────────────────────────
 enum MediaFileType {
   image
@@ -40,34 +67,72 @@ enum MediaFileType {
 }
 
 model Media {
-  id         String        @id @default(cuid())
-  fileUrl    String        @map("file_url")
-  fileType   MediaFileType @map("file_type")
-  altText    String        @map("alt_text")
-  width      Int?
-  height     Int?
-  uploadedAt DateTime      @default(now()) @map("uploaded_at")
+  id           String        @id @default(cuid())
+  fileUrl      String        @map("file_url")
+  fileType     MediaFileType @map("file_type")
+  altText      String        @map("alt_text")
+  width        Int?
+  height       Int?
+  /// Actual stored file size — captured at upload time (after any upload-time dimension cap
+  /// is applied, so this reflects what's really on disk/in the bucket, not the pre-resize
+  /// source). Null for rows uploaded before this column existed; the Media Library shows
+  /// "—" rather than backfilling by re-fetching every historical file.
+  sizeBytes    Int?          @map("size_bytes")
+  uploadedAt   DateTime      @default(now()) @map("uploaded_at")
+  /// Soft delete (Post-Launch Phase 3) — "Move to Trash" sets this instead of removing the
+  /// row or the underlying file, so a mistaken delete is always recoverable and a file that
+  /// only an old Product version snapshot still references (not a live relation, so the
+  /// existing FK-based MEDIA_IN_USE guard can't see it) never silently disappears. Only
+  /// `permanentDelete()` — which additionally checks snapshot history, not just live
+  /// relations — actually removes the storage object and the row.
+  deletedAt    DateTime?     @map("deleted_at")
   /// i18n — non-English alt_text overrides, e.g. {"id": {"altText": "..."}, "zh": {...}}.
   /// English (altText above) stays the untouched source of truth; see README
   /// "Internationalization" section.
   translations Json?
 
-  productsAsCover      Product[]                      @relation("ProductCoverImage")
-  productGalleryItems  ProductGalleryImage[]
-  packagingApps        ProductPackagingApplication[]
-  articlesAsCover      Article[]                      @relation("ArticleCoverImage")
-  galleryItems         GalleryItem[]
-  facilitiesAsCover    Facility[]                     @relation("FacilityCoverImage")
-  facilityGalleryItems FacilityGalleryImage[]
-  productionSteps      ProductionStep[]
-  heroSlidesAsDesktop  HeroSlide[]                    @relation("HeroSlideDesktopImage")
-  heroSlidesAsMobile   HeroSlide[]                    @relation("HeroSlideMobileImage")
-  partnerLogos         PartnerLogo[]
-  shippingPartners     ShippingPartner[]
-  aboutPreviewVideos   HomepageAboutPreview[]          @relation("AboutPreviewVideoMedia")
-  aboutPreviewThumbs   HomepageAboutPreview[]          @relation("AboutPreviewVideoThumbnail")
+  productsAsCover               Product[]                     @relation("ProductCoverImage")
+  productShapeMediaOf           ProductShape[]                @relation("ProductShapeMedia")
+  productGalleryItems           ProductGalleryImage[]
+  packagingApps                 ProductPackagingApplication[]
+  articlesAsCover               Article[]                     @relation("ArticleCoverImage")
+  galleryItems                  GalleryItem[]
+  facilitiesAsCover             Facility[]                    @relation("FacilityCoverImage")
+  facilityGalleryItems          FacilityGalleryImage[]
+  productionSteps               ProductionStep[]
+  supplyNetworkItems            SupplyNetworkItem[]
+  heroSlidesAsDesktop           HeroSlide[]                   @relation("HeroSlideDesktopImage")
+  heroSlidesAsMobile            HeroSlide[]                   @relation("HeroSlideMobileImage")
+  partnerLogos                  PartnerLogo[]
+  shippingPartners              ShippingPartner[]
+  aboutPreviewVideos            HomepageAboutPreview[]        @relation("AboutPreviewVideoMedia")
+  aboutPreviewThumbs            HomepageAboutPreview[]        @relation("AboutPreviewVideoThumbnail")
+  brandingHeaderLogoOf          SiteBranding[]                @relation("SiteBrandingHeaderLogo")
+  brandingFooterLogoOf          SiteBranding[]                @relation("SiteBrandingFooterLogo")
+  brandingMobileLogoOf          SiteBranding[]                @relation("SiteBrandingMobileLogo")
+  brandingFaviconOf             SiteBranding[]                @relation("SiteBrandingFavicon")
+  brandingProductHeaderBgOf     SiteBranding[]                @relation("SiteBrandingProductHeaderBackground")
+  contactHeroImageOf            ContactPageSettings[]         @relation("ContactHeroImage")
+  aboutCompanyMainImageOf       AboutCompanyProfile[]         @relation("AboutCompanyMainImage")
+  aboutCompanyStoryImageOf      AboutCompanyProfile[]         @relation("AboutCompanyStoryImage")
+  aboutCompanyGalleryItems      AboutCompanyGalleryImage[]    @relation("AboutCompanyGalleryMedia")
+  teamMemberPhotoOf             TeamMember[]                  @relation("TeamMemberPhoto")
+  whatWeDoItems                 WhatWeDoItem[]                @relation("WhatWeDoMedia")
+  legalDocumentFileOf           LegalCertificateDocument[]    @relation("LegalDocumentFile")
+  legalDocumentPreviewOf        LegalCertificateDocument[]    @relation("LegalDocumentPreview")
+  factoryGalleryItems           FactoryGalleryImage[]         @relation("FactoryGalleryMedia")
+  factoryDocumentFileOf         FactoryDocument[]             @relation("FactoryDocumentFile")
+  aboutCompanySettingsOgImageOf AboutCompanySettings[]        @relation("AboutCompanySettingsOgImage")
+  articleGalleryItems           ArticleGalleryImage[]         @relation("ArticleGalleryMedia")
+  articlesAsOgImage             Article[]                     @relation("ArticleOgImage")
+  pageHeaderBackgroundOf        PageHeader[]                  @relation("PageHeaderBackgroundImage")
+  pageHeaderMobileBackgroundOf  PageHeader[]                  @relation("PageHeaderMobileBackgroundImage")
+  footerBackgroundOf            FooterSettings[]              @relation("FooterBackgroundImage")
+  footerMobileBackgroundOf      FooterSettings[]              @relation("FooterMobileBackgroundImage")
 
   @@index([fileType])
+  @@index([uploadedAt])
+  @@index([deletedAt])
   @@map("media")
 }
 
@@ -81,6 +146,11 @@ model Product {
   id               String        @id @default(cuid())
   slug             String        @unique
   name             String
+  /// Optional leading portion of `name` to render in the brand accent colour on the detail
+  /// page banner (e.g. name "Coconut Shisha Charcoal Briquette", titleAccent "Coconut Shisha").
+  /// Must be an exact prefix of `name`; the public page falls back to a plain, single-colour
+  /// title if it isn't (never guesses a split point — a wrong guess reads worse than none).
+  titleAccent      String?       @map("title_accent")
   category         String
   shortDescription String        @map("short_description")
   fullDescription  String        @map("full_description")
@@ -97,25 +167,75 @@ model Product {
   /// metaTitle/metaDescription, e.g. {"id": {"name": "...", ...}, "zh": {...}}.
   translations     Json?
 
-  gallery           ProductGalleryImage[]
-  specifications    ProductSpecification[]
-  packagingAndApps  ProductPackagingApplication[]
-  downloads         ProductDownload[]
-  quotationRequests QuotationRequest[]
-  exportDestinations ExportDestination[] @relation("ExportDestinationProducts")
+  /// Set only by publish()/restoreSnapshot() — never by ordinary update() — so it reflects
+  /// exactly when the currently-live published snapshot was produced, independent of any
+  /// draft edits made since. Denormalized alongside `snapshots` purely to avoid an extra query
+  /// on every admin list/detail read just to show "Last published".
+  lastPublishedAt DateTime? @map("last_published_at")
+
+  gallery            ProductGalleryImage[]
+  specifications     ProductSpecification[]
+  packagingAndApps   ProductPackagingApplication[]
+  downloads          ProductDownload[]
+  quotationRequests  QuotationRequest[]
+  exportDestinations ExportDestination[]           @relation("ExportDestinationProducts")
+  whatWeDoItems      WhatWeDoItem[]                @relation("WhatWeDoProduct")
+  shapes             ProductShape[]
+  snapshots          ProductPublishedSnapshot[]
 
   @@index([status])
   @@index([isFeatured])
+  @@index([order])
   @@map("products")
 }
 
+/// Append-only publish history for one Product — same `data: Json` snapshot idiom as
+/// `AboutCompanyPublishedSnapshot`/`HomepagePublishedSnapshot` (the whole live row + every
+/// relation serialized as one blob, re-mapped through the normal locale-aware mappers at read
+/// time), scoped per-product with a per-product `version` counter since Products is a
+/// collection of many independently-publishable items, not a single page/section. No
+/// `onDelete: Cascade` on `productId` — deleting a Product with existing snapshots must fail
+/// (default RESTRICT), never silently erase publish history; `ProductsService.remove()` turns
+/// that FK violation into a clear 409, mirroring `MediaService.delete()`'s `MEDIA_IN_USE`
+/// pattern. `publishedById`/`publishedByName` are plain denormalized strings, not a relation to
+/// `Admin` — same reasoning as `AdminActivityLog`: history must stay readable even if the
+/// admin account is later renamed or removed.
+model ProductPublishedSnapshot {
+  id              String   @id @default(cuid())
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  version         Int
+  data            Json
+  publishedById   String   @map("published_by_id")
+  publishedByName String   @map("published_by_name")
+  publishedAt     DateTime @default(now()) @map("published_at")
+
+  @@unique([productId, version])
+  @@index([productId, publishedAt])
+  @@map("product_published_snapshots")
+}
+
+/// Where a product media item is placed on the detail page. `spec_lab` items are the
+/// specification sheet / laboratory report scans shown under "Specification & Lab. Test";
+/// everything else is ordinary gallery media. Modelled as a placement flag on the existing
+/// gallery rather than a second table so the Admin keeps one upload flow for product media.
+enum ProductMediaSection {
+  gallery
+  spec_lab
+}
+
 model ProductGalleryImage {
-  id        String  @id @default(cuid())
-  productId String  @map("product_id")
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  mediaId   String  @map("media_id")
-  media     Media   @relation(fields: [mediaId], references: [id])
-  order     Int     @default(0)
+  id        String              @id @default(cuid())
+  productId String              @map("product_id")
+  product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaId   String              @map("media_id")
+  /// May be an image *or* a video — `Media.fileType` already distinguishes them, and the
+  /// public viewer plays video items instead of rendering them as stills.
+  media     Media               @relation(fields: [mediaId], references: [id])
+  section   ProductMediaSection @default(gallery)
+  /// Optional caption shown under spec/lab documents (e.g. "Report of Analysis").
+  caption   String?
+  order     Int                 @default(0)
 
   @@map("product_gallery")
 }
@@ -126,16 +246,41 @@ model ProductGalleryImage {
 enum ProductSpecificationGroup {
   specification
   export_info
+  /// Rendered as the "Detail Information" key/value table (MOQ, payment terms, …).
+  detail_info
+}
+
+/// One shape/size option for a product — a shape name, a small reference photo, and the sizes
+/// available in that shape. Sizes are free text, one per line, because their format differs per
+/// product ("25x25x17 - (108 pcs/kg)", "18x50 - (72 pcs/kg)") and must stay exactly as the
+/// Admin types it rather than being parsed into columns that may not fit every product.
+model ProductShape {
+  id           String  @id @default(cuid())
+  productId    String  @map("product_id")
+  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name         String
+  mediaId      String? @map("media_id")
+  media        Media?  @relation("ProductShapeMedia", fields: [mediaId], references: [id])
+  sizes        String  @default("")
+  order        Int     @default(0)
+  /// i18n — non-English overrides for name/sizes.
+  translations Json?
+
+  @@map("product_shapes")
 }
 
 model ProductSpecification {
-  id        String  @id @default(cuid())
-  productId String  @map("product_id")
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  specKey   String  @map("spec_key")
-  specValue String  @map("spec_value")
-  order     Int     @default(0)
-  group     ProductSpecificationGroup @default(specification)
+  id           String                    @id @default(cuid())
+  productId    String                    @map("product_id")
+  product      Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  specKey      String                    @map("spec_key")
+  specValue    String                    @map("spec_value")
+  order        Int                       @default(0)
+  group        ProductSpecificationGroup @default(specification)
+  /// Optional named sub-group within `group` (e.g. a product with several grades/variants —
+  /// "Edible (White Copra)", "Regular (White Copra)" — each rendered as its own spec-sheet
+  /// block instead of one flat mixed table). Null for the common case of one ungrouped set.
+  variantLabel String?                   @map("variant_label")
   /// i18n — non-English overrides for specKey/specValue.
   translations Json?
 
@@ -148,14 +293,15 @@ enum PackagingApplicationType {
 }
 
 model ProductPackagingApplication {
-  id          String                   @id @default(cuid())
-  productId   String                   @map("product_id")
-  product     Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  type        PackagingApplicationType
-  title       String
-  description String
-  mediaId     String?                  @map("media_id")
-  media       Media?                   @relation(fields: [mediaId], references: [id])
+  id           String                   @id @default(cuid())
+  productId    String                   @map("product_id")
+  product      Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type         PackagingApplicationType
+  title        String
+  description  String
+  mediaId      String?                  @map("media_id")
+  media        Media?                   @relation(fields: [mediaId], references: [id])
+  order        Int                      @default(0)
   /// i18n — non-English overrides for title/description.
   translations Json?
 
@@ -174,63 +320,195 @@ model ProductDownload {
 }
 
 // ── 3.7 Article ──────────────────────────────────────────────────────────
+
+/// Where an article's content originated — purely informational (drives the Admin's
+/// "Instagram + Website" / "Website Only" / "Instagram Only" badge), never gates publishing.
+enum ArticleContentSource {
+  website
+  instagram
+  both
+}
+
+/// Admin-managed replacement for the free-text `Article.category` column, mirroring
+/// `LegalDocumentCategory`'s enum→table upgrade: add/edit/delete/reorder/activate, none of
+/// which a fixed list can do without a migration per change. The legacy `category` string on
+/// `Article` is kept as a read-only fallback so articles written before this table existed
+/// keep displaying their old category text.
+model ArticleCategory {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/description.
+  translations Json?
+
+  articles Article[]
+
+  @@map("article_categories")
+}
+
+model ArticleGalleryImage {
+  id        String   @id @default(cuid())
+  articleId String   @map("article_id")
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  mediaId   String   @map("media_id")
+  media     Media    @relation("ArticleGalleryMedia", fields: [mediaId], references: [id])
+  caption   String?
+  altText   String?  @map("alt_text")
+  order     Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("article_gallery")
+}
+
 model Article {
-  id              String        @id @default(cuid())
-  slug            String        @unique
-  title           String
-  excerpt         String
-  content         String
-  coverImageId    String?       @map("cover_image_id")
-  coverImage      Media?        @relation("ArticleCoverImage", fields: [coverImageId], references: [id])
-  category        String?
-  author          String        @default("CV Putri Palma Nusantara")
-  metaTitle       String?       @map("meta_title")
-  metaDescription String?       @map("meta_description")
-  status          ContentStatus @default(draft)
-  publishedAt     DateTime?     @map("published_at")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id            String               @id @default(cuid())
+  slug          String               @unique
+  title         String
+  excerpt       String
+  content       String
+  coverImageId  String?              @map("cover_image_id")
+  coverImage    Media?               @relation("ArticleCoverImage", fields: [coverImageId], references: [id])
+  /// Legacy free-text category, kept only as a fallback for rows written before
+  /// `ArticleCategory` existed — new/edited articles use `categoryId` instead.
+  category      String?
+  categoryId    String?              @map("category_id")
+  categoryRef   ArticleCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags          String[]             @default([])
+  author        String               @default("CV Putri Palma Nusantara")
+  featured      Boolean              @default(false)
+  contentSource ArticleContentSource @default(website) @map("content_source")
+
+  /// Instagram source content — kept separate from the website title/excerpt/content above
+  /// (brief: "DO NOT simply copy the Instagram post exactly into the website"). Purely
+  /// reference material for the Admin; never rendered as the article body.
+  instagramCaption    String?   @map("instagram_caption")
+  instagramUrl        String?   @map("instagram_url")
+  instagramDate       DateTime? @map("instagram_date")
+  instagramUsername   String?   @map("instagram_username")
+  /// Shortcode extracted from the URL (e.g. "Cxyz123AbC") — used for duplicate-post detection
+  /// independent of URL formatting (trailing slash, query string, /p/ vs /reel/).
+  instagramPostId     String?   @map("instagram_post_id")
+  /// Set only when metadata was actually fetched via the oEmbed import flow — null for
+  /// manually-entered Instagram fields, so the Admin UI can tell the two apart.
+  instagramImportedAt DateTime? @map("instagram_imported_at")
+
+  metaTitle       String? @map("meta_title")
+  metaDescription String? @map("meta_description")
+  canonicalUrl    String? @map("canonical_url")
+  focusKeyword    String? @map("focus_keyword")
+  ogImageId       String? @map("og_image_id")
+  ogImage         Media?  @relation("ArticleOgImage", fields: [ogImageId], references: [id])
+
+  /// Premium editorial detail-page blocks (all optional — the page degrades gracefully when
+  /// unset). `readingTimeMinutes` overrides the auto-computed word-count estimate when set.
+  keyTakeaways       String[] @default([]) @map("key_takeaways")
+  quoteText          String?  @map("quote_text")
+  quoteAuthor        String?  @map("quote_author")
+  /// Array of {value, label} pairs, e.g. [{"value":"+20","label":"Export Markets"}].
+  statistics         Json?
+  readingTimeMinutes Int?     @map("reading_time_minutes")
+
+  status       ContentStatus @default(draft)
+  publishedAt  DateTime?     @map("published_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
   /// i18n — non-English overrides for title/excerpt/content/metaTitle/metaDescription/category.
-  translations    Json?
+  translations Json?
+
+  galleryImages ArticleGalleryImage[]
 
   @@index([status])
   @@index([publishedAt])
+  @@index([categoryId])
+  @@index([featured])
+  @@index([instagramUrl])
   @@map("articles")
 }
 
 // ── 3.8 GalleryItem ─────────────────────────────────────────────────────
-enum GalleryCategory {
-  product
-  facility
-  production
-  drone
+// Gallery — admin-manageable categories (PRODUCTS/TEAM are reserved slugs that render live data
+// from the Products/Team modules on the frontend instead of carrying their own GalleryItem rows
+// — see README "Gallery" for why these two are virtual rather than duplicating existing data).
+model GalleryCategory {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  order        Int           @default(0)
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name.
+  translations Json?
+  items        GalleryItem[]
+
+  @@map("gallery_categories")
+}
+
+enum GalleryMediaType {
+  image
+  video
+  youtube
+  tiktok
 }
 
 model GalleryItem {
-  id       String          @id @default(cuid())
-  mediaId  String          @map("media_id")
-  media    Media           @relation(fields: [mediaId], references: [id])
-  category GalleryCategory
-  caption  String?
-  order    Int             @default(0)
-  /// i18n — non-English override for caption.
+  id          String           @id @default(cuid())
+  mediaType   GalleryMediaType @default(image) @map("media_type")
+  /// Required for image/video, null for youtube/tiktok (those use externalUrl instead).
+  mediaId     String?          @map("media_id")
+  media       Media?           @relation(fields: [mediaId], references: [id])
+  /// Required for youtube/tiktok, null for image/video.
+  externalUrl String?          @map("external_url")
+  categoryId  String           @map("category_id")
+  category    GalleryCategory  @relation(fields: [categoryId], references: [id])
+
+  title            String?
+  caption          String?
+  altText          String?   @map("alt_text")
+  location         String?
+  capturedAt       DateTime? @map("captured_at")
+  shortDescription String?   @map("short_description")
+
+  featured Boolean @default(false)
+  active   Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/caption/shortDescription.
   translations Json?
 
-  @@index([category])
+  @@index([categoryId])
+  @@index([active])
   @@map("gallery_items")
 }
 
 // ── 3.9 Facility ─────────────────────────────────────────────────────────
+// Fixed master list of exactly 10 facilities (see README "Facilities master list") — `slug` is
+// the stable identifier the frontend uses to look up each facility's icon; it is assigned once
+// by the seed/migration and never admin-editable (facility rows are no longer admin-creatable
+// or admin-deletable, only their photos are).
 model Facility {
   id           String   @id @default(cuid())
+  slug         String   @unique
   name         String
   description  String
   coverImageId String?  @map("cover_image_id")
   coverImage   Media?   @relation("FacilityCoverImage", fields: [coverImageId], references: [id])
+  facilityType String?  @map("facility_type")
+  location     String?
+  status       String?
   order        Int      @default(0)
+  active       Boolean  @default(true)
+  featured     Boolean  @default(false)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-  /// i18n — non-English overrides for name/description.
+  /// i18n — non-English overrides for name/description/facilityType/location/status.
   translations Json?
 
   gallery FacilityGalleryImage[]
@@ -240,40 +518,425 @@ model Facility {
 
 // Join table implementing the ERD relation "FACILITY ||--o{ MEDIA : memiliki galeri"
 // (docs/04-database.md §2) — FR-FAC-02 requires a facility to have a photo gallery,
-// not just a single cover image.
+// not just a single cover image. Field-for-field mirror of FactoryGalleryImage below (see
+// "About Company → Facilities" redesign) so the admin gallery editor and public lightbox can
+// be shared/generalized between the two entities.
 model FacilityGalleryImage {
   id         String   @id @default(cuid())
   facilityId String   @map("facility_id")
   facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   mediaId    String   @map("media_id")
   media      Media    @relation(fields: [mediaId], references: [id])
+  title      String?
+  caption    String?
+  category   String?
+  altText    String?  @map("alt_text")
   order      Int      @default(0)
+  featured   Boolean  @default(false)
+  active     Boolean  @default(true)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("facility_gallery")
 }
 
+// Section copy + auto-rotation settings for the redesigned "Our Facilities" showcase — same
+// singleton idiom as AboutCompanyTeamSection/HomepageProcessSection.
+model AboutCompanyFacilitiesSection {
+  id                    String   @id @default(cuid())
+  eyebrow               String   @default("Built for Scale")
+  heading               String   @default("Our Facilities")
+  description           String   @default("")
+  autoRotate            Boolean  @default(true) @map("auto_rotate")
+  rotateIntervalSeconds Int      @default(6) @map("rotate_interval_seconds")
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/heading/description.
+  translations          Json?
+
+  @@map("about_company_facilities_section")
+}
+
+// "Facilities → MOQ & Payment Terms" — ordering/payment intro + Supply Capacity panel +
+// Commitment statement + closing CTA copy (singleton, same get-or-create idiom as
+// AboutCompanyFacilitiesSection).
+model AboutCompanyMoqPaymentSection {
+  id                         String   @id @default(cuid())
+  eyebrow                    String   @default("ORDERING & PAYMENT TERMS")
+  heading                    String   @default("Minimum Order & Payment Terms")
+  introduction               String   @default("PPN supports regular and large-volume coconut product procurement for both local and international buyers. We provide clear and flexible transaction processes based on product type, order volume, specifications, and mutual agreement.")
+  supplyCapacityTitle        String   @default("Supply Capacity") @map("supply_capacity_title")
+  supplyCapacityDescription  String   @default("Supported by our supplier network and operational facilities in Palu, PPN is capable of handling large-volume orders and recurring supply requirements according to agreed capacity and delivery schedules.") @map("supply_capacity_description")
+  commitmentTitle            String   @default("Transparent terms. Flexible coordination. Long-term partnerships.") @map("commitment_title")
+  commitmentDescription      String   @default("We prioritize transparency, process efficiency, and flexibility in every transaction to build sustainable and long-term business relationships with our buyers and partners.") @map("commitment_description")
+  ctaTitle                   String   @default("Discuss Your Requirements") @map("cta_title")
+  ctaDescription              String  @default("For volume requirements, product specifications, pricing, and payment terms, please contact the PPN team for a tailored quotation based on your needs.") @map("cta_description")
+  ctaButtonLabel              String  @default("Contact PPN") @map("cta_button_label")
+  ctaButtonHref                String @default("/contact#request-quotation") @map("cta_button_href")
+  updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for every translatable text field on this singleton.
+  translations                Json?
+
+  @@map("about_company_moq_payment_section")
+}
+
+// Quick Overview Cards — up to a handful of compact highlight cards above the Business Terms
+// panel. A card with an empty `value` is hidden on the public page (admin signal, not an
+// error) — see MoqPaymentQuickCards.tsx.
+model MoqPaymentQuickCard {
+  id           String   @id @default(cuid())
+  label        String
+  value        String   @default("")
+  /// Fixed 4-key allowlist — see MOQ_PAYMENT_QUICK_CARD_ICON_KEYS in shared-types.
+  icon         String   @default("container")
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for label/value.
+  translations Json?
+
+  @@map("moq_payment_quick_cards")
+}
+
+// Business Terms — fully open-ended label/value list. Admin can add arbitrary custom terms
+// beyond the seeded defaults (e.g. Certificate, Incoterms, Port of Loading) without any
+// frontend code change.
+model MoqPaymentBusinessTerm {
+  id           String   @id @default(cuid())
+  label        String
+  value        String
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for label/value.
+  translations Json?
+
+  @@map("moq_payment_business_terms")
+}
+
+// Shipment Terms — "Facilities" page section singleton, mirrors AboutCompanyMoqPaymentSection.
+model AboutCompanyShipmentTermsSection {
+  id                     String   @id @default(cuid())
+  eyebrow                String   @default("SHIPMENT TERMS")
+  heading                String   @default("Shipment Terms")
+  introduction           String   @default("PPN supports domestic and international shipments of large-volume coconut products. Each shipment is arranged according to product type, order volume, destination, and buyer requirements.")
+  commitmentTitle        String   @default("Efficient Loading. Accurate Documentation. Organized Delivery.") @map("commitment_title")
+  commitmentDescription  String   @default("We coordinate every shipment systematically to support efficient loading, accurate documentation, and organized delivery from the loading location to the agreed destination.") @map("commitment_description")
+  ctaLabel               String   @default("Discuss Your Shipment Requirements") @map("cta_label")
+  ctaHref                String   @default("/contact#request-quotation") @map("cta_href")
+  ctaOpenNewTab          Boolean  @default(false) @map("cta_open_new_tab")
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/heading/introduction/commitment/cta text.
+  translations           Json?
+
+  @@map("about_company_shipment_terms_section")
+}
+
+// Shipping Arrangement — the 7-item summary list powering both the journey labels and the
+// "Information Cards" grid. Independent free text, not derived from the deeper repeaters below.
+model ShippingArrangementItem {
+  id           String   @id @default(cuid())
+  icon         String   @default("ship")
+  title        String
+  value        String
+  description  String   @default("")
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/value/description.
+  translations Json?
+
+  @@map("shipping_arrangement_items")
+}
+
+// Loading Locations — structured chips/route data, independent from ShippingArrangementItem's
+// "Loading Locations" summary card.
+model ShipmentLoadingLocation {
+  id           String   @id @default(cuid())
+  name         String
+  region       String   @default("")
+  country      String   @default("")
+  mapsUrl      String?  @map("maps_url")
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/region/country.
+  translations Json?
+
+  @@map("shipment_loading_locations")
+}
+
+// Container Types — drives the interactive 20FT/40FT toggle. Admin can add more types.
+model ShipmentContainerType {
+  id           String   @id @default(cuid())
+  label        String
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for label.
+  translations Json?
+
+  @@map("shipment_container_types")
+}
+
+// Shipping Schedule — mini-timeline steps.
+model ShipmentScheduleStep {
+  id           String   @id @default(cuid())
+  name         String
+  description  String   @default("")
+  icon         String   @default("calendar")
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/description.
+  translations Json?
+
+  @@map("shipment_schedule_steps")
+}
+
+// Documentation — expandable list, empty by default; the public page shows no list at all
+// until the admin adds real documents (no fabricated defaults).
+model ShipmentDocument {
+  id           String   @id @default(cuid())
+  name         String
+  description  String   @default("")
+  url          String?
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/description.
+  translations Json?
+
+  @@map("shipment_documents")
+}
+
+// Our Commitment — the 3 mini statement cards under the route visual.
+model ShipmentCommitmentItem {
+  id           String   @id @default(cuid())
+  title        String
+  description  String   @default("")
+  icon         String   @default("route")
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/description.
+  translations Json?
+
+  @@map("shipment_commitment_items")
+}
+
+// Facilities FAQ — a dedicated, Facilities-only FAQ system. Deliberately NOT the shared `Faq`
+// model (which also feeds the Homepage's FaqSection) — see README "About Company" for why
+// Facilities sub-sections each get their own models rather than reusing something shared.
+model AboutCompanyFacilitiesFaqSection {
+  id                String   @id @default(cuid())
+  eyebrow           String   @default("FAQ")
+  heading           String   @default("Frequently Asked Questions")
+  description       String   @default("We answer the key questions buyers ask before working with PPN.")
+  accordionMode     String   @default("single") @map("accordion_mode")
+  ctaTitle          String   @default("Still have questions?") @map("cta_title")
+  ctaDescription    String   @default("Need product specifications, volume information, or quotation?") @map("cta_description")
+  ctaPrimaryLabel   String   @default("Contact PPN") @map("cta_primary_label")
+  ctaPrimaryHref    String   @default("/contact") @map("cta_primary_href")
+  ctaSecondaryLabel String   @default("WhatsApp PPN") @map("cta_secondary_label")
+  ctaSecondaryHref  String   @default("") @map("cta_secondary_href")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/heading/description/cta text.
+  translations      Json?
+
+  @@map("about_company_facilities_faq_section")
+}
+
+model FacilitiesFaqItem {
+  id            String                   @id @default(cuid())
+  question      String
+  answer        String
+  category      String                   @default("")
+  icon          String?
+  featured      Boolean                  @default(false)
+  highlightText String?                  @map("highlight_text")
+  order         Int                      @default(0)
+  active        Boolean                  @default(true)
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for question/answer/highlightText.
+  translations  Json?
+  tags          FacilitiesFaqProductTag[]
+
+  @@map("facilities_faq_items")
+}
+
+model FacilitiesFaqProductTag {
+  id           String            @id @default(cuid())
+  faqItemId    String            @map("faq_item_id")
+  faqItem      FacilitiesFaqItem @relation(fields: [faqItemId], references: [id], onDelete: Cascade)
+  name         String
+  order        Int               @default(0)
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name.
+  translations Json?
+
+  @@map("facilities_faq_product_tags")
+}
+
 // ── 3.10 ProductionStep ─────────────────────────────────────────────────
 model ProductionStep {
-  id             String @id @default(cuid())
+  id             String   @id @default(cuid())
+  label          String   @default("")
   title          String
   description    String
-  illustrationId String? @map("icon_or_image_id")
-  illustration   Media?  @relation(fields: [illustrationId], references: [id])
-  order          Int     @default(0)
-  /// i18n — non-English overrides for title/description.
+  icon           String   @default("sourcing")
+  illustrationId String?  @map("icon_or_image_id")
+  illustration   Media?   @relation(fields: [illustrationId], references: [id])
+  ctaLabel       String?  @map("cta_label")
+  ctaHref        String?  @map("cta_href")
+  order          Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for label/title/description.
   translations   Json?
 
   @@map("production_steps")
 }
 
+// ── 3.10b HomepageProcessSection ─────────────────────────────────────────
+// Singleton — "Our Supply & Export Process" section's own header copy + closing CTA,
+// editable independently of the individual stages. Same get-or-create pattern as
+// HomepagePartnersSection/HomepageShippingSection.
+model HomepageProcessSection {
+  id                String   @id @default(cuid())
+  eyebrow           String   @default("OUR SUPPLY & EXPORT PROCESS")
+  heading           String   @default("From Local Sourcing to Global Delivery")
+  description       String   @default("A structured process designed to maintain quality, efficiency, and reliability from product sourcing to final shipment.")
+  finalHeading      String   @default("Ready for your next shipment?") @map("final_heading")
+  finalDescription  String   @default("We are ready to discuss your product requirements and export needs.") @map("final_description")
+  primaryCtaLabel   String   @default("Explore Our Products") @map("primary_cta_label")
+  primaryCtaHref    String   @default("/products") @map("primary_cta_href")
+  secondaryCtaLabel String   @default("Contact PPN") @map("secondary_cta_label")
+  secondaryCtaHref  String   @default("/contact") @map("secondary_cta_href")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/heading/description/finalHeading/
+  /// finalDescription/primaryCtaLabel/secondaryCtaLabel.
+  translations      Json?
+
+  @@map("homepage_process_section")
+}
+
+// ── 3.10c SupplyNetworkItem ───────────────────────────────────────────────
+// Replaces "Why Choose Us?" (HomepageWhyChooseUs, kept untouched below for its data — just no
+// longer wired into any Homepage rendering). Same shape family as ProductionStep. Redesigned
+// (see README "Home → Our Supply Network") into a full admin-manageable ecosystem: each node
+// carries a `shortTitle` (the small headline shown in its click/hover info panel — e.g. node
+// "Farmers" → shortTitle "Local Farmer Network") and a `position` preset the frontend resolves
+// into responsive coordinates (no pixel X/Y in the admin, per brief §29).
+model SupplyNetworkItem {
+  id             String   @id @default(cuid())
+  label          String   @default("")
+  title          String
+  shortTitle     String   @default("") @map("short_title")
+  description    String
+  icon           String   @default("farmers")
+  illustrationId String?  @map("illustration_id")
+  illustration   Media?   @relation(fields: [illustrationId], references: [id])
+  ctaLabel       String?  @map("cta_label")
+  ctaHref        String?  @map("cta_href")
+  /// One of: top, top_right, right, bottom_right, bottom, bottom_left, left, top_left.
+  position       String   @default("top")
+  order          Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for label/title/shortTitle/description.
+  translations   Json?
+
+  connectionsFrom SupplyNetworkConnection[] @relation("SupplyConnectionFrom")
+  connectionsTo   SupplyNetworkConnection[] @relation("SupplyConnectionTo")
+
+  @@map("supply_network_items")
+}
+
+// Admin-manageable "From Node → To Node" links (brief §30) — replaces the old frontend-computed
+// hub-and-spoke positioning with explicit, CMS-owned connections the visual draws as animated
+// curved paths.
+model SupplyNetworkConnection {
+  id         String            @id @default(cuid())
+  fromNodeId String            @map("from_node_id")
+  fromNode   SupplyNetworkItem @relation("SupplyConnectionFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNodeId   String            @map("to_node_id")
+  toNode     SupplyNetworkItem @relation("SupplyConnectionTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+  order      Int               @default(0)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  @@map("supply_network_connections")
+}
+
+// Destination markers for the section's subtle background "global trade" motif (brief §18/§32)
+// — CMS-driven, not hardcoded, and deliberately just a name + flag + short status label, never
+// a real GIS map.
+model SupplyNetworkCountry {
+  id           String   @id @default(cuid())
+  name         String
+  flagEmoji    String   @default("🌍") @map("flag_emoji")
+  status       String   @default("") @map("status")
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/status.
+  translations Json?
+
+  @@map("supply_network_countries")
+}
+
+// ── 3.10d HomepageSupplyNetworkSection ────────────────────────────────────
+// Singleton — "Our Supply Network" section's own header copy + closing CTA. Same get-or-create
+// pattern as HomepageProcessSection. Extended with the center-node copy (brief §26) and
+// animation feature toggles (brief §31, default on).
+model HomepageSupplyNetworkSection {
+  id                String   @id @default(cuid())
+  eyebrow           String   @default("OUR SUPPLY NETWORK")
+  heading           String   @default("Reliable & Flexible Sourcing")
+  description       String   @default("PPN builds a flexible sourcing network by working with farmers, collectors, suppliers, and long-term partners to support consistent coconut supply according to product specifications and required volume.")
+  centerLabel       String   @default("PPN") @map("center_label")
+  centerTitle       String   @default("Reliable Coconut Supply") @map("center_title")
+  centerDescription String   @default("") @map("center_description")
+  finalHeading      String   @default("A Flexible Network Built for Reliable Supply") @map("final_heading")
+  finalDescription  String   @default("PPN works with diverse sourcing partners to support product availability, specifications, and required volumes.") @map("final_description")
+  primaryCtaLabel   String   @default("Become a Supply Partner") @map("primary_cta_label")
+  primaryCtaHref    String   @default("/contact") @map("primary_cta_href")
+  secondaryCtaLabel String   @default("") @map("secondary_cta_label")
+  secondaryCtaHref  String   @default("") @map("secondary_cta_href")
+  enableAnimation   Boolean  @default(true) @map("enable_animation")
+  autoRotate        Boolean  @default(true) @map("auto_rotate")
+  particleFlow      Boolean  @default(true) @map("particle_flow")
+  hoverEffect       Boolean  @default(true) @map("hover_effect")
+  effect3d          Boolean  @default(true) @map("effect_3d")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/heading/description/centerLabel/centerTitle/
+  /// centerDescription/finalHeading/finalDescription/primaryCtaLabel/secondaryCtaLabel.
+  translations      Json?
+
+  @@map("homepage_supply_network_section")
+}
+
 // ── 3.11 HomepageStatistic ──────────────────────────────────────────────
 model HomepageStatistic {
-  id        String   @id @default(cuid())
-  label     String
-  value     String
-  icon      String?
-  order     Int      @default(0)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  label        String
+  value        String
+  icon         String?
+  order        Int      @default(0)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for label/value.
   translations Json?
 
@@ -296,33 +959,33 @@ enum HeroTextAlignment {
 // site falls back to a static branded section with no CMS dependency, see
 // apps/web HeroSlider.tsx's HeroFallback).
 model HeroSlide {
-  id              String    @id @default(cuid())
-  desktopImageId  String?   @map("desktop_image_id")
-  desktopImage    Media?    @relation("HeroSlideDesktopImage", fields: [desktopImageId], references: [id])
-  mobileImageId   String?   @map("mobile_image_id")
-  mobileImage     Media?    @relation("HeroSlideMobileImage", fields: [mobileImageId], references: [id])
-  eyebrowText     String?   @map("eyebrow_text")
-  heading         String
-  subheading      String
-  description     String?
-  button1Text     String?         @map("button_1_text")
-  button1Link     String?         @map("button_1_link")
-  button1Enabled  Boolean         @default(true) @map("button_1_enabled")
-  button1Style    HeroButtonStyle @default(primary) @map("button_1_style")
-  button2Text     String?         @map("button_2_text")
-  button2Link     String?         @map("button_2_link")
-  button2Enabled  Boolean         @default(true) @map("button_2_enabled")
-  button2Style    HeroButtonStyle @default(secondary) @map("button_2_style")
-  textAlignment   HeroTextAlignment @default(center) @map("text_alignment")
+  id             String            @id @default(cuid())
+  desktopImageId String?           @map("desktop_image_id")
+  desktopImage   Media?            @relation("HeroSlideDesktopImage", fields: [desktopImageId], references: [id])
+  mobileImageId  String?           @map("mobile_image_id")
+  mobileImage    Media?            @relation("HeroSlideMobileImage", fields: [mobileImageId], references: [id])
+  eyebrowText    String?           @map("eyebrow_text")
+  heading        String
+  subheading     String
+  description    String?
+  button1Text    String?           @map("button_1_text")
+  button1Link    String?           @map("button_1_link")
+  button1Enabled Boolean           @default(true) @map("button_1_enabled")
+  button1Style   HeroButtonStyle   @default(primary) @map("button_1_style")
+  button2Text    String?           @map("button_2_text")
+  button2Link    String?           @map("button_2_link")
+  button2Enabled Boolean           @default(true) @map("button_2_enabled")
+  button2Style   HeroButtonStyle   @default(secondary) @map("button_2_style")
+  textAlignment  HeroTextAlignment @default(center) @map("text_alignment")
   /// 0–100 (%) — darkness of the scrim between the background image and the text.
-  overlayOpacity  Int       @default(35) @map("overlay_opacity")
-  order           Int       @default(0)
-  enabled         Boolean   @default(true)
-  publishDate     DateTime? @map("publish_date")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  overlayOpacity Int               @default(35) @map("overlay_opacity")
+  order          Int               @default(0)
+  enabled        Boolean           @default(true)
+  publishDate    DateTime?         @map("publish_date")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
   /// i18n — non-English overrides for eyebrowText/heading/subheading/description/button1Text/button2Text.
-  translations    Json?
+  translations   Json?
 
   @@map("hero_slides")
 }
@@ -421,24 +1084,24 @@ enum HomepageVideoSource {
 }
 
 model HomepageAboutPreview {
-  id                String              @id @default(cuid())
-  label             String              @default("About CV. Putri Palma Nusantara")
-  heading           String              @default("Premium Indonesian Coconut Exporter")
-  paragraph1        String              @default("")
-  paragraph2        String              @default("")
-  paragraph3        String              @default("")
-  ctaText           String              @default("Get to Know Us") @map("cta_text")
-  ctaLink           String              @default("/about") @map("cta_link")
-  videoSource       HomepageVideoSource @default(none) @map("video_source")
-  videoUrl          String?             @map("video_url")
-  videoMediaId      String?             @map("video_media_id")
-  videoMedia        Media?              @relation("AboutPreviewVideoMedia", fields: [videoMediaId], references: [id])
-  videoThumbnailId  String?             @map("video_thumbnail_id")
-  videoThumbnail    Media?              @relation("AboutPreviewVideoThumbnail", fields: [videoThumbnailId], references: [id])
-  enabled           Boolean             @default(true)
-  updatedAt         DateTime            @updatedAt @map("updated_at")
+  id               String              @id @default(cuid())
+  label            String              @default("About CV. Putri Palma Nusantara")
+  heading          String              @default("Premium Indonesian Coconut Exporter")
+  paragraph1       String              @default("")
+  paragraph2       String              @default("")
+  paragraph3       String              @default("")
+  ctaText          String              @default("Get to Know Us") @map("cta_text")
+  ctaLink          String              @default("/about") @map("cta_link")
+  videoSource      HomepageVideoSource @default(none) @map("video_source")
+  videoUrl         String?             @map("video_url")
+  videoMediaId     String?             @map("video_media_id")
+  videoMedia       Media?              @relation("AboutPreviewVideoMedia", fields: [videoMediaId], references: [id])
+  videoThumbnailId String?             @map("video_thumbnail_id")
+  videoThumbnail   Media?              @relation("AboutPreviewVideoThumbnail", fields: [videoThumbnailId], references: [id])
+  enabled          Boolean             @default(true)
+  updatedAt        DateTime            @updatedAt @map("updated_at")
   /// i18n — non-English overrides for label/heading/paragraph1-3/ctaText.
-  translations      Json?
+  translations     Json?
 
   @@map("homepage_about_preview")
 }
@@ -512,24 +1175,33 @@ enum ExportStatus {
 }
 
 model ExportDestination {
-  id                String       @id @default(cuid())
+  id                   String       @id @default(cuid())
   /// ISO 3166-1 alpha-2, e.g. "TH" — matches the `data-alpha2` attribute on the world map SVG.
-  countryCode       String       @unique @map("country_code")
-  countryCodeAlpha3 String       @map("country_code_alpha3")
-  countryName       String       @map("country_name")
-  exportStatus      ExportStatus @default(active_destination) @map("export_status")
-  description       String?
-  exportVolume      String?      @map("export_volume")
-  exportFrequency   String?      @map("export_frequency")
-  destinationPort   String?      @map("destination_port")
-  products          Product[]    @relation("ExportDestinationProducts")
-  order             Int          @default(0)
-  enabled           Boolean      @default(true)
-  featured          Boolean      @default(false)
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
+  countryCode          String       @unique @map("country_code")
+  countryCodeAlpha3    String       @map("country_code_alpha3")
+  countryName          String       @map("country_name")
+  exportStatus         ExportStatus @default(active_destination) @map("export_status")
+  /// Optional grouping label shown next to the country (e.g. "Southeast Asia"). Free text,
+  /// not an enum — regional naming differs by audience and this is display copy.
+  region               String?
+  description          String?
+  exportVolume         String?      @map("export_volume")
+  exportFrequency      String?      @map("export_frequency")
+  destinationPort      String?      @map("destination_port")
+  products             Product[]    @relation("ExportDestinationProducts")
+  order                Int          @default(0)
+  enabled              Boolean      @default(true)
+  featured             Boolean      @default(false)
+  /// Independent curation flag for the About Company → "CV. Putri Palma Nusantara" →
+  /// "Countries We Have Exported To" flag grid — deliberately separate from `featured` (which
+  /// gates the Homepage's own Global Export Reach map), so activating a country on one surface
+  /// never silently activates it on the other. Same underlying country record either way; only
+  /// the visibility per surface differs.
+  showInCompanyProfile Boolean      @default(false) @map("show_in_company_profile")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
   /// i18n — non-English overrides for countryName/description.
-  translations      Json?
+  translations         Json?
 
   @@index([enabled, exportStatus])
   @@map("export_destinations")
@@ -635,12 +1307,12 @@ model HomepagePublishedSnapshot {
 
 // ── 3.12 FAQ ─────────────────────────────────────────────────────────────
 model Faq {
-  id        String        @id @default(cuid())
-  question  String
-  answer    String
-  order     Int           @default(0)
-  status    ContentStatus @default(draft)
-  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at")
+  id           String        @id @default(cuid())
+  question     String
+  answer       String
+  order        Int           @default(0)
+  status       ContentStatus @default(draft)
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for question/answer.
   translations Json?
 
@@ -683,12 +1355,967 @@ model QuotationRequest {
 
 // ── 3.15 SiteSetting ─────────────────────────────────────────────────────
 model SiteSetting {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String
-  group String
+  id           String @id @default(cuid())
+  key          String @unique
+  value        String
+  group        String
   /// i18n — non-English overrides for value, e.g. {"id": {"value": "..."}, "zh": {...}}.
   translations Json?
 
   @@map("site_settings")
+}
+
+// ── 3.16 SiteBranding (Post-Launch, singleton) ────────────────────────────
+// Header/Footer/Mobile logo + Favicon — deliberately its own small table rather than
+// SiteSetting rows, since SiteSetting.value is a flat string with no room for a Media
+// relation/alt-text/enabled-flag bundle per slot. Follows the same get-or-create singleton
+// pattern as HomepageAboutPreview/HomepagePartnersSection/HomepageShippingSection.
+model SiteBranding {
+  id String @id @default(cuid())
+
+  headerLogoId      String? @map("header_logo_id")
+  headerLogo        Media?  @relation("SiteBrandingHeaderLogo", fields: [headerLogoId], references: [id])
+  headerLogoEnabled Boolean @default(true) @map("header_logo_enabled")
+  headerLogoAlt     String? @map("header_logo_alt")
+
+  footerLogoId      String? @map("footer_logo_id")
+  footerLogo        Media?  @relation("SiteBrandingFooterLogo", fields: [footerLogoId], references: [id])
+  footerLogoEnabled Boolean @default(true) @map("footer_logo_enabled")
+  footerLogoAlt     String? @map("footer_logo_alt")
+
+  mobileLogoId  String? @map("mobile_logo_id")
+  mobileLogo    Media?  @relation("SiteBrandingMobileLogo", fields: [mobileLogoId], references: [id])
+  useMobileLogo Boolean @default(false) @map("use_mobile_logo")
+  mobileLogoAlt String? @map("mobile_logo_alt")
+
+  faviconId String? @map("favicon_id")
+  favicon   Media?  @relation("SiteBrandingFavicon", fields: [faviconId], references: [id])
+
+  /// Custom background photo for the breadcrumb/title bar on the Product Detail page
+  /// template only (PageHeader.tsx) — shared across all products, not per-product.
+  productHeaderBackgroundId String? @map("product_header_background_id")
+  productHeaderBackground   Media?  @relation("SiteBrandingProductHeaderBackground", fields: [productHeaderBackgroundId], references: [id])
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("site_branding")
+}
+
+// ── 3.17 About Company CMS (Post-Launch) ──────────────────────────────────
+// Draft/Publish architecture mirrors the Homepage Manager exactly (see
+// HomepageSectionConfig/HomepagePublishedSnapshot above): every table below is the "draft"
+// working copy Admin edits directly; AboutCompanyPublishedSnapshot is an append-only frozen
+// copy created on Publish, and the public /about page reads only the latest snapshot.
+
+model AboutCompanySectionConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique // "company" | "team" | "what_we_do" | "legal_certificate" | "factory"
+  order     Int      @default(0)
+  visible   Boolean  @default(true)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("about_company_section_config")
+}
+
+model AboutCompanyPublishedSnapshot {
+  id          String   @id @default(cuid())
+  data        Json
+  publishedAt DateTime @default(now()) @map("published_at")
+
+  @@index([publishedAt])
+  @@map("about_company_published_snapshot")
+}
+
+// Section 01 "CV. Putri Palma Nusantara" (singleton, get-or-create — same idiom as
+// HomepageAboutPreview).
+model AboutCompanyProfile {
+  id               String   @id @default(cuid())
+  headline         String   @default("CV. Putri Palma Nusantara")
+  shortDescription String   @default("") @map("short_description")
+  mainDescription  String   @default("") @map("main_description")
+  vision           String   @default("")
+  mission          String   @default("")
+  companyOverview  String   @default("") @map("company_overview")
+  mainImageId      String?  @map("main_image_id")
+  mainImage        Media?   @relation("AboutCompanyMainImage", fields: [mainImageId], references: [id])
+  /// Any supported YouTube URL format (watch/youtu.be/embed) — the video ID is extracted on
+  /// the frontend, so the Admin never has to construct an embed URL by hand.
+  youtubeVideoUrl  String?  @map("youtube_video_url")
+  /// "Connect With PPN" social row, shown directly under the video.
+  socialLabel      String   @default("Connect With PPN") @map("social_label")
+  socialVisible    Boolean  @default(true) @map("social_visible")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for every translatable text field on this singleton.
+  translations     Json?
+
+  // ── Storytelling blocks (Post-Launch company-profile redesign) ────────────
+  // All blocks live on this one singleton rather than in separate tables: they are all the
+  // same entity ("the company profile"), always read and published together, and a single
+  // row keeps the Admin PUT atomic. Every block carries its own `*Visible` flag so an Admin
+  // can turn a block off instead of being forced to invent content for it — nothing is
+  // pre-filled with fabricated company claims.
+
+  /// 01 Introduction.
+  eyebrow    String  @default("Who We Are")
+  subheading String  @default("")
+  ctaLabel   String? @map("cta_label")
+  ctaHref    String? @map("cta_href")
+
+  /// 02 Company Story.
+  storyLabel                String  @default("About PPN") @map("story_label")
+  storyHeading              String  @default("") @map("story_heading")
+  storyDescription          String  @default("") @map("story_description")
+  storySecondaryDescription String  @default("") @map("story_secondary_description")
+  storyImageId              String? @map("story_image_id")
+  storyImage                Media?  @relation("AboutCompanyStoryImage", fields: [storyImageId], references: [id])
+  storyVisible              Boolean @default(true) @map("story_visible")
+
+  /// 03 Business Scope — renders the existing WhatWeDoItem records inside the profile story.
+  /// Defaults to hidden so enabling it is a deliberate choice: "What We Do?" is also its own
+  /// section on the About page, and showing both would repeat the same content twice.
+  scopeLabel       String  @default("What We Do") @map("scope_label")
+  scopeHeading     String  @default("") @map("scope_heading")
+  scopeDescription String  @default("") @map("scope_description")
+  scopeVisible     Boolean @default(false) @map("scope_visible")
+
+  /// 05 Company Facts (rows live in AboutCompanyFact).
+  factsLabel   String  @default("Company Facts") @map("facts_label")
+  factsHeading String  @default("") @map("facts_heading")
+  factsVisible Boolean @default(true) @map("facts_visible")
+
+  /// 06/07 Global Export Reach — reuses the existing ExportDestination records and world map
+  /// component; only this section's own copy lives here.
+  exportLabel       String  @default("Global Export Reach") @map("export_label")
+  exportHeading     String  @default("") @map("export_heading")
+  exportDescription String  @default("") @map("export_description")
+  exportVisible     Boolean @default(true) @map("export_visible")
+
+  /// 08 Legal / company information. Blank fields are never rendered publicly.
+  legalLabel        String  @default("Company Information") @map("legal_label")
+  legalHeading      String  @default("") @map("legal_heading")
+  businessType      String  @default("") @map("business_type")
+  registeredAddress String  @default("") @map("registered_address")
+  businessIdNumber  String  @default("") @map("business_id_number")
+  establishedYear   String  @default("") @map("established_year")
+  legalVisible      Boolean @default(true) @map("legal_visible")
+
+  /// 09 Closing statement.
+  closingLabel       String  @default("") @map("closing_label")
+  closingHeading     String  @default("") @map("closing_heading")
+  closingDescription String  @default("") @map("closing_description")
+  closingCtaLabel    String? @map("closing_cta_label")
+  closingCtaHref     String? @map("closing_cta_href")
+  closingVisible     Boolean @default(true) @map("closing_visible")
+
+  gallery AboutCompanyGalleryImage[]
+
+  @@map("about_company_profile")
+}
+
+/// One "Company Facts" row (item 17/18/40) — label/value pairs the Admin fully controls, so
+/// the public grid only ever shows facts that actually exist. Deliberately generic rather
+/// than fixed columns: the brief's own fact list is a suggestion, not a schema.
+model AboutCompanyFact {
+  id           String   @id @default(cuid())
+  label        String
+  value        String
+  /// Optional icon key resolved by the public component's own allowlist — never a raw URL.
+  icon         String?
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for label/value.
+  translations Json?
+
+  @@map("about_company_facts")
+}
+
+model AboutCompanyGalleryImage {
+  id        String              @id @default(cuid())
+  profileId String              @map("profile_id")
+  profile   AboutCompanyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  mediaId   String              @map("media_id")
+  media     Media               @relation("AboutCompanyGalleryMedia", fields: [mediaId], references: [id])
+  caption   String?
+  altText   String?             @map("alt_text")
+  order     Int                 @default(0)
+  featured  Boolean             @default(false)
+  updatedAt DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  @@map("about_company_gallery")
+}
+
+/// "Connect With PPN" social row under the company-profile video — free-choice platform per
+/// row (unlike Contact Page's fixed four-slot social fields), since this section explicitly
+/// asks for an open CRUD list including optional platforms (YouTube/WhatsApp/X/Other).
+model AboutCompanySocialLink {
+  id           String   @id @default(cuid())
+  /// Free-text key used to pick an icon on the frontend (e.g. "instagram", "tiktok",
+  /// "facebook", "linkedin", "youtube", "whatsapp", "twitter", "other") — not an enum, so a
+  /// platform the Admin needs later doesn't require a schema change.
+  platform     String
+  displayName  String   @map("display_name")
+  url          String
+  active       Boolean  @default(true)
+  openInNewTab Boolean  @default(true) @map("open_in_new_tab")
+  order        Int      @default(0)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("about_company_social_links")
+}
+
+// Section 02 "PPN Team".
+model TeamMember {
+  id               String   @id @default(cuid())
+  name             String
+  position         String
+  biography        String   @default("")
+  /// Free text or a newline-separated list; the public profile modal renders newline-separated
+  /// lines as bullets. Kept as plain text because the Admin form here is a plain textarea.
+  responsibilities String   @default("")
+  /// Optional grouping ("Management", "Operations", …) so the same model can later drive
+  /// several team lists without a schema change. Free text, not an enum: departments differ
+  /// per company and an enum would need a migration for every new one.
+  department       String?
+  photoId          String?  @map("photo_id")
+  photo            Media?   @relation("TeamMemberPhoto", fields: [photoId], references: [id])
+  /// Renamed from `social_link` — it always held a profile URL, and the public card now
+  /// labels it as LinkedIn. Renamed in place so existing values survive.
+  linkedinUrl      String?  @map("linkedin_url")
+  email            String?
+  phone            String?
+  order            Int      @default(0)
+  active           Boolean  @default(true)
+  featured         Boolean  @default(false)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/position/biography/responsibilities/department.
+  translations     Json?
+
+  @@map("team_members")
+}
+
+/// Section 02's own heading copy (singleton, get-or-create). Separate from TeamMember so the
+/// section keeps its title/description even when no members exist yet, and separate from
+/// AboutCompanyProfile because it belongs to a different section of the page.
+model AboutCompanyTeamSection {
+  id           String   @id @default(cuid())
+  eyebrow      String   @default("Meet the Team")
+  heading      String   @default("The People Behind PPN")
+  description  String   @default("")
+  ctaLabel     String?  @map("cta_label")
+  ctaHref      String?  @map("cta_href")
+  /// Shows a live count of published team members. Off by default — a counter is only honest
+  /// when it is derived, and only useful once there are enough members to be worth stating.
+  showCounter  Boolean  @default(false) @map("show_counter")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/heading/description/ctaLabel.
+  translations Json?
+
+  @@map("about_company_team_section")
+}
+
+// Section 03 "What We Do?" — mediaId is a single field the Admin uses for either a photo or
+// an icon (SVG/PNG/WebP all pass the existing Media upload's `image/` MIME allowlist); the
+// brief explicitly asks for "image OR icon", not both, so one optional relation is enough.
+model WhatWeDoItem {
+  id                  String   @id @default(cuid())
+  title               String
+  shortDescription    String   @default("") @map("short_description")
+  detailedDescription String   @default("") @map("detailed_description")
+  /// Short bullet points shown under the card description (e.g. "Export-oriented fresh
+  /// coconut", "Flexible sourcing") — a plain string list, not rich text.
+  keyPoints           String[] @default([]) @map("key_points")
+  mediaId             String?  @map("media_id")
+  media               Media?   @relation("WhatWeDoMedia", fields: [mediaId], references: [id])
+  /// Optional link to a real catalogue product. A relation rather than a stored URL so the
+  /// public link is always built from the product's current slug and can never go stale or
+  /// point at a product that no longer exists.
+  productId           String?  @map("product_id")
+  product             Product? @relation("WhatWeDoProduct", fields: [productId], references: [id], onDelete: SetNull)
+  order               Int      @default(0)
+  active              Boolean  @default(true)
+  featured            Boolean  @default(false)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/shortDescription/detailedDescription.
+  translations        Json?
+
+  @@map("what_we_do_items")
+}
+
+/// Section-level copy for "What We Supply" (public heading is Admin-editable; the section key
+/// in `AboutCompanySectionConfig` stays "what_we_do" — renaming it would be a breaking change to
+/// the fixed 5-key section-navigator system, so only the public-facing text changes). Also
+/// carries the "Who We Supply" sub-block's copy and the Buyer/Supplier CTA copy, since both live
+/// inside this same section's component rather than becoming new top-level sections.
+model AboutCompanyWhatWeDoSection {
+  id                     String   @id @default(cuid())
+  eyebrow                String   @default("What We Supply")
+  heading                String   @default("Coconut Products for Global Markets")
+  description            String   @default("From fresh coconuts to processed coconut-derived products, PPN supports international buyers with flexible sourcing, quality-focused handling, and export-oriented supply.")
+  whoHeading             String   @default("Serving Buyers Across the Coconut Value Chain") @map("who_heading")
+  whoDescription          String   @default("PPN works with businesses across the coconut supply chain, from international importers and manufacturers to distributors and industrial users.") @map("who_description")
+  buyerCtaHeading        String   @default("Looking for Coconut Products?") @map("buyer_cta_heading")
+  buyerCtaDescription    String   @default("Talk to the PPN team about product specifications, availability, packaging, volume requirements, and export destinations.") @map("buyer_cta_description")
+  buyerCtaButtonText     String   @default("Explore Our Products") @map("buyer_cta_button_text")
+  supplierCtaHeading     String   @default("Want to Supply PPN?") @map("supplier_cta_heading")
+  supplierCtaDescription String   @default("We work with farmers, collectors, suppliers and long-term sourcing partners across Indonesia.") @map("supplier_cta_description")
+  supplierCtaButtonText  String   @default("Our Supply Network") @map("supplier_cta_button_text")
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for the text fields above.
+  translations           Json?
+
+  @@map("about_company_what_we_do_section")
+}
+
+/// "Who We Supply" audience segments (Importers/Manufacturers/Distributors/Industrial Users/
+/// Long-term Partners) — a flat repeatable list, not tied to any product or external record.
+model WhoWeSupplyItem {
+  id           String   @id @default(cuid())
+  title        String
+  description  String   @default("")
+  /// Fixed icon-key allowlist (see `WHO_WE_SUPPLY_ICONS` in shared-types) — never raw markup or
+  /// a remote asset URL.
+  icon         String?
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/description.
+  translations Json?
+
+  @@map("who_we_supply_items")
+}
+
+// Section 04 "Legal & Certificate" — fileId accepts a PDF or an image Media row (the existing
+// Media model already distinguishes file_type; the Admin UI picks the right upload/preview
+// treatment based on it). previewImageId is an optional separate thumbnail for a PDF document
+// (a PDF has no native image preview), left unset for image-type documents.
+enum LegalDocumentType {
+  certificate
+  legal_document
+  business_license
+  registration_document
+  export_certificate
+  quality_certificate
+  other
+}
+
+/// Admin-managed document categories, replacing the fixed `LegalDocumentType` enum: the brief
+/// requires add/edit/delete/reorder/activate, none of which an enum can do without a migration
+/// per change. `documentType` is kept on the document as a read-only legacy column so existing
+/// rows and published snapshots keep resolving while categories become the source of truth.
+model LegalDocumentCategory {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/description.
+  translations Json?
+
+  documents LegalCertificateDocument[]
+
+  @@map("legal_document_categories")
+}
+
+model LegalCertificateDocument {
+  id                  String                 @id @default(cuid())
+  title               String
+  documentType        LegalDocumentType      @default(other) @map("document_type")
+  categoryId          String?                @map("category_id")
+  category            LegalDocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  /// Optional issuing country, shown next to the institution when set.
+  country             String?
+  /// Only ever true because an Admin ticked it — never inferred. Drives the public
+  /// "Verified Document" badge, which must never be claimed automatically.
+  verified            Boolean                @default(false)
+  documentNumber      String?                @map("document_number")
+  issuingOrganization String?                @map("issuing_organization")
+  issueDate           DateTime?              @map("issue_date")
+  expiryDate          DateTime?              @map("expiry_date")
+  description         String?
+  fileId              String?                @map("file_id")
+  file                Media?                 @relation("LegalDocumentFile", fields: [fileId], references: [id])
+  previewImageId      String?                @map("preview_image_id")
+  previewImage        Media?                 @relation("LegalDocumentPreview", fields: [previewImageId], references: [id])
+  order               Int                    @default(0)
+  active              Boolean                @default(true)
+  featured            Boolean                @default(false)
+  updatedAt           DateTime               @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for title/description.
+  translations        Json?
+
+  @@index([categoryId])
+  @@index([active])
+  @@map("legal_certificate_documents")
+}
+
+// Section 05 "Factory" — deliberately its own profile/gallery/documents, independent of the
+// existing Facility model/Facilities page (client-confirmed): this is a distinct "our factory
+// story" narrative inside About Company, not a duplicate of the dedicated Facilities module,
+// which stays the place for full facility specs/photos.
+model FactoryProfile {
+  id                  String   @id @default(cuid())
+  eyebrow             String   @default("Factory & Facilities")
+  name                String   @default("Factory")
+  shortDescription    String   @default("") @map("short_description")
+  detailedDescription String   @default("") @map("detailed_description")
+  location            String?
+  operationalInfo     String?  @map("operational_info")
+  capacity            String?
+  additionalNotes     String?  @map("additional_notes")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/name/shortDescription/detailedDescription/location/operationalInfo/capacity/additionalNotes.
+  translations        Json?
+
+  gallery   FactoryGalleryImage[]
+  documents FactoryDocument[]
+  videos    FactoryVideo[]
+
+  @@map("factory_profile")
+}
+
+model FactoryGalleryImage {
+  id        String         @id @default(cuid())
+  factoryId String         @map("factory_id")
+  factory   FactoryProfile @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  mediaId   String         @map("media_id")
+  media     Media          @relation("FactoryGalleryMedia", fields: [mediaId], references: [id])
+  title     String?
+  caption   String?
+  category  String?
+  altText   String?        @map("alt_text")
+  order     Int            @default(0)
+  featured  Boolean        @default(false)
+  active    Boolean        @default(true)
+  updatedAt DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  @@index([factoryId])
+  @@index([active])
+  @@map("factory_gallery")
+}
+
+// TikTok video showcase for the Factory section (brief: "PPN — ABOUT COMPANY FACTORY / FACILITIES
+// FULL UI/UX + FRONTEND + ADMIN REDESIGN"). Admin only ever provides a TikTok URL — the official
+// TikTok embed script renders the video client-side, so no thumbnail/video file is stored here.
+model FactoryVideo {
+  id          String         @id @default(cuid())
+  factoryId   String         @map("factory_id")
+  factory     FactoryProfile @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  title       String
+  tiktokUrl   String         @map("tiktok_url")
+  description String?
+  order       Int            @default(0)
+  featured    Boolean        @default(false)
+  active      Boolean        @default(true)
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  @@map("factory_videos")
+}
+
+// Optional supporting PDFs for the Factory section — deliberately lighter than
+// LegalCertificateDocument (no document type/issuer/dates): brief item 36 only asks for
+// title + file + description for these.
+model FactoryDocument {
+  id          String         @id @default(cuid())
+  factoryId   String         @map("factory_id")
+  factory     FactoryProfile @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  title       String
+  fileId      String?        @map("file_id")
+  file        Media?         @relation("FactoryDocumentFile", fields: [fileId], references: [id])
+  description String?
+  order       Int            @default(0)
+  active      Boolean        @default(true)
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  @@map("factory_documents")
+}
+
+/// Section 04's own heading copy plus its one behavioural setting (singleton).
+model AboutCompanyLegalSection {
+  id           String   @id @default(cuid())
+  eyebrow      String   @default("Legal & Company Information")
+  heading      String   @default("Trusted Compliance, Verified Documentation")
+  description  String   @default("")
+  /// Expired documents stay visible by default — hiding them is a business decision, so it is
+  /// an explicit Admin choice rather than silent behaviour.
+  hideExpired  Boolean  @default(false) @map("hide_expired")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for eyebrow/heading/description.
+  translations Json?
+
+  @@map("about_company_legal_section")
+}
+
+// About Company page-level settings (singleton, get-or-create).
+model AboutCompanySettings {
+  id             String   @id @default(cuid())
+  pageTitle      String   @default("About Us") @map("page_title")
+  pageSubtitle   String   @default("") @map("page_subtitle")
+  seoTitle       String?  @map("seo_title")
+  seoDescription String?  @map("seo_description")
+  ogImageId      String?  @map("og_image_id")
+  ogImage        Media?   @relation("AboutCompanySettingsOgImage", fields: [ogImageId], references: [id])
+  visible        Boolean  @default(true)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("about_company_settings")
+}
+
+// ── Contact Page CMS (Post-Launch) ───────────────────────────────────────
+// Dedicated Draft/Publish CMS for the public /contact page. Deliberately a separate data
+// source from the generic `SiteSetting` key/value store (Footer keeps reading its own
+// contact_email/whatsapp_number/social_* keys, untouched) and from the `/admin/kontak`
+// Quotation inbox (an unrelated existing feature that just happens to share the word
+// "Kontak"). See README "Contact Page — Full Redesign" for why these are intentionally two
+// different systems rather than one shared source of truth.
+
+enum ContactLocationType {
+  head_office
+  operational
+  business
+}
+
+// Singleton draft row (get-or-create, same idiom as SiteBranding/AboutCompanySettings).
+model ContactPageSettings {
+  id String @id @default(cuid())
+
+  email          String @default("")
+  whatsappNumber String @default("") @map("whatsapp_number")
+
+  /// Structured, not free text — lets the public page compute "open now" correctly instead
+  /// of parsing a display string. Days are lowercase ISO weekday abbreviations (mon..sun);
+  /// the human-readable "Monday–Saturday" label is derived from this list, never stored
+  /// twice, so the two can never drift out of sync.
+  businessHoursOpenDays  String[] @default(["mon", "tue", "wed", "thu", "fri", "sat"]) @map("business_hours_open_days")
+  businessHoursOpenTime  String   @default("08:00") @map("business_hours_open_time")
+  businessHoursCloseTime String   @default("17:00") @map("business_hours_close_time")
+  businessHoursUtcOffset Int      @default(7) @map("business_hours_utc_offset")
+
+  heroEyebrow          String  @default("Contact PPN") @map("hero_eyebrow")
+  heroHeading          String  @default("Connect With Our Team") @map("hero_heading")
+  heroDescription      String  @default("Whether you are an international buyer looking for reliable coconut products or a local supplier interested in working with PPN, our team is ready to connect with you.") @map("hero_description")
+  heroImageId          String? @map("hero_image_id")
+  heroImage            Media?  @relation("ContactHeroImage", fields: [heroImageId], references: [id])
+  heroOverlayOpacity   Int     @default(55) @map("hero_overlay_opacity")
+  heroCtaPrimaryText   String  @default("Talk to PPN") @map("hero_cta_primary_text")
+  heroCtaSecondaryText String  @default("View Our Locations") @map("hero_cta_secondary_text")
+
+  /// International-buyer conversion section ("Looking for Reliable Indonesian Coconut
+  /// Supply?") — button always links to the existing /products page (brief §17: "existing
+  /// Products page"), so only the copy is configurable, not a destination URL.
+  buyerCtaHeading     String @default("Looking for Reliable Indonesian Coconut Supply?") @map("buyer_cta_heading")
+  buyerCtaDescription String @default("Explore PPN's coconut products and connect with our export team for specifications, availability, and shipment requirements.") @map("buyer_cta_description")
+  buyerCtaButtonText  String @default("Explore Our Products") @map("buyer_cta_button_text")
+
+  /// Local-supplier conversion section ("Looking to Supply PPN?") — previously fixed dictionary
+  /// copy, now Admin-editable including its own WhatsApp message (separate from the main
+  /// buyer WhatsApp message above).
+  supplierCtaHeading         String @default("Looking to Supply PPN?") @map("supplier_cta_heading")
+  supplierCtaDescription     String @default("We welcome farmers, collectors, suppliers, and long-term supply partners interested in building reliable coconut supply partnerships with PPN.") @map("supplier_cta_description")
+  supplierCtaButtonText      String @default("Talk to Our Supply Team") @map("supplier_cta_button_text")
+  supplierCtaWhatsappMessage String @default("Hello PPN Team,\n\nI am interested in becoming a supplier / supply partner. I would like to know more about PPN's current coconut sourcing requirements, specifications, required volume, and supply process.\n\nThank you.") @map("supplier_cta_whatsapp_message")
+
+  /// Main WhatsApp click-to-chat message, built from these four Admin-editable parts plus the
+  /// real, live product catalog (never a stored list — see `buildWhatsAppMessage()` on the
+  /// frontend) so the product names in the message can never drift from what's actually sold.
+  /// Replaces what used to be hardcoded i18n dictionary strings.
+  whatsappMessageGreeting         String @default("Hello PPN Team,") @map("whatsapp_message_greeting")
+  whatsappMessageIntro            String @default("I am interested in PPN's coconut products. I would like to know more about your current product availability, specifications, MOQ, packaging options, pricing, and shipment terms.") @map("whatsapp_message_intro")
+  whatsappMessageProductListLabel String @default("Products I am interested in:") @map("whatsapp_message_product_list_label")
+  whatsappMessageClosing          String @default("Thank you.") @map("whatsapp_message_closing")
+
+  mainMapLocationId String?          @map("main_map_location_id")
+  mainMapLocation   ContactLocation? @relation("ContactMainMapLocation", fields: [mainMapLocationId], references: [id], onDelete: SetNull)
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("contact_page_settings")
+}
+
+// Repeatable draft rows — Tolitoli / Palu / Surabaya today, but Admin can add/remove more.
+model ContactLocation {
+  id            String              @id @default(cuid())
+  name          String
+  locationType  ContactLocationType @default(operational) @map("location_type")
+  /// Short descriptive label shown under the name, e.g. "Head Office", "Operational Location".
+  label         String              @default("")
+  address       String
+  /// The exact "Open in Google Maps" destination the Admin supplies — never derived/guessed.
+  googleMapsUrl String              @default("") @map("google_maps_url")
+  phone         String?
+  email         String?
+  order         Int                 @default(0)
+  active        Boolean             @default(true)
+  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  mainMapSettingsOf ContactPageSettings[] @relation("ContactMainMapLocation")
+
+  @@map("contact_locations")
+}
+
+/// Open-ended social platform list — replaces the previous four fixed
+/// instagram/tiktok/facebook/linkedin columns on `ContactPageSettings` (migrated into rows
+/// here, not deleted) so the Admin can add/remove/reorder any platform, including ones the
+/// original four fixed slots never supported (YouTube, WhatsApp-as-social). Same shape as
+/// `AboutCompanySocialLink`, but its own model — Contact's icon set is deliberately
+/// self-contained and not shared with About Company's (see README).
+model ContactSocialLink {
+  id           String   @id @default(cuid())
+  platform     String
+  displayName  String   @map("display_name")
+  url          String
+  active       Boolean  @default(true)
+  openInNewTab Boolean  @default(true) @map("open_in_new_tab")
+  order        Int      @default(0)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("contact_social_links")
+}
+
+/// Singleton published state (get-or-create) — deliberately NOT an append-only history table
+/// like Homepage/About Company's snapshots: this brief's own QA checklist only asks for Save
+/// Draft/Preview/Publish/Unpublish, never "restore an older version", so the simpler model
+/// proportional to what's actually needed. `isPublished=false` is what makes Unpublish take
+/// the public page down without deleting the last-known payload.
+model ContactPagePublishedSnapshot {
+  id          String    @id @default(cuid())
+  isPublished Boolean   @default(false) @map("is_published")
+  data        Json?
+  publishedAt DateTime? @map("published_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("contact_page_published_snapshot")
+}
+
+// ── 3.18 Inner Page Header (Design → Inner Page Header) ────────────────────
+// One row per `page_key`, plus a reserved "global-default" row. Every column below except
+// `page_key`/`is_active` is intentionally nullable — resolution is a 3-tier field-by-field
+// merge (page-specific → global-default → hardcoded system constant), not a whole-row
+// override, so e.g. Facilities can set just a subtitle while its background/colors still
+// inherit from Global. A page-specific row with `is_active=false` is skipped entirely, as if
+// it didn't exist — the admin's per-page "Active" toggle. Pages with no configured background
+// anywhere in the chain render PageHeader.tsx's original plain flat background unchanged (see
+// README "Inner Page Header" — this is what keeps every page's current appearance identical
+// the day this table is introduced, until an admin deliberately uploads something).
+enum PageHeaderOverlayType {
+  dark
+  light
+  green
+  gradient
+}
+
+enum PageHeaderPosition {
+  center
+  center_top
+  center_bottom
+  left
+  right
+}
+
+enum PageHeaderHeightPreset {
+  compact
+  standard
+  tall
+}
+
+model PageHeader {
+  id       String  @id @default(cuid())
+  pageKey  String  @unique @map("page_key")
+  isActive Boolean @default(true) @map("is_active")
+
+  backgroundImageId String? @map("background_image_id")
+  backgroundImage    Media? @relation("PageHeaderBackgroundImage", fields: [backgroundImageId], references: [id])
+  mobileBackgroundImageId String? @map("mobile_background_image_id")
+  mobileBackgroundImage    Media? @relation("PageHeaderMobileBackgroundImage", fields: [mobileBackgroundImageId], references: [id])
+  /// Falls back to the resolved page title when left blank (NFR-A11Y-03).
+  altText String? @map("alt_text")
+
+  /// Only meaningful on page-specific rows — deliberately not read from the global-default row
+  /// (a global title override applying to every page at once would be confusing, not useful).
+  customTitle String? @map("custom_title")
+  subtitle    String?
+
+  overlayEnabled Boolean?               @map("overlay_enabled")
+  overlayType    PageHeaderOverlayType? @map("overlay_type")
+  overlayOpacity Int?                   @map("overlay_opacity")
+
+  backgroundPosition       PageHeaderPosition? @map("background_position")
+  mobileBackgroundPosition PageHeaderPosition? @map("mobile_background_position")
+
+  heightPreset PageHeaderHeightPreset? @map("height_preset")
+
+  titleColor      String? @map("title_color")
+  subtitleColor   String? @map("subtitle_color")
+  breadcrumbColor String? @map("breadcrumb_color")
+
+  showBreadcrumb Boolean? @map("show_breadcrumb")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("page_headers")
+}
+
+// ── 3.19 Footer (Settings → Footer Management) ─────────────────────────────
+// Singleton (get-or-create), matching SiteBranding/ContactPageSettings. Deliberately does NOT
+// duplicate contact info, business hours, social links, or office locations — those are already
+// real, admin-editable data on ContactPageSettings/ContactLocation/ContactSocialLink (see
+// README "Contact Page — Full Redesign"), and the Footer reads that same published payload
+// directly. This model only owns what's genuinely footer-specific: enable/disable toggles,
+// brand-area copy, the background photo treatment, and the closing CTA card copy. Reuses
+// `PageHeaderPosition` (already generic — center/center_top/center_bottom/left/right) rather
+// than a duplicate enum.
+enum FooterOverlayType {
+  dark_green
+  charcoal
+  black
+  green_gradient
+}
+
+model FooterSettings {
+  id String @id @default(cuid())
+
+  enabled        Boolean @default(true)
+  showCta        Boolean @default(true) @map("show_cta")
+  showSocial     Boolean @default(true) @map("show_social")
+  showContact    Boolean @default(true) @map("show_contact")
+  showNavigation Boolean @default(true) @map("show_navigation")
+
+  companyName String @default("CV. Putri Palma Nusantara") @map("company_name")
+  tagline     String @default("Coconut Products for Global Markets")
+  description String @default("Indonesian coconut products sourced, handled, and supplied for local and international markets.")
+
+  backgroundImageId String? @map("background_image_id")
+  backgroundImage   Media?  @relation("FooterBackgroundImage", fields: [backgroundImageId], references: [id])
+  mobileBackgroundImageId String? @map("mobile_background_image_id")
+  mobileBackgroundImage   Media?  @relation("FooterMobileBackgroundImage", fields: [mobileBackgroundImageId], references: [id])
+  /// Falls back to companyName when left blank (NFR-A11Y-03).
+  backgroundAltText String? @map("background_alt_text")
+
+  overlayType    FooterOverlayType  @default(dark_green) @map("overlay_type")
+  overlayOpacity Int                @default(70) @map("overlay_opacity")
+
+  backgroundPosition       PageHeaderPosition @default(center) @map("background_position")
+  mobileBackgroundPosition PageHeaderPosition @default(center) @map("mobile_background_position")
+
+  ctaHeadline      String @default("Ready to Source from Indonesia?") @map("cta_headline")
+  ctaDescription   String @default("Talk to our team about product specifications, volume requirements, and shipment arrangements.") @map("cta_description")
+  ctaPrimaryText   String @default("Explore Products") @map("cta_primary_text")
+  ctaSecondaryText String @default("Talk to PPN") @map("cta_secondary_text")
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("footer_settings")
+}
+
+// ── 3.20 AI Assistant ───────────────────────────────────────────────────────
+// Retrieval-based (RAG) assistant — CMS content is the single source of truth; this whole
+// section is DERIVED/indexed data, never hand-authored. See README "AI Assistant" for the full
+// architecture note. Retrieval uses PostgreSQL's built-in full-text search (`to_tsvector`/
+// `ts_rank`, no extension required) rather than vector embeddings: pgvector was confirmed
+// available-but-not-installed on the dev database and its availability can't be assumed on
+// whatever Postgres this eventually deploys to, whereas `tsvector` ships with every Postgres
+// install — zero infra risk for a knowledge base this size (a company profile site, not a
+// large document corpus). Known trade-off, stated plainly: the `simple` text search config used
+// here tokenizes on whitespace/punctuation with no per-language stemming, and Chinese/Thai
+// (which don't use whitespace between words) get materially lower retrieval precision than the
+// space-separated languages — full CJK/Thai segmentation would need a dedicated extension
+// (e.g. zhparser) not available on this database.
+
+// Singleton (get-or-create), matching SiteBranding/FooterSettings. The 11 `include*` toggles
+// mirror exactly what Admin → AI Assistant → Knowledge lets an admin turn on/off; they gate
+// which CMS modules `AiSyncService` reads from on each rebuild — nothing else. `businessInstructions`
+// is the ONLY admin-editable addition to the system prompt; core anti-hallucination/safety rules
+// are hardcoded in `ai-system-prompt.ts` and never admin-editable (brief requirement).
+model AiSettings {
+  id String @id @default(cuid())
+
+  enabled       Boolean @default(true)
+  assistantName String  @default("PPN Assistant") @map("assistant_name")
+  subtitle      String  @default("Your Coconut Supply Assistant")
+  desktopEnabled Boolean @default(true) @map("desktop_enabled")
+  mobileEnabled  Boolean @default(true) @map("mobile_enabled")
+
+  /// Additive business context appended to the (protected, hardcoded) core system prompt —
+  /// e.g. "Always present PPN as a professional Indonesian coconut supplier." Never overrides
+  /// the anti-hallucination rules.
+  businessInstructions String @default("") @map("business_instructions")
+
+  includeHome              Boolean @default(true) @map("include_home")
+  includeAboutCompany      Boolean @default(true) @map("include_about_company")
+  includeProducts          Boolean @default(true) @map("include_products")
+  includeFacilities        Boolean @default(true) @map("include_facilities")
+  includeMoqPaymentTerms   Boolean @default(true) @map("include_moq_payment_terms")
+  includeShipmentTerms     Boolean @default(true) @map("include_shipment_terms")
+  includeFaq               Boolean @default(true) @map("include_faq")
+  includeGallery           Boolean @default(true) @map("include_gallery")
+  includeNews              Boolean @default(true) @map("include_news")
+  includeContact           Boolean @default(true) @map("include_contact")
+  includeLegalCertificates Boolean @default(true) @map("include_legal_certificates")
+
+  whatsappEnabled           Boolean @default(true) @map("whatsapp_enabled")
+  whatsappNumber             String  @default("+6282293807717") @map("whatsapp_number")
+  whatsappDisplayName        String  @default("PPN Team") @map("whatsapp_display_name")
+  whatsappGeneralMessage     String  @default("Hello PPN Team,\n\nI am interested in your coconut products.\n\nProduct:\nQuantity:\nDestination:\n\nI would like to request product information and quotation.\n\nThank you.") @map("whatsapp_general_message")
+  whatsappProductMessage     String  @default("Hello PPN Team,\n\nI am interested in {product}.\n\nI would like to know more about:\n- Product specifications\n- Packaging\n- Availability\n- Pricing\n- Shipment options\n\nQuantity:\nDestination:\n\nThank you.") @map("whatsapp_product_message")
+
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("ai_settings")
+}
+
+/// One admin-toggle group per row of `AiSettings`'s `include*` fields — the coarse grouping the
+/// Knowledge Status admin screen and per-source counts are reported against.
+enum AiSourceKey {
+  home
+  about_company
+  products
+  facilities
+  moq_payment_terms
+  shipment_terms
+  faq
+  gallery
+  news
+  contact
+  legal_certificates
+}
+
+/// A retrieval-ready chunk of PUBLISHED website content — never hand-authored, always produced
+/// by `AiSyncService` from the same public read paths the website itself renders through (see
+/// README "AI Assistant" for the exact source-per-module table). `version` is a rebuild
+/// timestamp (ms epoch): every full resync writes an entirely new set of rows tagged with a
+/// fresh version inside one transaction, and only flips `AiSyncStatus.activeVersion` to point at
+/// it after every row commits — so a failed/partial rebuild can never take the live knowledge
+/// base down (README "AI Assistant" §Version Control). Old versions are deleted lazily by the
+/// next successful sync, not deactivated-in-place, keeping exactly one live generation of rows
+/// per language at rest.
+model AiKnowledgeChunk {
+  id          String      @id @default(cuid())
+  version     BigInt
+  sourceKey   AiSourceKey @map("source_key")
+  contentType String      @map("content_type")
+  page        String
+  section     String?
+  language    String
+  productId   String?     @map("product_id")
+  sourceUrl   String      @map("source_url")
+  content     String
+  updatedAt   DateTime    @map("updated_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  /// Generated/stored column (`to_tsvector('simple', content)`) + GIN index, added by raw SQL
+  /// in the migration — Prisma only needs to know this column exists so it never tries to drop
+  /// it on a future `migrate dev`; all querying against it happens via `$queryRaw`.
+  searchVector Unsupported("tsvector")? @map("search_vector")
+
+  @@index([version, language])
+  @@index([sourceKey, language])
+  @@index([productId])
+  @@map("ai_knowledge_chunks")
+}
+
+enum AiSyncRunStatus {
+  running
+  success
+  failed
+}
+
+/// Singleton — the current live state the Knowledge Status admin screen reads. `activeVersion`
+/// is the only pointer the chat retrieval query actually filters on; every other field here is
+/// purely for admin visibility.
+model AiSyncStatus {
+  id             String          @id @default(cuid())
+  activeVersion  BigInt?         @map("active_version")
+  lastSyncedAt   DateTime?       @map("last_synced_at")
+  lastStatus     AiSyncRunStatus @default(success) @map("last_status")
+  lastError      String?         @map("last_error")
+  totalSources   Int             @default(0) @map("total_sources")
+  indexedCount   Int             @default(0) @map("indexed_count")
+  failedCount    Int             @default(0) @map("failed_count")
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  @@map("ai_sync_status")
+}
+
+/// Append-only — the admin's sync history / activity log (brief §AG "Activity Log").
+model AiSyncLog {
+  id            String          @id @default(cuid())
+  version       BigInt
+  status        AiSyncRunStatus
+  trigger       String
+  startedAt     DateTime        @default(now()) @map("started_at")
+  finishedAt    DateTime?       @map("finished_at")
+  chunksCreated Int             @default(0) @map("chunks_created")
+  errorMessage  String?         @map("error_message")
+
+  @@index([startedAt])
+  @@map("ai_sync_logs")
+}
+
+/// Admin-managed shortcut prompts shown in the chat window's welcome screen — NOT a
+/// question/answer knowledge database (brief §M: "Quick questions hanya shortcut untuk
+/// mengirim pertanyaan ke AI"). Clicking one just submits `question` as a normal chat message;
+/// the AI still answers it via the same retrieval pipeline as free-typed questions.
+model AiQuickQuestion {
+  id        String   @id @default(cuid())
+  label     String
+  question  String
+  language  String
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([language, active, order])
+  @@map("ai_quick_questions")
+}
+
+enum AiMessageRole {
+  user
+  assistant
+}
+
+/// Minimal conversation log (brief §AA privacy note: session_id + timestamp + language +
+/// message/response metadata, nothing visitor-identifying beyond the ephemeral session id —
+/// no IP, no user agent, no cross-session tracking). `content` is retained (buyer product
+/// questions aren't sensitive personal data) so Admin → Test AI / conversation review and
+/// multi-turn context can both read real history; nothing beyond `sessionId` ties a row to a
+/// person, and `sessionId` itself is a random per-browser-session value, not an account id.
+model AiConversationMessage {
+  id            String        @id @default(cuid())
+  sessionId     String        @map("session_id")
+  role          AiMessageRole
+  content       String
+  language      String
+  pageContext   String?       @map("page_context")
+  productId     String?       @map("product_id")
+  sourcesUsed   Int           @default(0) @map("sources_used")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  @@index([sessionId, createdAt])
+  @@map("ai_conversation_messages")
+}
+
+enum AiAnalyticsEventType {
+  chat_opened
+  question_submitted
+  quick_question_clicked
+  quotation_intent
+  whatsapp_clicked
+}
+
+/// Privacy-conscious usage counters (brief §AI) — event type + coarse dimensions only, no raw
+/// message content, no visitor-identifying data beyond the same ephemeral `sessionId`.
+model AiAnalyticsEvent {
+  id        String               @id @default(cuid())
+  eventType AiAnalyticsEventType @map("event_type")
+  sessionId String               @map("session_id")
+  language  String?
+  productId String?              @map("product_id")
+  createdAt DateTime             @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@map("ai_analytics_events")
 }

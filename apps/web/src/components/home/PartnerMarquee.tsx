@@ -31,7 +31,7 @@ export function PartnerMarquee({
   const marqueeStyle = { "--marquee-duration": `${section.marquee_duration_seconds}s` } as React.CSSProperties;
 
   return (
-    <section className="relative overflow-hidden bg-primary-50/40 py-9 md:py-16">
+    <section className="relative overflow-hidden bg-primary-50/40 py-(--spacing-section-y-compact)">
       <DecorativeGraphics graphics={decorativeGraphics} />
 
       <Container className="relative">

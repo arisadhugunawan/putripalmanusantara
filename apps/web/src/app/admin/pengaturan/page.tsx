@@ -2,6 +2,7 @@
 
 import { Button, Card, Input, Label } from "@ppn/ui-components";
 import type { SiteSetting } from "@ppn/shared-types";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
 
@@ -67,6 +68,41 @@ export default function AdminSettingsPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-h2 text-neutral-900">Pengaturan</h1>
+
+      <Card className="mt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-h3 text-neutral-900">Brand & Logo</h2>
+            <p className="mt-1 text-small text-neutral-600">
+              Kelola logo yang digunakan pada Header, Footer, dan identitas website.
+            </p>
+          </div>
+          <Link
+            href="/admin/pengaturan/brand-logo"
+            className="shrink-0 text-body font-medium text-primary-700 underline underline-offset-4"
+          >
+            Kelola →
+          </Link>
+        </div>
+      </Card>
+
+      <Card className="mt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-h3 text-neutral-900">Contact Page</h2>
+            <p className="mt-1 text-small text-neutral-600">
+              Email, WhatsApp, jam operasional, lokasi kantor, Google Maps, media sosial, dan hero halaman Contact
+              (Draft/Publish terpisah dari Pengaturan umum).
+            </p>
+          </div>
+          <Link
+            href="/admin/pengaturan/kontak"
+            className="shrink-0 text-body font-medium text-primary-700 underline underline-offset-4"
+          >
+            Kelola →
+          </Link>
+        </div>
+      </Card>
 
       {Object.entries(grouped).map(([group, items]) => (
         <Card key={group} className="mt-6">

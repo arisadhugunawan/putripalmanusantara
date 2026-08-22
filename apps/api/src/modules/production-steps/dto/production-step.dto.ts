@@ -1,6 +1,9 @@
 import type { TranslationsInput } from '../../../common/dto/translations.dto';
+import { PRODUCTION_STEP_ICON_KEYS } from '@ppn/shared-types';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
+  IsIn,
   IsInt,
   IsObject,
   IsOptional,
@@ -9,6 +12,10 @@ import {
 } from 'class-validator';
 
 export class CreateProductionStepDto {
+  @IsOptional()
+  @IsString()
+  label?: string;
+
   @IsString()
   @MinLength(1)
   title!: string;
@@ -18,13 +25,29 @@ export class CreateProductionStepDto {
   description!: string;
 
   @IsOptional()
+  @IsIn(PRODUCTION_STEP_ICON_KEYS)
+  icon?: string;
+
+  @IsOptional()
   @IsString()
   illustration_id?: string;
+
+  @IsOptional()
+  @IsString()
+  cta_label?: string;
+
+  @IsOptional()
+  @IsString()
+  cta_href?: string;
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 
   @IsOptional()
   @IsObject()
@@ -34,6 +57,10 @@ export class CreateProductionStepDto {
 export class UpdateProductionStepDto {
   @IsOptional()
   @IsString()
+  label?: string;
+
+  @IsOptional()
+  @IsString()
   title?: string;
 
   @IsOptional()
@@ -41,13 +68,29 @@ export class UpdateProductionStepDto {
   description?: string;
 
   @IsOptional()
+  @IsIn(PRODUCTION_STEP_ICON_KEYS)
+  icon?: string;
+
+  @IsOptional()
   @IsString()
-  illustration_id?: string;
+  illustration_id?: string | null;
+
+  @IsOptional()
+  @IsString()
+  cta_label?: string | null;
+
+  @IsOptional()
+  @IsString()
+  cta_href?: string | null;
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 
   @IsOptional()
   @IsObject()

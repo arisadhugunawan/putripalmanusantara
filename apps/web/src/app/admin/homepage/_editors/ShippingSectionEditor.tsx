@@ -5,10 +5,15 @@ import type { HomepageShippingSection } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
 
+// Calibrated for a "premium, unhurried" feel at the current partner-card width/count (not
+// entertainment speed) — recalculate if the card size in ShippingPartnerCard.tsx or the
+// number of partners changes meaningfully, since duration-based (not measured-width-based)
+// marquees drift with content. 20s is also the backend's enforced minimum (UpdateShippingSectionDto
+// — a deliberate floor against an overly fast/dizzying marquee), so "Fast" can't go below it.
 const SHIPPING_MARQUEE_SPEED_PRESETS = [
-  { label: "Slow", seconds: 60 },
-  { label: "Medium", seconds: 40 },
-  { label: "Fast", seconds: 25 },
+  { label: "Slow", seconds: 45 },
+  { label: "Medium", seconds: 30 },
+  { label: "Fast", seconds: 20 },
 ];
 
 export function ShippingSectionEditor() {

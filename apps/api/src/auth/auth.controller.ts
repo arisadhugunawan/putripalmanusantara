@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { AdminLoginResult } from '@ppn/shared-types';
+import { ActivityLogService } from '../common/activity-log/activity-log.service';
 import { CurrentAdmin } from '../common/decorators/current-admin.decorator';
 import type { CurrentAdminPayload } from '../common/decorators/current-admin.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -24,6 +25,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   @Post('login')
@@ -50,6 +52,17 @@ export class AuthController {
       sameSite: 'lax',
       maxAge,
       path: '/',
+    });
+
+    this.activityLog.record({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'LOGIN',
+      module: 'auth',
+      method: 'POST',
+      path: '/api/v1/admin/auth/login',
+      statusCode: HttpStatus.OK,
     });
 
     return { admin };

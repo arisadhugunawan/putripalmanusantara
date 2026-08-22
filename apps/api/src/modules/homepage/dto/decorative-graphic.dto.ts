@@ -18,6 +18,7 @@ const VARIANTS = [
   'world_map_outline',
   'palm_leaf',
   'coconut_tree_silhouette',
+  'container_outline',
 ];
 
 const PLACEMENTS = [

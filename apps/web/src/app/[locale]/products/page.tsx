@@ -1,8 +1,10 @@
 import { Container, Section } from "@ppn/ui-components";
+import type { Locale } from "@ppn/shared-types";
 import type { Metadata } from "next";
-import { getProducts } from "@/lib/api";
+import { getPageHeader, getProducts } from "@/lib/api";
 import { PageHeader } from "@/components/page/PageHeader";
 import { ProductCatalogueCard } from "@/components/products/catalogue/ProductCatalogueCard";
+import { getDictionary } from "@/i18n/get-dictionary";
 import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/products">): Promise<Metadata> {
@@ -19,24 +21,30 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/products
 // FR-PROD-01 — grid of all published products (4 categories).
 export default async function ProductsPage({ params }: PageProps<"/[locale]/products">) {
   const { locale } = await params;
-  const products = await getProducts(locale);
+  const [products, dictionary, headerConfig] = await Promise.all([
+    getProducts(locale),
+    getDictionary(locale as Locale),
+    getPageHeader("products", locale),
+  ]);
+  const t = dictionary.products;
 
   return (
     <main>
       <PageHeader
-        breadcrumb={[{ label: "Home", href: "/" }, { label: "Products" }]}
-        title="Our Products"
-        description="Export-ready coconut products, sorted and quality-checked before shipment."
+        breadcrumb={[{ label: dictionary.nav.home, href: "/" }, { label: t.breadcrumbProducts }]}
+        title={t.pageTitle}
+        description={t.pageDescription}
         locale={locale}
+        headerConfig={headerConfig}
       />
       <Section>
         <Container>
           {products.length === 0 ? (
-            <p className="text-body text-neutral-600">No products available yet.</p>
+            <p className="text-body text-neutral-600">{t.noProductsYet}</p>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {products.map((product) => (
-                <ProductCatalogueCard key={product.id} product={product} />
+                <ProductCatalogueCard key={product.id} product={product} viewProductLabel={t.viewProduct} />
               ))}
             </div>
           )}

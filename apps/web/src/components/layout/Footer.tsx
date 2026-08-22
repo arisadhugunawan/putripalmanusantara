@@ -1,142 +1,332 @@
-import type { Locale } from "@ppn/shared-types";
-import { Container } from "@ppn/ui-components";
+import type { ContactLocation, Locale, PublicSiteBranding } from "@ppn/shared-types";
+import { Container, cn } from "@ppn/ui-components";
+import Image from "next/image";
 import { Link } from "@/i18n/Link";
 import type { Dictionary } from "@/i18n/dictionary.d";
-import { getProducts, getPublicSettings } from "@/lib/api";
-import { whatsAppLink } from "@/lib/whatsapp";
+import { getFooterSettings, getProducts, getPublicContactPage } from "@/lib/api";
+import { DEFAULT_ABOUT_NAV_STATE, type AboutNavState } from "@/lib/nav-config";
+import { sanitizeExternalUrl } from "@/lib/url";
+import { buildWhatsAppMessage, whatsAppLink } from "@/lib/whatsapp";
+import { DECORATIVE_SVGS } from "@/components/decorative/DecorativeSvgs";
+import {
+  ClockIcon,
+  FacebookIcon,
+  InstagramIcon,
+  LinkedInIcon,
+  MailIcon,
+  PinIcon,
+  TikTokIcon,
+  WhatsAppIcon,
+  YouTubeIcon,
+} from "@/components/contact/icons";
+import { FadeUpSection } from "@/components/about/FadeUpSection";
+import { BrandLogoImage } from "./BrandLogoImage";
 
-const SOCIAL_LINKS = [
-  { key: "social_facebook", label: "Facebook", Icon: FacebookIcon },
-  { key: "social_instagram", label: "Instagram", Icon: InstagramIcon },
-  { key: "social_linkedin", label: "LinkedIn", Icon: LinkedInIcon },
-  { key: "social_tiktok", label: "TikTok", Icon: TikTokIcon },
-] as const;
+const PalmLeaf = DECORATIVE_SVGS.palm_leaf;
+const LeafOutline = DECORATIVE_SVGS.leaf_outline;
 
-export async function Footer({ dictionary, locale }: { dictionary: Dictionary; locale: Locale }) {
-  const [settings, products] = await Promise.all([
-    getPublicSettings(locale).catch(() => null),
+const SOCIAL_ICON: Record<string, (props: { size?: number }) => React.ReactNode> = {
+  instagram: InstagramIcon,
+  tiktok: TikTokIcon,
+  facebook: FacebookIcon,
+  linkedin: LinkedInIcon,
+  youtube: YouTubeIcon,
+};
+
+const OVERLAY_COLOR: Record<string, string> = {
+  dark_green: "#0F2A1C",
+  charcoal: "#1C1C1C",
+  black: "#000000",
+  green_gradient: "#0F2A1C",
+};
+
+const OBJECT_POSITION_CLASS: Record<string, string> = {
+  center: "object-center",
+  center_top: "object-top",
+  center_bottom: "object-bottom",
+  left: "object-left",
+  right: "object-right",
+};
+
+const WEEKDAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+const WEEKDAY_SHORT: Record<string, string> = {
+  mon: "Mon",
+  tue: "Tue",
+  wed: "Wed",
+  thu: "Thu",
+  fri: "Fri",
+  sat: "Sat",
+  sun: "Sun",
+};
+
+/** Collapses e.g. ["mon".."sat"] into "Mon–Sat" — same algorithm as
+ * `BusinessHoursStatus.tsx`, inlined here since the Footer doesn't need that component's live
+ * open/closed ticking state, just a static readable range. */
+function formatDayRange(days: string[]): string {
+  const set = new Set(days);
+  const ranges: string[] = [];
+  let i = 0;
+  while (i < WEEKDAY_ORDER.length) {
+    if (!set.has(WEEKDAY_ORDER[i])) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j + 1 < WEEKDAY_ORDER.length && set.has(WEEKDAY_ORDER[j + 1])) j++;
+    ranges.push(i === j ? WEEKDAY_SHORT[WEEKDAY_ORDER[i]] : `${WEEKDAY_SHORT[WEEKDAY_ORDER[i]]}–${WEEKDAY_SHORT[WEEKDAY_ORDER[j]]}`);
+    i = j + 1;
+  }
+  return ranges.join(", ");
+}
+
+/**
+ * Premium, CMS-driven footer — background photo/overlay, brand-area copy, and CTA card come
+ * from `FooterSettings` (Admin → Settings → Footer Management). Contact info (email/WhatsApp/
+ * business hours), office locations, and social media links are deliberately NOT duplicated
+ * into that model — they're read straight from the same published Contact Page payload the
+ * `/contact` page itself renders (`getPublicContactPage()`), so there is exactly one place to
+ * edit them and the two surfaces can never drift apart. Company/Products/Resources navigation
+ * columns link to real, working routes (same convention as the Header's own nav) — not yet a
+ * separate admin-managed link CRUD, since the Header's main nav isn't either and building CMS
+ * link management for only one of the two would be an inconsistent admin experience.
+ */
+export async function Footer({
+  dictionary,
+  locale,
+  branding,
+  aboutNav = DEFAULT_ABOUT_NAV_STATE,
+}: {
+  dictionary: Dictionary;
+  locale: Locale;
+  branding: PublicSiteBranding;
+  /** Published About Company visibility — see `AboutNavState`. */
+  aboutNav?: AboutNavState;
+}) {
+  const [footerSettings, contactPage, products] = await Promise.all([
+    getFooterSettings().catch(() => null),
+    getPublicContactPage().catch(() => null),
     getProducts(locale).catch(() => []),
   ]);
 
+  if (footerSettings && !footerSettings.enabled) {
+    return null;
+  }
+
+  // Same visibility rule as the Header: an About link is only offered while that page — and
+  // that specific section — is actually published.
+  const aboutLinks = aboutNav.pageVisible
+    ? (
+        [
+          { key: "company", href: "/about#company", label: dictionary.nav.aboutCompanyProfile },
+          { key: "team", href: "/about#team", label: dictionary.nav.aboutTeam },
+          { key: "legal_certificate", href: "/about#legal", label: dictionary.nav.aboutLegalCertificate },
+          { key: "factory", href: "/about#factory", label: dictionary.nav.aboutFactory },
+        ] as const
+      ).filter((link) => aboutNav.visibleSections.includes(link.key))
+    : [];
+
   const companyLinks = [
-    { href: "/about#company", label: dictionary.nav.aboutCompanyProfile },
-    { href: "/about#team", label: dictionary.nav.aboutTeam },
-    { href: "/about#legal", label: dictionary.nav.aboutLegalCertificate },
-    { href: "/about#factory", label: dictionary.nav.aboutFactory },
+    ...aboutLinks.map(({ href, label }) => ({ href, label })),
     { href: "/gallery", label: dictionary.nav.gallery },
   ];
 
   const quickLinks = [
-    { href: "/facilities#production-process", label: dictionary.nav.facilitiesProductionProcess },
+    { href: "/production-process", label: dictionary.nav.facilitiesProductionProcess },
     { href: "/facilities#shipment-terms", label: dictionary.nav.facilitiesShipmentTerms },
     { href: "/facilities#moq-payment", label: dictionary.nav.facilitiesMoqPayment },
-    { href: "/facilities#packaging-options", label: dictionary.nav.facilitiesPackagingOptions },
     { href: "/facilities#faq", label: dictionary.nav.facilitiesFaq },
     { href: "/articles", label: dictionary.nav.news },
   ];
 
-  const activeSocialLinks = SOCIAL_LINKS.map((item) => ({ ...item, url: settings?.[item.key] })).filter(
-    (item): item is (typeof SOCIAL_LINKS)[number] & { url: string } => Boolean(item.url),
-  );
+  const activeSocialLinks = (contactPage?.social_links ?? [])
+    .filter((s) => s.active && SOCIAL_ICON[s.platform])
+    .map((s) => ({ ...s, sanitizedUrl: sanitizeExternalUrl(s.url) }))
+    .filter((s): s is typeof s & { sanitizedUrl: string } => s.sanitizedUrl !== null)
+    .sort((a, b) => a.order - b.order);
+
+  const settings = contactPage?.settings ?? null;
+  const locations = contactPage?.locations.filter((l) => l.active) ?? [];
+  const businessHoursLabel = settings
+    ? `${formatDayRange(settings.business_hours_open_days)} · ${settings.business_hours_open_time}–${settings.business_hours_close_time} (GMT${settings.business_hours_utc_offset >= 0 ? "+" : ""}${settings.business_hours_utc_offset})`
+    : null;
+  const whatsAppMessage = settings ? buildWhatsAppMessage(settings, products.map((p) => p.name)) : "";
+
+  const showSocial = (footerSettings?.show_social ?? true) && activeSocialLinks.length > 0;
+  const showContact = footerSettings?.show_contact ?? true;
+  const showNavigation = footerSettings?.show_navigation ?? true;
+
+  const backgroundImage = footerSettings?.background_image ?? null;
+  const mobileBackgroundImage = footerSettings?.mobile_background_image ?? backgroundImage;
+  const overlayOpacity = (footerSettings?.overlay_opacity ?? 70) / 100;
+  const overlayType = footerSettings?.overlay_type ?? "dark_green";
+  const bgPosition = footerSettings?.background_position ?? "center";
+  const mobileBgPosition = footerSettings?.mobile_background_position ?? "center";
+  const altText = footerSettings?.background_alt_text?.trim() || footerSettings?.company_name || "PPN";
 
   return (
-    <footer className="bg-neutral-900 text-neutral-50">
-      <Container className="grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5 lg:py-20">
-        <div className="flex flex-col gap-4 sm:col-span-2 lg:col-span-1">
-          <span className="font-heading text-h2 font-bold text-white">PPN</span>
-          <p className="text-body text-neutral-300">{dictionary.footer.tagline}</p>
-          {activeSocialLinks.length > 0 && (
-            <div className="mt-2 flex items-center gap-2">
-              {activeSocialLinks.map(({ key, label, Icon, url }) => (
-                <a
-                  key={key}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={label}
-                  className="flex h-10 w-10 items-center justify-center rounded-field border border-primary-500 text-primary-500 transition-colors hover:bg-primary-500 hover:text-neutral-900"
-                >
-                  <Icon />
-                </a>
-              ))}
-            </div>
+    <footer className="relative overflow-hidden bg-(--color-footer) text-neutral-50">
+      {backgroundImage ? (
+        <div className="absolute inset-0">
+          <div className="absolute inset-0" style={{ animation: "footer-bg-zoom 10s ease-out forwards" }}>
+            <Image
+              src={backgroundImage.file_url}
+              alt={altText}
+              fill
+              sizes="100vw"
+              className={cn("hidden object-cover sm:block", OBJECT_POSITION_CLASS[bgPosition])}
+            />
+            <Image
+              src={mobileBackgroundImage?.file_url ?? backgroundImage.file_url}
+              alt={altText}
+              fill
+              sizes="100vw"
+              className={cn("block object-cover sm:hidden", OBJECT_POSITION_CLASS[mobileBgPosition])}
+            />
+          </div>
+          {overlayType === "green_gradient" ? (
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(180deg, rgba(15,42,28,${overlayOpacity}) 0%, rgba(15,42,28,${overlayOpacity * 0.55}) 45%, rgba(15,42,28,${overlayOpacity}) 100%)`,
+              }}
+            />
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: OVERLAY_COLOR[overlayType], opacity: overlayOpacity }}
+            />
           )}
         </div>
+      ) : (
+        <PalmLeaf
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-16 -top-10 h-72 w-72 text-primary-500/[0.06] sm:h-96 sm:w-96"
+        />
+      )}
+      <LeafOutline
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-20 -left-20 h-80 w-80 text-primary-300/[0.07]"
+      />
 
-        <FooterColumn heading={dictionary.footer.companyHeading}>
-          {companyLinks.map((item) => (
-            <Link key={item.href} href={item.href} className="text-body text-neutral-300 transition-colors hover:text-primary-500">
-              {item.label}
-            </Link>
-          ))}
-        </FooterColumn>
-
-        <FooterColumn heading={dictionary.footer.productsHeading}>
-          {products.map((product) => (
-            <Link
-              key={product.id}
-              href={`/products/${product.slug}`}
-              className="text-body text-neutral-300 transition-colors hover:text-primary-500"
-            >
-              {product.name}
-            </Link>
-          ))}
-          <Link href="/products" className="text-body text-neutral-300 transition-colors hover:text-primary-500">
-            {dictionary.nav.ourProducts}
+      <Container className="relative grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5 lg:py-20">
+        <FadeUpSection className="flex flex-col gap-4 sm:col-span-2 lg:col-span-1" style={{ transitionDelay: "60ms" }}>
+          <Link href="/" className="flex w-fit items-center">
+            {branding.footer_logo ? (
+              <BrandLogoImage
+                media={branding.footer_logo}
+                altText={branding.footer_logo_alt}
+                className="h-12 w-[210px]"
+                fallbackClassName="text-white"
+              />
+            ) : (
+              <span className="font-heading text-h2 font-bold text-white">PPN</span>
+            )}
           </Link>
-        </FooterColumn>
+          {footerSettings?.tagline && <p className="text-body-lg font-medium text-white">{footerSettings.tagline}</p>}
+          <p className="text-body text-neutral-300">
+            {footerSettings?.description ?? dictionary.footer.tagline}
+          </p>
+          {showSocial && (
+            <div className="mt-2 flex items-center gap-2">
+              {activeSocialLinks.map((social) => {
+                const Icon = SOCIAL_ICON[social.platform];
+                return (
+                  <a
+                    key={social.id}
+                    href={social.sanitizedUrl}
+                    target={social.open_in_new_tab ? "_blank" : undefined}
+                    rel={social.open_in_new_tab ? "noopener noreferrer" : undefined}
+                    aria-label={`Open ${social.display_name || social.platform}`}
+                    title={social.display_name || social.platform}
+                    className="flex h-11 w-11 items-center justify-center rounded-field border border-primary-500 text-primary-500 transition-all hover:scale-[1.08] hover:bg-primary-500 hover:text-neutral-900 hover:shadow-[0_0_16px_rgba(147,196,63,0.5)]"
+                  >
+                    <Icon />
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </FadeUpSection>
 
-        <FooterColumn heading={dictionary.footer.quickLinkHeading}>
-          {quickLinks.map((item) => (
-            <Link key={item.href} href={item.href} className="text-body text-neutral-300 transition-colors hover:text-primary-500">
-              {item.label}
-            </Link>
-          ))}
-        </FooterColumn>
+        {showNavigation && (
+          <>
+            <FadeUpSection style={{ transitionDelay: "120ms" }}>
+              <FooterColumn heading={dictionary.footer.companyHeading}>
+                {companyLinks.map((item) => (
+                  <FooterLink key={item.href} href={item.href}>
+                    {item.label}
+                  </FooterLink>
+                ))}
+              </FooterColumn>
+            </FadeUpSection>
 
-        <FooterColumn heading={dictionary.footer.contactHeading}>
-          {settings?.address && (
-            <p className="flex items-start gap-2.5 text-body text-neutral-300">
-              <PinIcon />
-              <span>{settings.address}</span>
-            </p>
-          )}
-          {settings?.contact_phone && (
-            <a
-              href={`tel:${settings.contact_phone}`}
-              className="flex items-center gap-2.5 text-body text-neutral-300 transition-colors hover:text-primary-500"
-            >
-              <PhoneIcon />
-              {settings.contact_phone}
-            </a>
-          )}
-          {settings?.whatsapp_number && (
-            <a
-              href={whatsAppLink(settings.whatsapp_number)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2.5 text-body text-neutral-300 transition-colors hover:text-primary-500"
-            >
-              <WhatsAppIcon />
-              {settings.whatsapp_number}
-            </a>
-          )}
-          {settings?.contact_email && (
-            <a
-              href={`mailto:${settings.contact_email}`}
-              className="flex items-center gap-2.5 text-body text-neutral-300 transition-colors hover:text-primary-500"
-            >
-              <MailIcon />
-              {settings.contact_email}
-            </a>
-          )}
-        </FooterColumn>
+            <FadeUpSection style={{ transitionDelay: "180ms" }}>
+              <FooterColumn heading={dictionary.footer.productsHeading}>
+                {products.map((product) => (
+                  <FooterLink key={product.id} href={`/products/${product.slug}`}>
+                    {product.name}
+                  </FooterLink>
+                ))}
+                <FooterLink href="/products">{dictionary.nav.ourProducts}</FooterLink>
+              </FooterColumn>
+            </FadeUpSection>
+
+            <FadeUpSection style={{ transitionDelay: "240ms" }}>
+              <FooterColumn heading={dictionary.footer.quickLinkHeading}>
+                {quickLinks.map((item) => (
+                  <FooterLink key={item.href} href={item.href}>
+                    {item.label}
+                  </FooterLink>
+                ))}
+                <FooterLink href="/gallery">{dictionary.nav.gallery}</FooterLink>
+              </FooterColumn>
+            </FadeUpSection>
+          </>
+        )}
+
+        {showContact && (
+          <FadeUpSection style={{ transitionDelay: "300ms" }}>
+            <FooterColumn heading={dictionary.footer.contactHeading}>
+              {locations.map((location) => (
+                <FooterLocationBlock key={location.id} location={location} />
+              ))}
+              {settings?.whatsapp_number && (
+                <a
+                  href={whatsAppLink(settings.whatsapp_number, whatsAppMessage)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 text-body text-neutral-300 transition-colors hover:text-primary-500"
+                >
+                  <WhatsAppIcon />
+                  {settings.whatsapp_number}
+                </a>
+              )}
+              {settings?.email && (
+                <a
+                  href={`mailto:${settings.email}`}
+                  className="flex items-center gap-2.5 text-body text-neutral-300 transition-colors hover:text-primary-500"
+                >
+                  <MailIcon />
+                  {settings.email}
+                </a>
+              )}
+              {businessHoursLabel && (
+                <p className="flex items-start gap-2.5 text-body text-neutral-300">
+                  <span className="mt-0.5 shrink-0 text-primary-500">
+                    <ClockIcon />
+                  </span>
+                  <span>{businessHoursLabel}</span>
+                </p>
+              )}
+            </FooterColumn>
+          </FadeUpSection>
+        )}
       </Container>
 
-      <div className="bg-primary-700 py-5">
+      <div className="relative bg-primary-700 py-5">
         <Container>
           <p className="text-center text-small text-white">
-            © {new Date().getFullYear()} {settings?.company_name ?? "CV Putri Palma Nusantara"}.{" "}
+            © {new Date().getFullYear()} {footerSettings?.company_name ?? "CV Putri Palma Nusantara"}.{" "}
             {dictionary.footer.rightsReserved}
           </p>
         </Container>
@@ -156,100 +346,42 @@ function FooterColumn({ heading, children }: { heading: string; children: React.
   );
 }
 
-function PinIcon() {
+/** Hover: text → PPN green, small arrow slides right — brief's "Products →" / "Products →→"
+ * micro-interaction, kept subtle (arrow translate only, no bounce/scale). */
+function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true" className="mt-0.5 shrink-0 text-primary-500">
-      <path
-        d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="9.5" r="2.25" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
+    <Link
+      href={href}
+      className="group flex items-center gap-1 text-body text-neutral-300 transition-colors hover:text-primary-500"
+    >
+      {children}
+      <span aria-hidden="true" className="translate-x-0 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100">
+        →
+      </span>
+    </Link>
   );
 }
 
-function PhoneIcon() {
+function FooterLocationBlock({ location }: { location: ContactLocation }) {
+  const mapsUrl = sanitizeExternalUrl(location.google_maps_url);
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true" className="shrink-0 text-primary-500">
-      <path
-        d="M4.5 4h3.2l1.3 4.5-2 1.6a12.5 12.5 0 0 0 5.9 5.9l1.6-2 4.5 1.3v3.2c0 1-.8 1.6-1.7 1.5A16.5 16.5 0 0 1 4 5.7c-.1-.9.5-1.7 1.5-1.7Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true" className="shrink-0 text-primary-500">
-      <path
-        d="M12 3a9 9 0 0 0-7.8 13.4L3 21l4.7-1.2A9 9 0 1 0 12 3Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.7 8.4c.2-.5.4-.5.6-.5h.5c.2 0 .4 0 .5.4.2.4.6 1.4.6 1.5.1.1.1.3 0 .4a2 2 0 0 1-.3.4l-.4.4c-.1.1-.2.3-.1.5.2.3.7 1.1 1.5 1.7.9.7 1.6 1 1.9 1.1.2.1.4.1.5-.1l.6-.7c.2-.2.3-.2.5-.1l1.4.7c.2.1.3.1.4.3.1.1.1.6-.1 1.2-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.9-2.8-1.2-4.5-4-4.7-4.2-.1-.2-1-1.3-1-2.5s.6-1.8.9-2.1Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true" className="shrink-0 text-primary-500">
-      <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-      <path d="m4.5 6.5 7.5 6 7.5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function FacebookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path
-        d="M14 8.5h2V5.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.3v2.3H7v3.2h2.4V21h3.3v-5.7h2.4l.4-3.2h-2.8V10c0-.9.3-1.5 1.3-1.5Z"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function InstagramIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" stroke="currentColor" strokeWidth="1.3" />
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.3" />
-      <circle cx="17.2" cy="6.8" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
-function LinkedInIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M7.8 10v6.5M7.8 7.6v.1M11.5 16.5V13c0-1.4.8-2.3 2-2.3s1.8.9 1.8 2.3v3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TikTokIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path
-        d="M14.5 3.5c.4 2 1.8 3.4 3.8 3.6v2.6a6.6 6.6 0 0 1-3.8-1.2v5.9a4.7 4.7 0 1 1-4.7-4.7c.2 0 .5 0 .7.1v2.7a2 2 0 1 0 1.4 1.9V3.5h2.6Z"
-        stroke="currentColor"
-        strokeWidth="1.1"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className="flex items-center gap-2.5 text-body text-neutral-300">
+      <span className="shrink-0 text-primary-500">
+        <PinIcon />
+      </span>
+      <span>
+        <span className="font-medium text-neutral-100">{location.name}</span>
+        {mapsUrl && (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 text-small font-medium text-primary-500 underline underline-offset-2 hover:text-primary-400"
+          >
+            View on Google Maps →
+          </a>
+        )}
+      </span>
+    </div>
   );
 }

@@ -1,12 +1,20 @@
 "use client";
 
-import type { Locale, ProductSummary } from "@ppn/shared-types";
+import type { Locale, ProductSummary, PublicSiteBranding } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@/i18n/Link";
 import type { Dictionary } from "@/i18n/dictionary.d";
-import { getMainNavEntries, isDropdown, type NavDropdownGroup } from "@/lib/nav-config";
+import {
+  DEFAULT_ABOUT_NAV_STATE,
+  getMainNavEntries,
+  isDropdown,
+  withProductsGroup,
+  type AboutNavState,
+  type NavDropdownGroup,
+} from "@/lib/nav-config";
+import { BrandLogoImage } from "./BrandLogoImage";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
 import { NavDropdown } from "./NavDropdown";
@@ -20,10 +28,15 @@ export function Header({
   dictionary,
   locale,
   products,
+  branding,
+  aboutNav = DEFAULT_ABOUT_NAV_STATE,
 }: {
   dictionary: Dictionary;
   locale: Locale;
   products: ProductSummary[];
+  branding: PublicSiteBranding;
+  /** Published About Company visibility — see `AboutNavState`. */
+  aboutNav?: AboutNavState;
 }) {
   const [solid, setSolid] = useState(false);
   const [shrunk, setShrunk] = useState(false);
@@ -65,13 +78,11 @@ export function Header({
     };
   }, [menuOpen]);
 
-  const entries = getMainNavEntries(dictionary);
   const productsGroup: NavDropdownGroup = {
     label: dictionary.nav.ourProducts,
     items: products.map((product) => ({ href: `/products/${product.slug}`, label: product.name })),
   };
-  // "Our Products" sits right after "About Company", matching the brief's menu order.
-  entries.splice(2, 0, productsGroup);
+  const entries = withProductsGroup(getMainNavEntries(dictionary, aboutNav), productsGroup);
 
   return (
     <>
@@ -83,8 +94,8 @@ export function Header({
       >
       <div
         className={cn(
-          "border-b transition-[background-color,box-shadow] duration-300",
-          solid ? "border-transparent bg-white shadow-card" : "border-neutral-200/80 bg-white/95",
+          "border-b backdrop-blur-md transition-[background-color,box-shadow] duration-300",
+          solid ? "border-transparent bg-white/90 shadow-card" : "border-neutral-200/80 bg-white/80",
         )}
       >
         <div
@@ -93,14 +104,33 @@ export function Header({
             shrunk ? "py-3" : "py-4",
           )}
         >
-          <Link
-            href="/"
-            className={cn(
-              "font-heading font-bold text-neutral-900 transition-[font-size] duration-300",
-              shrunk ? "text-h3" : "text-h2",
+          <Link href="/" className="flex shrink-0 items-center" aria-label={dictionary.nav.home}>
+            {branding.header_logo && (
+              <BrandLogoImage
+                media={branding.header_logo}
+                altText={branding.header_logo_alt}
+                priority
+                className="hidden h-14 w-[240px] sm:block"
+              />
             )}
-          >
-            PPN
+            {branding.mobile_logo && (
+              <BrandLogoImage
+                media={branding.mobile_logo}
+                altText={branding.mobile_logo_alt}
+                priority
+                className="h-11 w-[180px] sm:hidden"
+              />
+            )}
+            {!branding.header_logo && !branding.mobile_logo && (
+              <span
+                className={cn(
+                  "font-heading font-bold text-neutral-900 transition-[font-size] duration-300",
+                  shrunk ? "text-h3" : "text-h2",
+                )}
+              >
+                PPN
+              </span>
+            )}
           </Link>
 
           <nav className="hidden items-center gap-7 lg:flex" aria-label={dictionary.nav.home}>
@@ -171,6 +201,8 @@ export function Header({
         dictionary={dictionary}
         locale={locale}
         productsGroup={productsGroup}
+        branding={branding}
+        aboutNav={aboutNav}
       />
     </>
   );

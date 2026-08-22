@@ -7,7 +7,7 @@ export function StatisticsSection({ statistics }: { statistics: HomepageStatisti
   if (statistics.length === 0) return null;
 
   return (
-    <Section className="!py-10 border-b border-neutral-200">
+    <Section spacing="compact" className="border-b border-neutral-200">
       <Container>
         <dl className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5">
           {statistics.map((stat) => (

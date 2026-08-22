@@ -13,6 +13,11 @@ async function request<T>(
     ...options,
     credentials: "include",
     headers: {
+      // A plain cross-site <form> submission can never set a custom header (only a fixed,
+      // browser-controlled allowlist survives a "simple request"), so its presence proves this
+      // request came from this app's own JS — a lightweight CSRF defense layered on top of the
+      // auth cookie's own SameSite=Lax, enforced server-side for every /admin/* mutation.
+      "X-Requested-With": "XMLHttpRequest",
       ...(options?.body && !(options.body instanceof FormData)
         ? { "Content-Type": "application/json" }
         : {}),
@@ -22,7 +27,7 @@ async function request<T>(
 
   const json = (await res.json()) as ApiResponse<T>;
   if (!json.success) {
-    throw new ApiRequestError(json.error.message, res.status, json.error.code);
+    throw new ApiRequestError(json.error.message, res.status, json.error.code, json.error.details);
   }
   return { data: json.data, meta: json.meta };
 }

@@ -12,15 +12,19 @@ import type {
   HomepageExportReach,
   HomepageHighlight,
   HomepagePartnersSection,
+  HomepageProcessSection,
   HomepageSectionConfig,
   HomepageSectionKey,
   HomepageShippingSection,
   HomepageStatistic,
-  HomepageWhyChooseUs,
+  HomepageSupplyNetworkSection,
   PartnerLogo,
   ProductSummary,
   ProductionStep,
   ShippingPartner,
+  SupplyNetworkConnection,
+  SupplyNetworkCountry,
+  SupplyNetworkItem,
 } from "@ppn/shared-types";
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
@@ -35,10 +39,10 @@ import { GalleryPreview } from "@/components/home/GalleryPreview";
 import { GlobalShippingPartnerSection } from "@/components/home/GlobalShippingPartnerSection";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { PartnerMarquee } from "@/components/home/PartnerMarquee";
-import { ProductionProcessPreview } from "@/components/home/ProductionProcessPreview";
+import { ProcessSection } from "@/components/home/process/ProcessSection";
 import { QuotationSection } from "@/components/home/QuotationSection";
 import { StatisticsSection } from "@/components/home/StatisticsSection";
-import { WhyChooseUsSection } from "@/components/home/WhyChooseUsSection";
+import { SupplyNetworkSection } from "@/components/home/supply-network/SupplyNetworkSection";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -59,7 +63,10 @@ interface PreviewData {
   partnerLogos: PartnerLogo[];
   aboutPreview: HomepageAboutPreview;
   highlights: HomepageHighlight[];
-  whyChooseUs: HomepageWhyChooseUs[];
+  supplyNetworkItems: SupplyNetworkItem[];
+  supplyNetworkConnections: SupplyNetworkConnection[];
+  supplyNetworkCountries: SupplyNetworkCountry[];
+  supplyNetworkSection: HomepageSupplyNetworkSection;
   exportReachSection: HomepageExportReach;
   exportDestinations: ExportDestination[];
   shippingSection: HomepageShippingSection;
@@ -68,6 +75,7 @@ interface PreviewData {
   faqs: Faq[];
   featuredProducts: ProductSummary[];
   productionSteps: ProductionStep[];
+  processSection: HomepageProcessSection;
   facilities: Facility[];
   gallery: GalleryItem[];
   latestArticles: ArticleSummary[];
@@ -75,9 +83,16 @@ interface PreviewData {
   decorativeGraphics: DecorativeGraphic[];
   aboutPreviewGraphics: DecorativeGraphic[];
   partnersGraphics: DecorativeGraphic[];
-  whyChooseUsGraphics: DecorativeGraphic[];
+  supplyNetworkGraphics: DecorativeGraphic[];
   exportReachGraphics: DecorativeGraphic[];
   shippingPartnersGraphics: DecorativeGraphic[];
+  productionProcessGraphics: DecorativeGraphic[];
+  productsGraphics: DecorativeGraphic[];
+  facilitiesGraphics: DecorativeGraphic[];
+  galleryGraphics: DecorativeGraphic[];
+  articlesGraphics: DecorativeGraphic[];
+  faqGraphics: DecorativeGraphic[];
+  quotationGraphics: DecorativeGraphic[];
 }
 
 /**
@@ -101,7 +116,10 @@ export default function HomepagePreviewPage() {
           partnerLogos,
           aboutPreview,
           highlights,
-          whyChooseUs,
+          supplyNetworkItemsRaw,
+          supplyNetworkConnections,
+          supplyNetworkCountriesRaw,
+          supplyNetworkSection,
           exportReachSection,
           exportDestinations,
           shippingSection,
@@ -109,17 +127,25 @@ export default function HomepagePreviewPage() {
           statistics,
           faqs,
           featuredProducts,
-          productionSteps,
-          facilities,
+          productionStepsRaw,
+          processSection,
+          facilitiesRaw,
           gallery,
           latestArticles,
           allProducts,
           decorativeGraphics,
           aboutPreviewGraphics,
           partnersGraphics,
-          whyChooseUsGraphics,
+          supplyNetworkGraphics,
           exportReachGraphics,
           shippingPartnersGraphics,
+          productionProcessGraphics,
+          productsGraphics,
+          facilitiesGraphics,
+          galleryGraphics,
+          articlesGraphics,
+          faqGraphics,
+          quotationGraphics,
         ] = await Promise.all([
           adminApi.get<HomepageSectionConfig[]>("/admin/homepage/sections"),
           publicGet<HeroSlide[]>("/homepage/hero-slides"),
@@ -127,7 +153,13 @@ export default function HomepagePreviewPage() {
           publicGet<PartnerLogo[]>("/homepage/partner-logos"),
           publicGet<HomepageAboutPreview>("/homepage/about-preview"),
           publicGet<HomepageHighlight[]>("/homepage/highlights"),
-          publicGet<HomepageWhyChooseUs[]>("/homepage/why-choose-us"),
+          // No public list endpoint for Our Supply Network — it's snapshot-gated (see
+          // `supply-network.module.ts`), so the admin (unfiltered) endpoint is read here and
+          // the same `active` filter `buildSnapshotPayload()` uses is re-applied below.
+          adminApi.get<SupplyNetworkItem[]>("/admin/supply-network"),
+          adminApi.get<SupplyNetworkConnection[]>("/admin/supply-network/connections"),
+          adminApi.get<SupplyNetworkCountry[]>("/admin/supply-network/countries"),
+          adminApi.get<HomepageSupplyNetworkSection>("/admin/supply-network/section"),
           publicGet<HomepageExportReach>("/homepage/export-reach-section"),
           publicGet<ExportDestination[]>("/homepage/export-destinations"),
           publicGet<HomepageShippingSection>("/homepage/shipping-section"),
@@ -135,17 +167,32 @@ export default function HomepagePreviewPage() {
           publicGet<HomepageStatistic[]>("/homepage/statistics"),
           publicGet<Faq[]>("/faqs"),
           publicGet<ProductSummary[]>("/products/featured"),
-          publicGet<ProductionStep[]>("/production-steps"),
-          publicGet<Facility[]>("/facilities"),
+          // No public list endpoint for Production Process — it's snapshot-gated now (see
+          // `production-steps.module.ts`), so the admin (unfiltered) endpoint is read here and
+          // the same `active` filter `buildSnapshotPayload()` uses is re-applied below.
+          adminApi.get<ProductionStep[]>("/admin/production-steps"),
+          adminApi.get<HomepageProcessSection>("/admin/production-steps/section"),
+          // No public list endpoint for Facilities — it moved under the About Company
+          // Draft/Publish snapshot (see README "About Company → Facilities"), so the admin
+          // (unfiltered) endpoint is read here and the same `active` filter the public site
+          // uses is re-applied below, matching the Production Process pattern above.
+          adminApi.get<Facility[]>("/admin/about-company/facilities"),
           publicGet<GalleryItem[]>("/gallery"),
           publicGet<ArticleSummary[]>("/articles/latest"),
           publicGet<ProductSummary[]>("/products"),
           publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home"),
           publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-about-preview"),
           publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-partners"),
-          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-why-choose-us"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-supply-network"),
           publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-export-reach"),
           publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-shipping-partners"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-production-process"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-products"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-facilities"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-gallery"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-articles"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-faq"),
+          publicGet<DecorativeGraphic[]>("/homepage/decorative-graphics?page=home-quotation"),
         ]);
         setData({
           sectionConfig,
@@ -154,7 +201,10 @@ export default function HomepagePreviewPage() {
           partnerLogos,
           aboutPreview,
           highlights,
-          whyChooseUs,
+          supplyNetworkItems: [...supplyNetworkItemsRaw].filter((i) => i.active).sort((a, b) => a.order - b.order),
+          supplyNetworkConnections,
+          supplyNetworkCountries: [...supplyNetworkCountriesRaw].filter((c) => c.active).sort((a, b) => a.order - b.order),
+          supplyNetworkSection,
           exportReachSection,
           exportDestinations,
           shippingSection,
@@ -162,17 +212,25 @@ export default function HomepagePreviewPage() {
           statistics,
           faqs,
           featuredProducts,
-          productionSteps,
-          facilities,
+          productionSteps: [...productionStepsRaw].filter((s) => s.active).sort((a, b) => a.order - b.order),
+          processSection,
+          facilities: [...facilitiesRaw].filter((f) => f.active).sort((a, b) => a.order - b.order),
           gallery,
           latestArticles,
           allProducts,
           decorativeGraphics,
           aboutPreviewGraphics,
           partnersGraphics,
-          whyChooseUsGraphics,
+          supplyNetworkGraphics,
           exportReachGraphics,
           shippingPartnersGraphics,
+          productionProcessGraphics,
+          productsGraphics,
+          facilitiesGraphics,
+          galleryGraphics,
+          articlesGraphics,
+          faqGraphics,
+          quotationGraphics,
         });
       } catch {
         setError(true);
@@ -228,17 +286,31 @@ function renderSection(key: HomepageSectionKey, data: PreviewData) {
     case "statistics":
       return <StatisticsSection statistics={data.statistics} />;
     case "why_choose_us":
-      return <WhyChooseUsSection items={data.whyChooseUs} decorativeGraphics={data.whyChooseUsGraphics} />;
+      return (
+        <SupplyNetworkSection
+          section={data.supplyNetworkSection}
+          items={data.supplyNetworkItems}
+          connections={data.supplyNetworkConnections}
+          countries={data.supplyNetworkCountries}
+          decorativeGraphics={data.supplyNetworkGraphics}
+        />
+      );
     case "featured_products":
-      return <FeaturedProductsSection products={data.featuredProducts} />;
+      return <FeaturedProductsSection products={data.featuredProducts} decorativeGraphics={data.productsGraphics} />;
     case "production_process":
-      return <ProductionProcessPreview steps={data.productionSteps} />;
+      return (
+        <ProcessSection
+          section={data.processSection}
+          steps={data.productionSteps}
+          decorativeGraphics={data.productionProcessGraphics}
+        />
+      );
     case "facilities":
-      return <FacilitiesPreview facilities={data.facilities} />;
+      return <FacilitiesPreview facilities={data.facilities} decorativeGraphics={data.facilitiesGraphics} />;
     case "gallery":
-      return <GalleryPreview items={data.gallery} />;
+      return <GalleryPreview items={data.gallery} decorativeGraphics={data.galleryGraphics} />;
     case "news_articles":
-      return <ArticlesSection articles={data.latestArticles} />;
+      return <ArticlesSection articles={data.latestArticles} decorativeGraphics={data.articlesGraphics} />;
     case "export_reach":
       return (
         <ExportReachSection
@@ -256,9 +328,9 @@ function renderSection(key: HomepageSectionKey, data: PreviewData) {
         />
       );
     case "faq":
-      return <FaqSection faqs={data.faqs} />;
+      return <FaqSection faqs={data.faqs} decorativeGraphics={data.faqGraphics} />;
     case "contact_cta":
-      return <QuotationSection products={data.allProducts} />;
+      return <QuotationSection products={data.allProducts} decorativeGraphics={data.quotationGraphics} />;
     default:
       return null;
   }

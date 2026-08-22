@@ -18,12 +18,25 @@
   --color-accent-500: #a0784f;
   --color-accent-600: #86603d;
 
+  /* Catalogue/download CTA only — a vivid, "alive" orange distinct from the muted
+     accent-500 brown-tan used elsewhere, per the Product Detail redesign brief. Kept scoped
+     to this one button rather than replacing accent-500 site-wide. */
+  --color-catalogue-500: #f4a62a;
+  --color-catalogue-600: #d98f16;
+
   --color-neutral-50: #fafaf9;
   --color-neutral-100: #f5f6f4;
   --color-neutral-200: #e7e9e5;
   --color-neutral-300: #d3d6cf;
   --color-neutral-600: #5b6660;
   --color-neutral-900: #1f2421;
+
+  /* Footer-only — a visibly deep-forest-green tone rather than neutral-900's near-black
+     (Homepage UI/UX pass, brief item 41: "deep green... natural visual elements"). Chosen at
+     nearly the same luminance as neutral-900 specifically so every existing footer text/link
+     contrast ratio (text-neutral-300, hover:text-primary-500, etc.) stays effectively
+     unchanged — only the hue shifts, not the lightness. */
+  --color-footer: #16231b;
 
   --background: #ffffff;
   --foreground: var(--color-neutral-900);
@@ -43,6 +56,9 @@
 
   --color-accent-500: var(--color-accent-500);
   --color-accent-600: var(--color-accent-600);
+
+  --color-catalogue-500: var(--color-catalogue-500);
+  --color-catalogue-600: var(--color-catalogue-600);
 
   --color-neutral-50: var(--color-neutral-50);
   --color-neutral-100: var(--color-neutral-100);
@@ -87,10 +103,36 @@
   --radius-field: 10px;
   --shadow-card: 0 4px 20px rgba(31, 36, 33, 0.06);
   --shadow-card-hover: 0 8px 28px rgba(31, 36, 33, 0.1);
+  /* Third, richer tier — several premium sections (Supply Network, Process) already needed
+     deeper elevation than --shadow-card-hover and were repeating the same bespoke inline
+     box-shadow literal ad hoc; this is that value promoted to a token so new premium work
+     reuses it instead of inventing another one-off. */
+  --shadow-premium: 0 20px 60px -24px rgba(74, 101, 30, 0.35);
 
   /* ── Container widths — docs/03-design.md §4 ───────────────────── */
   --container-page: 1200px;
   --container-page-lg: 1320px;
+
+  /* Hero-only fluid headline (Homepage UI/UX pass, brief item 8) — deliberately NOT a change
+     to --text-h1 itself: that token is shared by every H1 on the site (About, Products,
+     Contact, ...), and retuning it site-wide was out of scope for a Homepage-only pass. Scoped
+     to the Hero Slider heading via the `text-hero` utility this token generates. */
+  --text-hero: clamp(2.25rem, 1.5rem + 2.75vw, 4.75rem);
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.02em;
+  --text-hero--font-weight: 700;
+
+  /* ── Section vertical rhythm (Homepage UI/UX pass) ──────────────────
+     Fluid clamp() so spacing scales continuously with viewport width instead of jumping at a
+     single breakpoint — every Homepage section picks one of these three, replacing the ad hoc
+     py-* values each section previously hardcoded on its own (36–64px, 40px flat, 56–96px,
+     64–112px, all mixed on one page). Three tiers cover the real hierarchy on this page:
+     compact for strip-like sections (Statistics, Partner Marquee), default for the majority of
+     content sections, comfortable for the three visually-richest showcase sections (Why Choose
+     Us, Global Export Reach, Global Shipping Partner). */
+  --spacing-section-y-compact: clamp(2rem, 1.3rem + 3vw, 4rem);
+  --spacing-section-y: clamp(3rem, 2rem + 4.5vw, 6rem);
+  --spacing-section-y-comfortable: clamp(3.5rem, 2.3rem + 5.25vw, 7rem);
 
   /* Above-the-fold hero fade-in (Contact page) — reduced-motion is already neutralized
      globally below via the animation-duration override. */
@@ -106,11 +148,26 @@
      recommended 40s. */
   --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
 
+  /* Global Shipping Partner marquee — same duplicated-track technique as --animate-marquee
+     above, direction reversed (left→right, i.e. content enters from the left and exits to the
+     right) per the brief's explicit request. Deliberately a separate keyframe/var rather than
+     reversing --animate-marquee itself, so the Trusted Institutions & Partners marquee (which
+     reuses --animate-marquee) keeps its original right→left direction unchanged. */
+  --animate-marquee-reverse: marquee-reverse var(--marquee-duration, 40s) linear infinite;
+
   /* "Why Choose Us?" card click feedback — a single 450ms pulse/heartbeat, never looping
      (triggered by adding the class on click, removed on animationend). transform + box-shadow
      only, no layout properties. */
   --animate-card-pulse: card-pulse 450ms ease-out;
   --animate-icon-pulse: icon-pulse 450ms ease-out;
+
+  /* Premium Article Detail Page — hero image reveal on load (opacity + subtle scale-down,
+     brief: "initial scale 1.04 → 1.0", kept understated per brief item 6/52). */
+  --animate-article-hero-reveal: article-hero-reveal 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Floating botanical decoration (leaf/palm outlines) — slow drift + rotation, 8-20s per
+     brief item 9, opacity kept in the SVG's own inline style (2-5%), never animated here. */
+  --animate-article-float: article-float 16s ease-in-out infinite;
+  --animate-article-float-slow: article-float 22s ease-in-out infinite reverse;
 }
 
 @keyframes fade-in-up {
@@ -133,12 +190,46 @@
   }
 }
 
+/* Inner Page Header background — much subtler than `ken-burns` above (that one's tuned for a
+   full-bleed homepage hero slide, not a shorter breadcrumb/title banner). Already covered by
+   the global prefers-reduced-motion override above. */
+@keyframes page-header-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.03);
+  }
+}
+
+/* Footer background — slightly more zoom than `page-header-zoom` (1.04 vs 1.03) over a longer
+   10s, since the Footer's photo sits behind much more visual weight (CTA card, four columns)
+   than a slim breadcrumb/title banner. Already covered by the global prefers-reduced-motion
+   override above. */
+@keyframes footer-bg-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.04);
+  }
+}
+
 @keyframes marquee {
   from {
     transform: translate3d(0, 0, 0);
   }
   to {
     transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes marquee-reverse {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -211,6 +302,142 @@
   }
 }
 
+/* "Our Supply Network" section — central PPN node breathing + connector dash-flow. Both are
+   pure CSS keyframes (compositor-friendly transform/background-position only), so the global
+   prefers-reduced-motion override above already neutralizes them with no extra JS. */
+@keyframes supply-network-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.015);
+  }
+}
+
+@keyframes supply-network-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+/* Expanding halo behind the PPN node — a separate layer from supply-network-breathe above
+   (that one scales the node body itself; this is a static-sized ring that expands and fades).
+   Pure transform+opacity, no filter/box-shadow looping. */
+@keyframes supply-network-pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 0;
+  }
+}
+
+/* Contact page floating WhatsApp button — a slow expanding-and-fading ring behind the button,
+   same technique as supply-network-pulse-ring above (pure transform+opacity, no filter/
+   box-shadow looping), just a much slower cadence so it reads as a gentle "still here" cue
+   rather than a flashing notification. */
+@keyframes whatsapp-fab-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Slow-rotating decorative ring behind the Supply Network's orbiting nodes — purely ambient
+   (never applied to an interactive element, so click targets never move under the cursor).
+   20-40s/cycle per the redesign brief; paused on hover/click via the component's own state. */
+@keyframes supply-network-orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Subtle idle float for Supply Network node icons — small, slow, no bounce. Staggered per node
+   via animation-delay so icons don't move in lockstep. */
+@keyframes supply-network-icon-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Shipment Terms container toggle — slow idle float + very slight rotate, the brief's permitted
+   CSS-transform "3D container" fallback (no 3D library). Pure transform, so the global
+   prefers-reduced-motion override above already neutralizes it. */
+@keyframes shipment-container-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(0.6deg);
+  }
+}
+
+/* Facilities FAQ — very slow floating drift for the large decorative blurred circle behind the
+   intro column. Pure transform, already covered by the global prefers-reduced-motion override. */
+@keyframes facilities-faq-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-3%, 4%) scale(1.04);
+  }
+}
+
+/* Shipment Terms mobile timeline — a short bar sliding down each connector segment, standing in
+   for the desktop SVG SMIL particle (SMIL doesn't suit a per-segment DOM list). Pure transform,
+   already covered by the global prefers-reduced-motion override. */
+@keyframes shipment-mobile-flow {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(24px);
+  }
+}
+
+/* Premium Article Detail Page (see ArticleHero/ArticleDecorative/ReadingProgressBar) */
+@keyframes article-hero-reveal {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes article-float {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(-8px, 12px) rotate(4deg);
+  }
+}
+
+/* Thin, always-visible reading progress bar — width driven by a JS scroll listener writing
+   the --article-progress custom property directly (see ReadingProgressBar.tsx), so the bar
+   itself never re-renders on scroll. */
+.article-progress-bar {
+  transform: scaleX(var(--article-progress, 0));
+  transform-origin: left;
+}
+
 /* Desktop type scale — docs/03-design.md §3.1 (mobile sizes above are the base/default). */
 @media (min-width: 1024px) {
   :root {
@@ -234,6 +461,110 @@ h2,
 h3,
 h4 {
   font-family: var(--font-heading);
+}
+
+/* CMS rich text (`.prose`) — article bodies, the About Company descriptions, and the admin
+   RichTextEditor surface all carry this class, but `@tailwindcss/typography` is not installed
+   in this project, so it was styling nothing: Preflight strips list markers and heading sizes,
+   which meant a bullet list created with the editor's "Daftar" button rendered as plain lines
+   everywhere it was published. These rules restore just what the editor can actually produce
+   (headings, lists, quotes, emphasis, links) and nothing more. */
+.prose :where(h2) {
+  font-size: var(--text-h3);
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin-block: 1.5em 0.6em;
+}
+
+.prose :where(h3) {
+  font-size: var(--text-body-lg);
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  margin-block: 1.3em 0.5em;
+}
+
+.prose :where(ul, ol) {
+  margin-block: 0.75em 1em;
+  padding-inline-start: 1.5em;
+}
+
+.prose :where(ul) {
+  list-style: disc;
+}
+
+.prose :where(ol) {
+  list-style: decimal;
+}
+
+.prose :where(li) {
+  margin-block: 0.3em;
+}
+
+.prose :where(li)::marker {
+  color: var(--color-primary-600);
+}
+
+.prose :where(blockquote) {
+  margin-block: 1em;
+  padding-inline-start: 1em;
+  border-inline-start: 3px solid var(--color-primary-500);
+  color: var(--color-neutral-600);
+  font-style: italic;
+}
+
+.prose :where(strong) {
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+.prose :where(em) {
+  font-style: italic;
+}
+
+.prose :where(a) {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prose :where(p) {
+  margin-block: 0 1em;
+}
+
+.prose :where(img) {
+  margin-block: 1.5em;
+  border-radius: var(--radius-card);
+  width: 100%;
+  height: auto;
+}
+
+/* RichTextEditor's "Pembatas" (horizontal rule) button — a small centered brand mark instead
+   of a plain browser-default grey line (brief item 24: "thin green line or small botanical
+   mark, keep it minimal"). */
+.prose :where(hr) {
+  margin-block: 2.5em;
+  height: 1px;
+  border: none;
+  background: linear-gradient(to right, transparent, var(--color-primary-500), transparent);
+}
+
+/* Premium editorial drop cap — first paragraph of the article body only, desktop only (brief
+   item 17: "Only desktop. Disable on mobile if it reduces readability"). Scoped to a class
+   applied by ArticleDetailView rather than every `.prose`, so About Company/other rich-text
+   surfaces reusing `.prose` are unaffected. */
+@media (min-width: 1024px) {
+  .article-drop-cap > :where(p):first-of-type::first-letter {
+    float: left;
+    font-family: var(--font-heading);
+    font-size: 4.2em;
+    line-height: 0.85;
+    font-weight: 700;
+    padding-right: 0.08em;
+    padding-top: 0.03em;
+    color: var(--color-primary-700);
+  }
 }
 
 /* docs/03-design.md §7 — motion must respect the user's reduced-motion preference. */

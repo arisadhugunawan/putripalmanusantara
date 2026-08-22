@@ -10,7 +10,14 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RevalidationService } from '../../revalidation/revalidation.service';
-import { CreateGalleryItemDto, UpdateGalleryItemDto } from './dto/gallery.dto';
+import {
+  CreateGalleryCategoryDto,
+  UpdateGalleryCategoryDto,
+} from './dto/gallery-category.dto';
+import {
+  CreateGalleryItemDto,
+  UpdateGalleryItemDto,
+} from './dto/gallery-item.dto';
 import { GalleryService } from './gallery.service';
 
 @Controller('api/v1/admin/gallery')
@@ -20,6 +27,38 @@ export class AdminGalleryController {
     private readonly galleryService: GalleryService,
     private readonly revalidation: RevalidationService,
   ) {}
+
+  // NOTE: the literal "categories" routes must be declared before the `:id` item routes below —
+  // Nest/Express match routes in declaration order, and `:id` would otherwise greedily swallow
+  // a request for `/admin/gallery/categories` as if "categories" were an item id.
+  @Get('categories')
+  findCategories() {
+    return this.galleryService.findAllCategories();
+  }
+
+  @Post('categories')
+  async createCategory(@Body() dto: CreateGalleryCategoryDto) {
+    const category = await this.galleryService.createCategory(dto);
+    await this.revalidation.revalidate(['/gallery']);
+    return category;
+  }
+
+  @Put('categories/:id')
+  async updateCategory(
+    @Param('id') id: string,
+    @Body() dto: UpdateGalleryCategoryDto,
+  ) {
+    const category = await this.galleryService.updateCategory(id, dto);
+    await this.revalidation.revalidate(['/gallery']);
+    return category;
+  }
+
+  @Delete('categories/:id')
+  async removeCategory(@Param('id') id: string) {
+    const result = await this.galleryService.removeCategory(id);
+    await this.revalidation.revalidate(['/gallery']);
+    return result;
+  }
 
   @Get()
   findAll() {

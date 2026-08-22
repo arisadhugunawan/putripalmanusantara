@@ -22,7 +22,7 @@ export function GlobalShippingPartnerSection({
   if (!section.enabled || partners.length === 0) return null;
 
   return (
-    <section className="relative overflow-hidden bg-[#F7FAF7] py-16 md:py-28">
+    <section className="relative overflow-hidden bg-[#F2F7F2] py-(--spacing-section-y-comfortable)">
       <DecorativeGraphics graphics={decorativeGraphics} />
 
       <Container className="relative">

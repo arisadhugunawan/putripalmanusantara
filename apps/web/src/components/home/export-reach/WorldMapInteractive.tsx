@@ -68,6 +68,17 @@ export function WorldMapInteractive({
     setSelectedCode(el.dataset.alpha2 ?? null);
   }
 
+  // Keeps the cursor-following tooltip's horizontal anchor at least this far from either edge
+  // of the map container — the tooltip itself is centered on this point via -translate-x-1/2,
+  // so without a margin a country near the left/right edge of the map (e.g. USA, Japan) would
+  // push the tooltip box partly outside the container/viewport.
+  const TOOLTIP_EDGE_MARGIN = 72;
+
+  function clampTooltipX(x: number, containerWidth: number | undefined) {
+    if (!containerWidth) return x;
+    return Math.min(Math.max(x, TOOLTIP_EDGE_MARGIN), containerWidth - TOOLTIP_EDGE_MARGIN);
+  }
+
   function handlePointerMove(event: React.MouseEvent<HTMLDivElement>) {
     const el = findCountryTarget(event.target);
     if (!el) {
@@ -78,7 +89,7 @@ export function WorldMapInteractive({
     setHover({
       code: el.dataset.alpha2 ?? "",
       name: el.dataset.name ?? "",
-      x: event.clientX - (rect?.left ?? 0),
+      x: clampTooltipX(event.clientX - (rect?.left ?? 0), rect?.width),
       y: event.clientY - (rect?.top ?? 0),
     });
   }
@@ -91,7 +102,7 @@ export function WorldMapInteractive({
     setHover({
       code: el.dataset.alpha2 ?? "",
       name: el.dataset.name ?? "",
-      x: rect.left + rect.width / 2 - (containerRect?.left ?? 0),
+      x: clampTooltipX(rect.left + rect.width / 2 - (containerRect?.left ?? 0), containerRect?.width),
       y: rect.top - (containerRect?.top ?? 0),
     });
   }

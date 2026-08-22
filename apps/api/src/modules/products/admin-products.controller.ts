@@ -8,13 +8,18 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
+import type { CurrentAdminPayload } from '../../common/decorators/current-admin.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { RevalidationService } from '../../revalidation/revalidation.service';
 import {
   AddProductGalleryItemDto,
   UpdateProductGalleryItemDto,
   UpsertProductDownloadDto,
   UpsertProductPackagingApplicationDto,
+  UpsertProductShapeDto,
   UpsertProductSpecificationDto,
 } from './dto/product-subresources.dto';
 import {
@@ -25,12 +30,72 @@ import {
 import { ProductsService } from './products.service';
 
 @Controller('api/v1/admin/products')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly revalidation: RevalidationService,
   ) {}
+
+  // ── Publish / Preview / Version History / Restore (Post-Launch) ────────────────────────
+  // Only publish/unpublish/restore are role-restricted — matching the exact scope Homepage/
+  // About Company's publish/restore already use. Save Draft (the existing `update()` route
+  // below) and viewing snapshot history stay open to every authenticated admin, same as before.
+
+  @Get(':id/preview')
+  preview(@Param('id') id: string) {
+    return this.productsService.findDraftForPreview(id);
+  }
+
+  @Post(':id/publish')
+  @Roles('super_admin')
+  async publish(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: CurrentAdminPayload,
+  ) {
+    const snapshot = await this.productsService.publish(id, admin);
+    const slug = await this.productsService.getSlug(id);
+    await this.revalidation.revalidate([
+      '/products',
+      ...(slug ? [`/products/${slug}`] : []),
+      '/',
+    ]);
+    return snapshot;
+  }
+
+  @Post(':id/unpublish')
+  @Roles('super_admin')
+  async unpublish(@Param('id') id: string) {
+    const result = await this.productsService.unpublish(id);
+    await this.revalidation.revalidate(['/products', '/']);
+    return result;
+  }
+
+  @Get(':id/snapshots')
+  listSnapshots(@Param('id') id: string) {
+    return this.productsService.listSnapshots(id);
+  }
+
+  @Post(':id/snapshots/:snapshotId/restore')
+  @Roles('super_admin')
+  async restoreSnapshot(
+    @Param('id') id: string,
+    @Param('snapshotId') snapshotId: string,
+    @CurrentAdmin() admin: CurrentAdminPayload,
+  ) {
+    const snapshot = await this.productsService.restoreSnapshot(
+      id,
+      snapshotId,
+      admin,
+    );
+    const slug = await this.productsService.getSlug(id);
+    await this.revalidation.revalidate([
+      '/products',
+      ...(slug ? [`/products/${slug}`] : []),
+      '/',
+    ]);
+    return snapshot;
+  }
 
   @Get()
   findAll() {
@@ -40,6 +105,16 @@ export class AdminProductsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.productsService.findByIdForAdmin(id);
+  }
+
+  @Get(':id/translation-status')
+  getTranslationStatus(@Param('id') id: string) {
+    return this.productsService.getTranslationStatus(id);
+  }
+
+  @Post(':id/translations/generate')
+  generateTranslations() {
+    return this.productsService.generateTranslations();
   }
 
   @Post()
@@ -85,6 +160,25 @@ export class AdminProductsController {
   }
 
   // ── Gallery ─────────────────────────────────────────────────────────
+  @Post(':id/shapes')
+  addShape(@Param('id') id: string, @Body() dto: UpsertProductShapeDto) {
+    return this.productsService.addShape(id, dto);
+  }
+
+  @Put(':id/shapes/:shapeId')
+  updateShape(
+    @Param('id') id: string,
+    @Param('shapeId') shapeId: string,
+    @Body() dto: UpsertProductShapeDto,
+  ) {
+    return this.productsService.updateShape(id, shapeId, dto);
+  }
+
+  @Delete(':id/shapes/:shapeId')
+  removeShape(@Param('id') id: string, @Param('shapeId') shapeId: string) {
+    return this.productsService.removeShape(id, shapeId);
+  }
+
   @Post(':id/gallery')
   async addGalleryItem(
     @Param('id') id: string,

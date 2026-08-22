@@ -34,6 +34,10 @@ export class CreateExportDestinationDto {
 
   @IsOptional()
   @IsString()
+  region?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
@@ -81,6 +85,10 @@ export class UpdateExportDestinationDto {
   @IsOptional()
   @IsIn(EXPORT_STATUSES)
   export_status?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
 
   @IsOptional()
   @IsString()

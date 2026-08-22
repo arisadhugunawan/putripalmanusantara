@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Sora } from "next/font/google";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { organizationJsonLd } from "@/lib/json-ld";
+import { getPublicBranding } from "@/lib/api";
 import { SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
@@ -19,25 +20,34 @@ const inter = Inter({
 const DEFAULT_DESCRIPTION =
   "CV Putri Palma Nusantara exports Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber to buyers across Asia, the Middle East, and Europe.";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
-  description: DEFAULT_DESCRIPTION,
-  alternates: { canonical: "/" },
-  openGraph: {
-    title: SITE_NAME,
+export async function generateMetadata(): Promise<Metadata> {
+  // Admin-uploaded Favicon (Brand & Logo) — best-effort: if the API is unreachable, fall back
+  // to Next's static app/favicon.ico file convention instead of breaking every page's <head>.
+  const branding = await getPublicBranding().catch(() => null);
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
     description: DEFAULT_DESCRIPTION,
-    url: SITE_URL,
-    siteName: SITE_NAME,
-    type: "website",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_NAME,
-    description: DEFAULT_DESCRIPTION,
-  },
-};
+    alternates: { canonical: "/" },
+    ...(branding?.favicon && {
+      icons: { icon: branding.favicon.file_url, shortcut: branding.favicon.file_url },
+    }),
+    openGraph: {
+      title: SITE_NAME,
+      description: DEFAULT_DESCRIPTION,
+      url: SITE_URL,
+      siteName: SITE_NAME,
+      type: "website",
+      locale: "en_US",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SITE_NAME,
+      description: DEFAULT_DESCRIPTION,
+    },
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Next only allows one root <html> document for the whole app (admin stays outside

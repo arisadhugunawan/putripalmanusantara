@@ -1,177 +1,149 @@
-import { Card, Container, Section, buttonVariants } from "@ppn/ui-components";
+import type { AboutCompanySectionKey } from "@ppn/shared-types";
+import { Container } from "@ppn/ui-components";
 import type { Metadata } from "next";
-import { Link } from "@/i18n/Link";
-import { getFacilities } from "@/lib/api";
+import { notFound } from "next/navigation";
+import { getFacilities, getPageHeader, getPublishedAboutCompany } from "@/lib/api";
 import { AboutNav, type AboutSection } from "@/components/about/AboutNav";
-import { FadeUpSection } from "@/components/about/FadeUpSection";
+import { CompanyProfileSection } from "@/components/about/CompanyProfileSection";
+import { TeamSection } from "@/components/about/TeamSection";
+import { WhatWeDoSection } from "@/components/about/WhatWeDoSection";
+import { LegalCertificateSection } from "@/components/about/LegalCertificateSection";
+import { FactorySection } from "@/components/about/FactorySection";
 import { PageHeader } from "@/components/page/PageHeader";
 import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/about">): Promise<Metadata> {
   const { locale } = await params;
+  const data = await getPublishedAboutCompany(locale);
   return buildPageMetadata({
-    title: "About Us",
+    title: data.settings.seo_title || "About Us",
     description:
+      data.settings.seo_description ||
       "CV Putri Palma Nusantara is an Indonesian exporter of coconut-derived products, connecting local producers with international buyers.",
     path: "/about",
     locale,
+    imageUrl: data.settings.og_image?.file_url,
   });
 }
 
-const VALUES = [
-  { title: "Integrity", description: "Transparent communication and honest representation of our products and capacity." },
-  { title: "Quality First", description: "Every batch is checked against consistent quality standards before shipment." },
-  { title: "Reliability", description: "Dependable supply capacity buyers can plan around." },
-  { title: "Sustainability", description: "Sourcing practices that respect the communities and land we work with." },
-];
+/** In-page DOM anchor id per section key — kept as the pre-existing hyphenated ids since
+ * `nav-config.ts` and `Footer.tsx` hardcode `/about#what-we-do` and `/about#legal` links. */
+const SECTION_DOM_ID: Record<AboutCompanySectionKey, string> = {
+  company: "company",
+  team: "team",
+  what_we_do: "what-we-do",
+  legal_certificate: "legal",
+  factory: "factory",
+  // Facilities, MOQ & Payment Terms, Shipment Terms, and FAQ have no in-page block here — all
+  // four are dedicated-page sections (`/facilities`), reachable via "View All Facilities →"
+  // from the Factory section. Kept only for Record completeness/the Admin's own section-manager
+  // bookkeeping; none appears in `orderedSections` below.
+  facilities: "facilities",
+  moq_payment_terms: "moq-payment-terms",
+  shipment_terms: "shipment-terms",
+  facilities_faq: "faq",
+};
 
-const SECTIONS: AboutSection[] = [
-  { id: "company", label: "CV. Putri Palma Nusantara" },
-  { id: "team", label: "PPN Team" },
-  { id: "what-we-do", label: "What We Do?" },
-  { id: "legal", label: "Legal & Certificate" },
-  { id: "factory", label: "Factory" },
-];
+const SECTION_LABEL: Record<AboutCompanySectionKey, string> = {
+  company: "CV. Putri Palma Nusantara",
+  team: "PPN Team",
+  what_we_do: "What We Supply",
+  legal_certificate: "Legal & Certificate",
+  factory: "Factory",
+  facilities: "Facilities",
+  moq_payment_terms: "MOQ & Payment Terms",
+  shipment_terms: "Shipment Terms",
+  facilities_faq: "FAQ",
+};
 
-// FR-ABOUT-01/03/04. FR-ABOUT-02 (certifications) is omitted — none are on file yet;
-// the CMS Settings module (Phase 5) lets the client add certification badges later.
+// FR-ABOUT-01/02/03/04 — fully CMS-driven via the About Company Manager (Draft/Publish, see
+// README "About Company Manager"). Section order/visibility comes from `section_config`.
 export default async function AboutPage({ params }: PageProps<"/[locale]/about">) {
   const { locale } = await params;
-  const facilities = await getFacilities(locale);
+  const [data, facilities, headerConfig] = await Promise.all([
+    getPublishedAboutCompany(locale),
+    getFacilities(locale),
+    getPageHeader("about-company", locale),
+  ]);
+
+  if (!data.settings.visible) {
+    notFound();
+  }
+
+  const orderedSections = [...data.section_config]
+    // Facilities, MOQ & Payment Terms, Shipment Terms, and FAQ are excluded here — all four
+    // render on their own dedicated page, not as an in-page block on /about (see
+    // `SECTION_DOM_ID` comment above).
+    .filter(
+      (s) =>
+        s.visible &&
+        s.key !== "facilities" &&
+        s.key !== "moq_payment_terms" &&
+        s.key !== "shipment_terms" &&
+        s.key !== "facilities_faq",
+    )
+    .sort((a, b) => a.order - b.order);
+
+  const navSections: AboutSection[] = orderedSections.map((s) => ({
+    id: SECTION_DOM_ID[s.key],
+    label: SECTION_LABEL[s.key],
+  }));
+
+  function renderSection(key: AboutCompanySectionKey) {
+    switch (key) {
+      case "company":
+        return (
+          <CompanyProfileSection
+            profile={data.profile}
+            facts={data.facts}
+            socialLinks={data.social_links}
+            companyProfileCountries={data.company_profile_countries}
+          />
+        );
+      case "team":
+        return <TeamSection members={data.team_members} section={data.team_section} />;
+      case "what_we_do":
+        return (
+          <WhatWeDoSection
+            section={data.what_we_do_section}
+            items={data.what_we_do_items}
+            whoWeSupplyItems={data.who_we_supply_items}
+          />
+        );
+      case "legal_certificate":
+        return (
+          <LegalCertificateSection
+            documents={data.legal_documents}
+            section={data.legal_section}
+            categories={data.legal_categories}
+          />
+        );
+      case "factory":
+        return <FactorySection factory={data.factory} facilities={facilities} />;
+    }
+  }
 
   return (
     <main>
       <PageHeader
         breadcrumb={[{ label: "Home", href: "/" }, { label: "About Us" }]}
-        title="About CV Putri Palma Nusantara"
+        title={data.settings.page_title || "About CV Putri Palma Nusantara"}
+        description={data.settings.page_subtitle || undefined}
         locale={locale}
+        headerConfig={headerConfig}
       />
 
       <Container className="grid grid-cols-1 gap-10 py-12 lg:grid-cols-[240px_1fr] lg:items-start lg:gap-16 lg:py-20">
-        <AboutNav sections={SECTIONS} />
+        <AboutNav sections={navSections} />
 
         <div className="flex flex-col gap-20 lg:gap-28">
-          {/* CV. Putri Palma Nusantara */}
-          <section id="company" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">CV. Putri Palma Nusantara</h2>
-              <p className="mt-6 text-body-lg text-neutral-600">
-                CV Putri Palma Nusantara is an Indonesian exporter of coconut-derived products,
-                connecting local coconut-producing regions with importers, distributors,
-                wholesalers, food manufacturers, and trading companies across Asia, the Middle
-                East, and Europe.
-              </p>
-              <p className="mt-4 text-body-lg text-neutral-600">
-                We focus on four core product lines — Semi Husked Coconut, Copra, Coconut Shell
-                Charcoal, and Coconut Timber — supported by a consistent production process and
-                dependable supply capacity.
-              </p>
-
-              <h3 className="mt-10 text-h3 text-neutral-900">Our Mission</h3>
-              <p className="mt-3 text-body-lg text-neutral-600">
-                To be a trusted, transparent supply partner for international buyers of coconut
-                products, delivering consistent quality from sourcing through to export.
-              </p>
-
-              <h3 className="mt-10 text-h3 text-neutral-900">Our Values</h3>
-              <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                {VALUES.map((value) => (
-                  <Card key={value.title} className="bg-neutral-50">
-                    <h4 className="text-body-lg font-medium text-neutral-900">{value.title}</h4>
-                    <p className="mt-1.5 text-body text-neutral-600">{value.description}</p>
-                  </Card>
-                ))}
-              </div>
-            </FadeUpSection>
-          </section>
-
-          {/* PPN Team */}
-          <section id="team" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">PPN Team</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Our team brings together experienced people across sourcing, quality control,
-                logistics, and international trade coordination, working together to make sure
-                every shipment meets the standard our buyers expect. Individual team profiles
-                will be added here as they become available.
-              </p>
-            </FadeUpSection>
-          </section>
-
-          {/* What We Do? */}
-          <section id="what-we-do" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">What We Do?</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                We source, process, and export four core coconut product lines — Semi Husked
-                Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber — through a
-                consistent production process: sourcing from trusted local farmers, sorting and
-                quality control, packing to buyer specification, and container stuffing for
-                export shipment.
-              </p>
-              <Link href="/production-process" className={`mt-6 inline-flex ${buttonVariants("secondary", "md")}`}>
-                See Our Production Process
-              </Link>
-            </FadeUpSection>
-          </section>
-
-          {/* Legal & Certificate — FR-ABOUT-02 — badges render here once the client
-              provides certification documents; an honest "coming soon" state instead of
-              fabricated badges (same pattern as the Hero's not-yet-provided video). */}
-          <section id="legal" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">Legal & Certificate</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Legal registration details and product certifications will be listed here as
-                they are provided. Buyers needing legality or certification documentation ahead
-                of an order can request it directly via our contact form.
-              </p>
-              <Link href="/contact" className={`mt-6 inline-flex ${buttonVariants("secondary", "md")}`}>
-                Contact Us
-              </Link>
-            </FadeUpSection>
-          </section>
-
-          {/* Factory — real facility names pulled from the CMS, not fabricated; full
-              photos/details live on the dedicated Facilities page. */}
-          <section id="factory" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">Factory</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Our production site is built around purpose-specific facilities that support
-                consistent, export-ready output at every stage.
-              </p>
-              {facilities.length > 0 && (
-                <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {facilities.map((facility) => (
-                    <li
-                      key={facility.id}
-                      className="rounded-field border border-neutral-200 px-4 py-3 text-body font-medium text-neutral-900"
-                    >
-                      {facility.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Link href="/facilities" className={`mt-6 inline-flex ${buttonVariants("secondary", "md")}`}>
-                View Facilities & Photos
-              </Link>
-            </FadeUpSection>
-          </section>
+          {orderedSections.map((section) => (
+            <section key={section.key} id={SECTION_DOM_ID[section.key]} className="scroll-mt-24">
+              {renderSection(section.key)}
+            </section>
+          ))}
         </div>
       </Container>
-
-      <Section tone="soft">
-        <Container className="text-center">
-          <h2 className="text-h2 text-neutral-900">Ready to work with us?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-body-lg text-neutral-600">
-            Tell us what you need and our team will respond with pricing and availability.
-          </p>
-          <Link href="/#request-quotation" className={`mt-6 inline-flex ${buttonVariants("primary", "lg")}`}>
-            Request Quotation
-          </Link>
-        </Container>
-      </Section>
     </main>
   );
 }

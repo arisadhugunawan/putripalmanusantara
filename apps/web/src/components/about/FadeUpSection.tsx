@@ -7,7 +7,17 @@ import { useEffect, useRef, useState } from "react";
  * (not a scroll listener) triggers a one-time class toggle; the animation itself is
  * transform + opacity only (compositor-friendly, no layout thrashing), and
  * prefers-reduced-motion is already neutralized globally in globals.css. */
-export function FadeUpSection({ children, className }: { children: React.ReactNode; className?: string }) {
+export function FadeUpSection({
+  children,
+  className,
+  style,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /** Optional extra inline styles — e.g. `{ transitionDelay: "80ms" }` to stagger a row of
+   * siblings each wrapped in their own `FadeUpSection`. */
+  style?: React.CSSProperties;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -35,6 +45,7 @@ export function FadeUpSection({ children, className }: { children: React.ReactNo
         visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
         className,
       )}
+      style={style}
     >
       {children}
     </div>

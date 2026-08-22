@@ -49,7 +49,11 @@ export function ShippingPartnerEditor() {
       setError("Unggah logo terlebih dahulu.");
       return;
     }
-    const formData = new FormData(event.currentTarget);
+    // Captured before the `await` below — React nulls `event.currentTarget` once the
+    // synchronous event-dispatch task finishes, so reading it after an `await` throws even
+    // though the request already succeeded.
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     try {
       await adminApi.post("/admin/homepage/shipping-partners", {
         logo_id: newLogoMediaId,
@@ -59,7 +63,7 @@ export function ShippingPartnerEditor() {
         enabled: true,
         featured: true,
       });
-      event.currentTarget.reset();
+      form.reset();
       setNewLogoMediaId(null);
       setNewLogoPreview(null);
       await load();

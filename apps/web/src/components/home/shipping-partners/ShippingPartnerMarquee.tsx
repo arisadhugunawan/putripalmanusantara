@@ -13,6 +13,10 @@ import { ShippingPartnerCard } from "./ShippingPartnerCard";
  * users get a plain horizontally-scrollable strip (native touch/trackpad scroll) instead of
  * the wrapped static grid PartnerMarquee falls back to — the brief asks for a scrollable
  * carousel specifically, not a grid, for this section.
+ *
+ * Direction is intentionally left→right here (`animate-marquee-reverse`), the opposite of
+ * PartnerMarquee's right→left `animate-marquee` — a deliberate visual distinction between the
+ * two marquees per the Homepage restructuring brief, not a shared setting.
  */
 export function ShippingPartnerMarquee({
   section,
@@ -61,7 +65,7 @@ export function ShippingPartnerMarquee({
         <div
           ref={trackRef}
           style={marqueeStyle}
-          className="animate-marquee flex w-max items-start gap-8 will-change-transform group-hover:[animation-play-state:paused]"
+          className="animate-marquee-reverse flex w-max items-start gap-8 will-change-transform group-hover:[animation-play-state:paused]"
         >
           {track.map((partner, index) => (
             <ShippingPartnerCard

@@ -8,7 +8,9 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { RevalidationService } from '../../revalidation/revalidation.service';
 import { UpdateAboutPreviewDto } from './dto/about-preview.dto';
 import {
@@ -41,7 +43,7 @@ import {
 import { HomepageService } from './homepage.service';
 
 @Controller('api/v1/admin/homepage')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminHomepageController {
   constructor(
     private readonly homepageService: HomepageService,
@@ -352,6 +354,7 @@ export class AdminHomepageController {
   }
 
   @Post('publish')
+  @Roles('super_admin')
   async publish() {
     const result = await this.homepageService.publishHomepage();
     await this.revalidation.revalidate(['/']);
@@ -364,6 +367,7 @@ export class AdminHomepageController {
   }
 
   @Post('snapshots/:id/restore')
+  @Roles('super_admin')
   async restoreSnapshot(@Param('id') id: string) {
     const result = await this.homepageService.restoreSnapshot(id);
     await this.revalidation.revalidate(['/']);

@@ -1,21 +1,15 @@
-import { Accordion, Container, Section, buttonVariants } from "@ppn/ui-components";
+import { Container } from "@ppn/ui-components";
+import type { Locale } from "@ppn/shared-types";
 import type { Metadata } from "next";
-import { Link } from "@/i18n/Link";
-import {
-  getFacilities,
-  getFaqs,
-  getHomepageStatistics,
-  getProductBySlug,
-  getProductionSteps,
-  getProducts,
-} from "@/lib/api";
+import { getPageHeader, getPublishedAboutCompany } from "@/lib/api";
+import { getDictionary } from "@/i18n/get-dictionary";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
+import { FacilitiesFaqSection } from "@/components/facilities/faq/FacilitiesFaqSection";
 import { FacilitiesNav, type FacilitiesSection } from "@/components/facilities/FacilitiesNav";
-import { FacilityGrid } from "@/components/facilities/FacilityGrid";
-import { PackagingOptionCards, type PackagingOption } from "@/components/facilities/PackagingOptionCards";
-import { InfoCardGrid, type InfoCardItem } from "@/components/products/catalogue/InfoCardGrid";
+import { FacilityShowcase } from "@/components/facilities/FacilityShowcase";
+import { MoqPaymentTermsSection } from "@/components/facilities/moq-payment/MoqPaymentTermsSection";
+import { ShipmentTermsSection } from "@/components/facilities/shipment-terms/ShipmentTermsSection";
 import { PageHeader } from "@/components/page/PageHeader";
-import { ProductionTimeline } from "@/components/production/ProductionTimeline";
 import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/facilities">): Promise<Metadata> {
@@ -23,7 +17,7 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/faciliti
   return buildPageMetadata({
     title: "Facilities",
     description:
-      "Explore CV Putri Palma Nusantara's production facilities, process, trade terms, shipment logistics, and packaging options for coconut product exports.",
+      "Explore CV Putri Palma Nusantara's production facilities, MOQ and payment terms, and shipment logistics for coconut product exports.",
     path: "/facilities",
     locale,
   });
@@ -31,189 +25,98 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/faciliti
 
 const SECTIONS: FacilitiesSection[] = [
   { id: "facilities", label: "Facilities" },
-  { id: "production-process", label: "Production Process" },
   { id: "moq-payment", label: "MOQ & Payment Terms" },
   { id: "shipment-terms", label: "Shipment Terms" },
-  { id: "packaging-options", label: "Packaging Options" },
   { id: "faq", label: "FAQ" },
 ];
 
 export default async function FacilitiesPage({ params }: PageProps<"/[locale]/facilities">) {
   const { locale } = await params;
-  const [facilities, productionSteps, statistics, faqs, products] = await Promise.all([
-    getFacilities(locale),
-    getProductionSteps(locale),
-    getHomepageStatistics(locale),
-    getFaqs(locale),
-    getProducts(locale),
+  const [aboutCompany, dictionary, headerConfig] = await Promise.all([
+    getPublishedAboutCompany(locale),
+    getDictionary(locale as Locale),
+    getPageHeader("facilities", locale),
   ]);
-
-  const productDetails = await Promise.all(
-    products.map((product) => getProductBySlug(product.slug, locale)),
-  );
-  // Packaging Options uses each product's real, CMS-authored packaging entry (Admin >
-  // Products > Packaging) rather than a fabricated generic bag/loading-type list — see
-  // PackagingOptionCards.tsx.
-  const packagingOptions: PackagingOption[] = productDetails.flatMap((product) =>
-    product
-      ? product.packaging.map((item) => ({
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          media: item.media,
-          productName: product.name,
-        }))
-      : [],
-  );
-
-  const productionCapacity = statistics.find((stat) =>
-    stat.label.toLowerCase().includes("production capacity"),
-  )?.value;
-
-  // MOQ, lead time, and payment specifics are deliberately framed as "varies — confirm via
-  // quotation" rather than fixed numbers, matching the site's own existing FAQ answers (see
-  // getFaqs seed data) instead of inventing figures PPN hasn't confirmed.
-  const moqPaymentCards: InfoCardItem[] = [
-    { id: "moq", label: "Minimum Order Quantity", value: "Varies by product and packaging — confirmed with each Request Quotation." },
-    { id: "capacity", label: "Production Capacity", value: productionCapacity ?? "Available on request via our team." },
-    { id: "lead-time", label: "Lead Time", value: "Depends on product and order volume — an estimated schedule is provided after reviewing your request." },
-    { id: "payment", label: "Payment Terms", value: "Letter of Credit (L/C), Telegraphic Transfer (T/T), or terms negotiated directly for repeat buyers." },
-    { id: "currency", label: "Supported Currencies", value: "USD as primary currency; other currencies negotiable on request." },
-    { id: "export-policy", label: "Export Policy", value: "Standard export terms are agreed per order — see Shipment Terms below for Incoterms and logistics." },
-  ];
-
-  const shipmentCards: InfoCardItem[] = [
-    { id: "incoterms", label: "Incoterms Available", value: "FOB, CIF, or EXW — agreed per shipment based on buyer preference." },
-    { id: "port", label: "Port of Loading", value: "Nearest seaport to our facility in Cilacap, Central Java, Indonesia." },
-    { id: "transit", label: "Estimated Transit Time", value: "Varies by destination port — confirmed at booking." },
-    { id: "documents", label: "Required Documents", value: "Commercial Invoice, Packing List, Certificate of Origin, and Phytosanitary Certificate provided with every shipment." },
-    { id: "container", label: "Container Capacity", value: "Approx. 18–20 tons per 20ft container, 24–26 tons per 40ft container (product-dependent)." },
-  ];
+  const facilities = aboutCompany.facilities;
+  const facilitiesSection = aboutCompany.facilities_section;
+  const moqPaymentSection = aboutCompany.moq_payment_section;
+  const moqPaymentQuickCards = aboutCompany.moq_payment_quick_cards;
+  const moqPaymentBusinessTerms = aboutCompany.moq_payment_business_terms;
+  const shipmentTermsSection = aboutCompany.shipment_terms_section;
+  const shippingArrangementItems = aboutCompany.shipping_arrangement_items;
+  const shipmentLoadingLocations = aboutCompany.shipment_loading_locations;
+  const shipmentContainerTypes = aboutCompany.shipment_container_types;
+  const shipmentScheduleSteps = aboutCompany.shipment_schedule_steps;
+  const shipmentDocuments = aboutCompany.shipment_documents;
+  const shipmentCommitmentItems = aboutCompany.shipment_commitment_items;
+  const facilitiesFaqSection = aboutCompany.facilities_faq_section;
+  const facilitiesFaqItems = aboutCompany.facilities_faq_items;
 
   return (
     <main>
       <PageHeader
         breadcrumb={[{ label: "Home", href: "/" }, { label: "Facilities" }]}
         title="Facilities"
-        description="Purpose-built infrastructure, production process, and trade terms behind every CV Putri Palma Nusantara shipment."
+        description="Purpose-built infrastructure and trade terms behind every CV Putri Palma Nusantara shipment."
         locale={locale}
+        headerConfig={headerConfig}
       />
 
-      <Container className="grid grid-cols-1 gap-10 py-12 lg:grid-cols-[240px_1fr] lg:items-start lg:gap-16 lg:py-20">
+      {/*
+        `minmax(0, 1fr)` on the content column (not a bare `1fr`) is load-bearing: a CSS Grid
+        item's automatic minimum width defaults to its content's min-content size, so without
+        the explicit `0` floor, a wide non-wrapping descendant (the facility carousel track)
+        forces this column — and the whole page — wider than the viewport instead of being
+        clipped by its own `overflow-x-auto`. The sidebar column narrows from `lg` to `xl` so it
+        doesn't eat into content width on smaller laptop screens.
+      */}
+      <Container className="grid w-full max-w-full grid-cols-1 gap-10 py-12 lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:py-20 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] xl:gap-16">
         <FacilitiesNav sections={SECTIONS} />
 
-        <div className="flex flex-col gap-20 lg:gap-28">
+        <div className="flex min-w-0 flex-col gap-20 lg:gap-28">
           {/* Facilities */}
           <section id="facilities" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">Facilities</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Purpose-built infrastructure supporting consistent, export-ready production at
-                every stage — from raw material intake through container loading.
-              </p>
-              <div className="mt-8">
-                {facilities.length === 0 ? (
-                  <p className="text-body text-neutral-600">No facility information available yet.</p>
-                ) : (
-                  <FacilityGrid facilities={facilities} />
-                )}
-              </div>
-            </FadeUpSection>
-          </section>
-
-          {/* Production Process */}
-          <section id="production-process" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">Production Process</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Every shipment follows the same process, from sourcing to export, to ensure
-                consistent quality.
-              </p>
-              <div className="mt-10">
-                {productionSteps.length === 0 ? (
-                  <p className="text-body text-neutral-600">Production process details will be added soon.</p>
-                ) : (
-                  <ProductionTimeline steps={productionSteps} />
-                )}
-              </div>
-            </FadeUpSection>
+            {facilities.length === 0 ? (
+              <FadeUpSection>
+                <h2 className="text-h2 text-neutral-900">Facilities</h2>
+                <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
+                  No facility information available yet.
+                </p>
+              </FadeUpSection>
+            ) : (
+              <FacilityShowcase facilities={facilities} section={facilitiesSection} />
+            )}
           </section>
 
           {/* MOQ & Payment Terms */}
           <section id="moq-payment" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">MOQ & Payment Terms</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Exact figures depend on product and order volume — request a quotation for
-                terms tailored to your order.
-              </p>
-              <div className="mt-8">
-                <InfoCardGrid items={moqPaymentCards} />
-              </div>
-              <Link href="/#request-quotation" className={`mt-6 inline-flex ${buttonVariants("primary", "md")}`}>
-                Request Quotation
-              </Link>
-            </FadeUpSection>
+            <MoqPaymentTermsSection
+              section={moqPaymentSection}
+              quickCards={moqPaymentQuickCards}
+              businessTerms={moqPaymentBusinessTerms}
+            />
           </section>
 
           {/* Shipment Terms */}
           <section id="shipment-terms" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">Shipment Terms</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Export logistics and documentation supporting a smooth handover to your
-                freight forwarder.
-              </p>
-              <div className="mt-8">
-                <InfoCardGrid items={shipmentCards} />
-              </div>
-            </FadeUpSection>
-          </section>
-
-          {/* Packaging Options */}
-          <section id="packaging-options" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">Packaging Options</h2>
-              <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                Packaging is arranged per product and buyer specification.
-              </p>
-              <div className="mt-8">
-                {packagingOptions.length === 0 ? (
-                  <p className="text-body text-neutral-600">Packaging option details will be added soon.</p>
-                ) : (
-                  <PackagingOptionCards items={packagingOptions} />
-                )}
-              </div>
-            </FadeUpSection>
+            <ShipmentTermsSection
+              section={shipmentTermsSection}
+              arrangementItems={shippingArrangementItems}
+              loadingLocations={shipmentLoadingLocations}
+              containerTypes={shipmentContainerTypes}
+              scheduleSteps={shipmentScheduleSteps}
+              documents={shipmentDocuments}
+              commitmentItems={shipmentCommitmentItems}
+              routeLabels={dictionary.shipmentRoute}
+            />
           </section>
 
           {/* FAQ */}
           <section id="faq" className="scroll-mt-24">
-            <FadeUpSection>
-              <h2 className="text-h2 text-neutral-900">FAQ</h2>
-              <div className="mt-8">
-                {faqs.length === 0 ? (
-                  <p className="text-body text-neutral-600">No FAQs published yet.</p>
-                ) : (
-                  <Accordion items={faqs.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer }))} />
-                )}
-              </div>
-            </FadeUpSection>
+            <FacilitiesFaqSection section={facilitiesFaqSection} items={facilitiesFaqItems} />
           </section>
         </div>
       </Container>
-
-      <Section tone="soft">
-        <Container className="text-center">
-          <h2 className="text-h2 text-neutral-900">Ready to work with us?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-body-lg text-neutral-600">
-            Tell us what you need and our team will respond with pricing and availability.
-          </p>
-          <Link href="/#request-quotation" className={`mt-6 inline-flex ${buttonVariants("primary", "lg")}`}>
-            Request Quotation
-          </Link>
-        </Container>
-      </Section>
     </main>
   );
 }

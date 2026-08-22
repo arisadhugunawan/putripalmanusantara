@@ -12,6 +12,7 @@ import type {
   ProductModel as Product,
   ProductDownloadModel as ProductDownload,
   ProductGalleryImageModel as ProductGalleryImage,
+  ProductShapeModel,
   ProductPackagingApplicationModel as ProductPackagingApplication,
   ProductSpecificationModel as ProductSpecification,
 } from '../../../generated/prisma/models';
@@ -21,6 +22,7 @@ import { translate } from '../../common/utils/i18n.util';
 type ProductWithRelations = Product & {
   coverImage: Media | null;
   gallery?: (ProductGalleryImage & { media: Media })[];
+  shapes?: (ProductShapeModel & { media: Media | null })[];
   specifications?: ProductSpecification[];
   packagingAndApps?: (ProductPackagingApplication & { media: Media | null })[];
   downloads?: ProductDownload[];
@@ -51,6 +53,7 @@ export function toProductSummary(
     id: product.id,
     slug: product.slug,
     name: t.name,
+    title_accent: product.titleAccent,
     category: t.category,
     short_description: t.shortDescription,
     cover_image: product.coverImage ? toMedia(product.coverImage) : null,
@@ -83,6 +86,7 @@ export function toProductDetail(
         spec_value: specT.specValue,
         order: spec.order,
         group: spec.group,
+        variant_label: spec.variantLabel,
       };
     });
 
@@ -91,6 +95,8 @@ export function toProductDetail(
     .map((item) => ({
       id: item.id,
       media: toMedia(item.media),
+      section: item.section,
+      caption: item.caption,
       order: item.order,
     }));
 
@@ -107,6 +113,7 @@ export function toProductDetail(
       title: itemT.title,
       description: itemT.description,
       media: item.media ? toMedia(item.media) : null,
+      order: item.order,
     };
   };
 
@@ -139,6 +146,21 @@ export function toProductDetail(
     status: product.status,
     order: product.order,
     gallery,
+    shapes: (product.shapes ?? [])
+      .sort((a, b) => a.order - b.order)
+      .map((shape) => {
+        const shapeT = translate(shape, shape.translations, locale, [
+          'name',
+          'sizes',
+        ]);
+        return {
+          id: shape.id,
+          name: shapeT.name,
+          media: shape.media ? toMedia(shape.media) : null,
+          sizes: shapeT.sizes,
+          order: shape.order,
+        };
+      }),
     specifications,
     packaging,
     applications,

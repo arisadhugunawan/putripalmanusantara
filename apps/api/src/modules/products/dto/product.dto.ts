@@ -42,6 +42,11 @@ export class CreateProductDto {
   @MaxLength(200)
   name!: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title_accent?: string | null;
+
   @IsString()
   @MinLength(1)
   category!: string;
@@ -101,6 +106,11 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(200)
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title_accent?: string | null;
 
   @IsOptional()
   @IsString()

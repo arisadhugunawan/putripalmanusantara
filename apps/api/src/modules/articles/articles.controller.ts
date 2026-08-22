@@ -17,11 +17,29 @@ export class ArticlesController {
     return this.articlesService.findLatest(resolveLocale(locale));
   }
 
+  @Get('categories')
+  findCategories() {
+    return this.articlesService.findPublicCategories();
+  }
+
   @Get(':slug')
   findOne(@Param('slug') slug: string, @Query('locale') locale?: string) {
     return this.articlesService.findPublishedBySlug(
       slug,
       resolveLocale(locale),
     );
+  }
+
+  @Get(':slug/related')
+  async findRelated(
+    @Param('slug') slug: string,
+    @Query('locale') locale?: string,
+  ) {
+    const resolvedLocale = resolveLocale(locale);
+    const article = await this.articlesService.findPublishedBySlug(
+      slug,
+      resolvedLocale,
+    );
+    return this.articlesService.findRelated(article.id, resolvedLocale);
   }
 }

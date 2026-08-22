@@ -1,12 +1,21 @@
 "use client";
 
-import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from "@ppn/shared-types";
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale, type PublicSiteBranding } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import { usePathname, useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Link } from "@/i18n/Link";
-import { getMainNavEntries, isDropdown, type NavDropdownGroup, type NavEntry } from "@/lib/nav-config";
+import {
+  DEFAULT_ABOUT_NAV_STATE,
+  getMainNavEntries,
+  isDropdown,
+  withProductsGroup,
+  type AboutNavState,
+  type NavDropdownGroup,
+  type NavEntry,
+} from "@/lib/nav-config";
 import type { Dictionary } from "@/i18n/dictionary.d";
+import { BrandLogoImage } from "./BrandLogoImage";
 
 const LOCALE_COOKIE = "NEXT_LOCALE";
 
@@ -34,6 +43,8 @@ export function MobileMenu({
   dictionary,
   locale,
   productsGroup,
+  branding,
+  aboutNav = DEFAULT_ABOUT_NAV_STATE,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,12 +52,22 @@ export function MobileMenu({
   locale: Locale;
   /** "Our Products" is a live CMS list, built by Header.tsx (see its own comment). */
   productsGroup: NavEntry;
+  branding: PublicSiteBranding;
+  /** Published About Company visibility — see `AboutNavState`. */
+  aboutNav?: AboutNavState;
 }) {
   const pathname = usePathname();
   const normalizedPath = stripLocale(pathname, locale);
-  const entries = getMainNavEntries(dictionary);
-  // Insert the dynamic Our Products group right after About Company, matching the brief's order.
-  entries.splice(2, 0, productsGroup);
+  const entries = withProductsGroup(getMainNavEntries(dictionary, aboutNav), productsGroup);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
 
   return (
     <div
@@ -59,8 +80,12 @@ export function MobileMenu({
       )}
     >
       <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
-        <Link href="/" onClick={onClose} className="font-heading text-h3 font-bold text-neutral-900">
-          PPN
+        <Link href="/" onClick={onClose} className="flex items-center">
+          {branding.mobile_logo ? (
+            <BrandLogoImage media={branding.mobile_logo} altText={branding.mobile_logo_alt} className="h-11 w-[180px]" />
+          ) : (
+            <span className="font-heading text-h3 font-bold text-neutral-900">PPN</span>
+          )}
         </Link>
         <button
           type="button"

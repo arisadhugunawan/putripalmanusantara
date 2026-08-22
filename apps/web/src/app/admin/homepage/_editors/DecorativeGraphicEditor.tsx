@@ -23,12 +23,32 @@ const DECORATIVE_VARIANTS: { value: DecorativeGraphicVariant; label: string }[] 
   { value: "world_map_outline", label: "World Map Outline" },
   { value: "palm_leaf", label: "Palm Leaf" },
   { value: "coconut_tree_silhouette", label: "Coconut Tree Silhouette" },
+  { value: "container_outline", label: "Container Outline" },
 ];
 
+/** Every `page` scope a Homepage section actually reads via `getDecorativeGraphics(page)` in
+ * `[locale]/page.tsx` — kept as one explicit list here (rather than free text) so an Admin can
+ * only ever target a section that will actually render what they add. */
+const PAGE_SCOPES: { value: string; label: string }[] = [
+  { value: "home", label: "Hero Slider" },
+  { value: "home-partners", label: "Partner / Institution Logos" },
+  { value: "home-about-preview", label: "About PPN" },
+  { value: "home-supply-network", label: "Our Supply Network" },
+  { value: "home-products", label: "Featured Products" },
+  { value: "home-production-process", label: "Our Supply & Export Process" },
+  { value: "home-facilities", label: "Our Facilities" },
+  { value: "home-gallery", label: "Gallery" },
+  { value: "home-articles", label: "Insight & Articles" },
+  { value: "home-export-reach", label: "Global Export Reach" },
+  { value: "home-shipping-partners", label: "Global Shipping Partner" },
+  { value: "home-faq", label: "FAQ" },
+  { value: "home-quotation", label: "Request a Quotation" },
+];
 
 export function DecorativeGraphicEditor() {
   const [graphics, setGraphics] = useState<DecorativeGraphic[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pageFilter, setPageFilter] = useState<string>("home");
 
   async function load() {
     const data = await adminApi.get<DecorativeGraphic[]>("/admin/homepage/decorative-graphics");
@@ -46,11 +66,12 @@ export function DecorativeGraphicEditor() {
     setError(null);
     try {
       await adminApi.post("/admin/homepage/decorative-graphics", {
+        page: pageFilter,
         variant: formData.get("variant"),
         placement: formData.get("placement"),
         opacity: Number(formData.get("opacity")),
         scale: Number(formData.get("scale")),
-        order: graphics?.length ?? 0,
+        order: graphics?.filter((g) => g.page === pageFilter).length ?? 0,
         enabled: true,
       });
       event.currentTarget.reset();
@@ -71,16 +92,38 @@ export function DecorativeGraphicEditor() {
     await load();
   }
 
+  const filtered = graphics?.filter((g) => g.page === pageFilter) ?? [];
+
   return (
     <Card className="mt-6 mb-10">
       <h2 className="text-h3 text-neutral-900">Elemen Dekoratif (Watermark)</h2>
       <p className="mt-1 text-small text-neutral-600">
-        Ilustrasi garis (line-art) transparan beropasitas rendah untuk aksen visual di
-        beranda. Saat ini hanya dirender di halaman beranda (page = &ldquo;home&rdquo;).
+        Ilustrasi garis (line-art) transparan beropasitas rendah untuk aksen visual per section beranda.
       </p>
 
+      <div className="mt-4">
+        <Label htmlFor="decor-page-filter" className="text-small">
+          Section
+        </Label>
+        <select
+          id="decor-page-filter"
+          value={pageFilter}
+          onChange={(e) => setPageFilter(e.target.value)}
+          className="w-full rounded-field border border-neutral-300 px-3 py-2.5 text-body sm:w-auto"
+        >
+          {PAGE_SCOPES.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mt-4 flex flex-col gap-3">
-        {graphics?.map((graphic) => (
+        {filtered.length === 0 && (
+          <p className="text-small text-neutral-500">Belum ada elemen dekoratif untuk section ini.</p>
+        )}
+        {filtered.map((graphic) => (
           <div key={graphic.id} className="flex flex-wrap items-center gap-3 rounded-field border border-neutral-200 p-3">
             <select
               defaultValue={graphic.variant}
@@ -181,7 +224,7 @@ export function DecorativeGraphicEditor() {
           </Label>
           <Input id="new-decor-scale" name="scale" type="number" min={0.5} max={2} step={0.1} defaultValue={1} className="w-20" />
         </div>
-        <Button type="submit">Tambah</Button>
+        <Button type="submit">Tambah ke &ldquo;{PAGE_SCOPES.find((p) => p.value === pageFilter)?.label}&rdquo;</Button>
       </form>
       {error && <p className="mt-2 text-small text-red-600">{error}</p>}
     </Card>

@@ -25,5 +25,8 @@
   },
   "engines": {
     "node": ">=20.9.0"
+  },
+  "overrides": {
+    "htmlparser2": "9.1.0"
   }
 }

@@ -27,6 +27,8 @@ export interface ExportDestination {
   country_code_alpha3: string;
   country_name: string;
   export_status: ExportStatus;
+  /** Optional display grouping, e.g. "Southeast Asia". Free text, not an enum. */
+  region: string | null;
   description: string | null;
   export_volume: string | null;
   export_frequency: string | null;
@@ -35,6 +37,11 @@ export interface ExportDestination {
   order: number;
   enabled: boolean;
   featured: boolean;
+  /** Independent visibility flag for About Company → "CV. Putri Palma Nusantara" →
+   * "Countries We Have Exported To" — separate from `featured` (Homepage's own Global Export
+   * Reach map), so the two surfaces can show different curated sets of the same real country
+   * list. */
+  show_in_company_profile: boolean;
   updated_at: string;
   /** Admin-only — present so the CMS can populate LocaleTabs. */
   translations?: Translations | null;

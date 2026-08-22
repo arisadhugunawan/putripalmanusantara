@@ -63,17 +63,33 @@ export function ProductImageViewer({
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => setLightboxOpen(true)}
-        aria-label={`Zoom in on ${current.media.alt_text}`}
-        className="group relative block aspect-4/3 w-full overflow-hidden rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600"
-      >
-        <SafeImage media={current.media} sizes="(min-width: 1024px) 50vw, 100vw" priority />
-        <span className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-neutral-900 opacity-0 shadow-card transition-opacity duration-200 group-hover:opacity-100">
-          <ZoomIcon />
-        </span>
-      </button>
+      {/* Video items get a real player — zooming a video frame makes no sense, so the
+          lightbox/zoom affordance is only offered for images. */}
+      {current.media.file_type === "video" ? (
+        <div className="relative aspect-4/3 w-full overflow-hidden rounded-card bg-neutral-900">
+          <video
+            key={current.media.id}
+            src={current.media.file_url}
+            controls
+            playsInline
+            preload="metadata"
+            aria-label={current.media.alt_text}
+            className="h-full w-full object-contain"
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setLightboxOpen(true)}
+          aria-label={`Zoom in on ${current.media.alt_text}`}
+          className="group relative block aspect-4/3 w-full overflow-hidden rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600"
+        >
+          <SafeImage media={current.media} sizes="(min-width: 1024px) 50vw, 100vw" priority />
+          <span className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-neutral-900 opacity-0 shadow-card transition-opacity duration-200 group-hover:opacity-100">
+            <ZoomIcon />
+          </span>
+        </button>
+      )}
 
       {items.length > 1 && (
         <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
@@ -82,14 +98,24 @@ export function ProductImageViewer({
               key={item.id}
               type="button"
               onClick={() => setActive(index)}
-              aria-label={`View image ${index + 1} of ${items.length}`}
+              aria-label={
+                item.media.file_type === "video"
+                  ? `Play video ${index + 1} of ${items.length}`
+                  : `View image ${index + 1} of ${items.length}`
+              }
               aria-current={index === active ? "true" : undefined}
               className={cn(
                 "relative h-16 w-16 shrink-0 overflow-hidden rounded-field ring-2 transition-all duration-200",
                 index === active ? "ring-primary-600" : "ring-transparent hover:ring-neutral-300",
               )}
             >
-              <SafeImage media={item.media} sizes="64px" />
+              {item.media.file_type === "video" ? (
+                <span className="flex h-full w-full items-center justify-center bg-neutral-900">
+                  <PlayBadge />
+                </span>
+              ) : (
+                <SafeImage media={item.media} sizes="64px" />
+              )}
             </button>
           ))}
         </div>
@@ -177,5 +203,17 @@ function ChevronIcon({ direction }: { direction: "left" | "right" }) {
     >
       <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/** Play affordance on a video thumbnail — the rail is small, so this is a filled circle
+ * rather than a poster frame (browsers cannot cheaply decode a poster for every item). */
+function PlayBadge() {
+  return (
+    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-neutral-900">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+        <path d="M8 5v14l11-7z" />
+      </svg>
+    </span>
   );
 }

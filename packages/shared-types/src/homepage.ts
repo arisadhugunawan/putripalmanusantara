@@ -1,6 +1,13 @@
 import type { Media } from "./media";
 import type { Translations } from "./i18n";
 import type { ExportDestination, HomepageExportReach } from "./export-destination";
+import type { HomepageProcessSection, ProductionStep } from "./production-step";
+import type {
+  HomepageSupplyNetworkSection,
+  SupplyNetworkConnection,
+  SupplyNetworkCountry,
+  SupplyNetworkItem,
+} from "./supply-network";
 
 export interface HomepageStatistic {
   id: string;
@@ -254,8 +261,10 @@ export interface HomepageWhyChooseUs {
 
 /** Stable order matches the actual section order rendered in `[locale]/page.tsx`. Sections
  * marked "content lives elsewhere" have no Homepage-owned content — their Manage action links
- * to the module that already owns it (Facility/Article/GalleryItem/ProductionStep admin); only
- * their position/visibility on the Homepage is controlled here. */
+ * to the module that already owns it (Facility/Article/GalleryItem admin); only their
+ * position/visibility on the Homepage is controlled here. `production_process` is NOT one of
+ * these — it has its own in-Manager editor and participates in the Draft/Publish snapshot like
+ * every other CMS-owned section. */
 export const HOMEPAGE_SECTION_KEYS = [
   "hero_slider",
   "partners",
@@ -296,15 +305,24 @@ export interface HomepageSnapshotSummary {
 }
 
 /** The public Homepage's single data source for its CMS-owned sections (everything except
- * Featured Products/Facilities/Gallery/Production Process/News, which stay live-fetched — see
- * README "Homepage Manager"). Returned by `GET /homepage/published-snapshot`. */
+ * Featured Products/Facilities/Gallery/News, which stay live-fetched — see README "Homepage
+ * Manager"). Production Process moved into this snapshot too (previously live-fetched) so it
+ * gets the same Draft/Publish safety as every other CMS section. Returned by
+ * `GET /homepage/published-snapshot`.
+ *
+ * `why_choose_us` was replaced by `supply_network_items`/`supply_network_section` ("Our Supply
+ * Network") — the `HomepageWhyChooseUs` model/data still exists (untouched, in case it's ever
+ * needed again) but is no longer part of this public payload; nothing renders it anymore. */
 export interface PublishedHomepagePayload {
   hero_slides: HeroSlide[];
   partners_section: HomepagePartnersSection;
   partner_logos: PartnerLogo[];
   about_preview: HomepageAboutPreview;
   highlights: HomepageHighlight[];
-  why_choose_us: HomepageWhyChooseUs[];
+  supply_network_items: SupplyNetworkItem[];
+  supply_network_connections: SupplyNetworkConnection[];
+  supply_network_countries: SupplyNetworkCountry[];
+  supply_network_section: HomepageSupplyNetworkSection;
   export_reach_section: HomepageExportReach;
   export_destinations: ExportDestination[];
   shipping_section: HomepageShippingSection;
@@ -312,4 +330,6 @@ export interface PublishedHomepagePayload {
   statistics: HomepageStatistic[];
   faqs: Faq[];
   section_config: HomepageSectionConfig[];
+  production_steps: ProductionStep[];
+  process_section: HomepageProcessSection;
 }

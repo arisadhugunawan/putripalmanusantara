@@ -45,7 +45,11 @@ export function PartnerLogoEditor() {
       setError("Unggah logo terlebih dahulu (gunakan aset resmi dari sumber institusi, bukan logo tidak resmi).");
       return;
     }
-    const formData = new FormData(event.currentTarget);
+    // Captured before the `await` below — React nulls `event.currentTarget` once the
+    // synchronous event-dispatch task finishes, so reading it after an `await` throws even
+    // though the request already succeeded.
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     try {
       await adminApi.post("/admin/homepage/partner-logos", {
         logo_id: newLogoMediaId,
@@ -59,7 +63,7 @@ export function PartnerLogoEditor() {
         enabled: true,
         featured: true,
       });
-      event.currentTarget.reset();
+      form.reset();
       setNewLogoMediaId(null);
       setNewLogoPreview(null);
       await load();

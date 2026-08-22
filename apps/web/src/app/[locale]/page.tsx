@@ -7,7 +7,6 @@ import {
   getFeaturedProducts,
   getGallery,
   getLatestArticles,
-  getProductionSteps,
   getProducts,
   getPublicSettings,
   getPublishedHomepage,
@@ -22,10 +21,10 @@ import { GalleryPreview } from "@/components/home/GalleryPreview";
 import { GlobalShippingPartnerSection } from "@/components/home/GlobalShippingPartnerSection";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { PartnerMarquee } from "@/components/home/PartnerMarquee";
-import { ProductionProcessPreview } from "@/components/home/ProductionProcessPreview";
+import { ProcessSection } from "@/components/home/process/ProcessSection";
 import { QuotationSection } from "@/components/home/QuotationSection";
 import { StatisticsSection } from "@/components/home/StatisticsSection";
-import { WhyChooseUsSection } from "@/components/home/WhyChooseUsSection";
+import { SupplyNetworkSection } from "@/components/home/supply-network/SupplyNetworkSection";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { faqPageJsonLd, localBusinessJsonLd } from "@/lib/json-ld";
 import { buildPageMetadata } from "@/lib/seo";
@@ -44,16 +43,17 @@ export async function generateMetadata({ params }: PageProps<"/[locale]">): Prom
 
 // docs/03-design.md §9.1 — homepage section order was originally fixed in JSX; the Homepage
 // Manager (Post-Launch) makes it Admin-configurable via `section_config`, defaulting to this
-// exact original order. See README "Homepage Manager" — Hero/Partners/About/WhyChooseUs/
-// ExportReach/ShippingPartner/Statistics/FAQ come from the published snapshot (Draft/Publish);
-// Featured Products/Production Process/Facilities/Gallery/News/Contact CTA are NOT part of the
-// Draft/Publish system and stay live-fetched, unchanged from how they've always worked.
+// exact original order. See README "Homepage Manager" — Hero/Partners/About/Our Supply Network/
+// ExportReach/ShippingPartner/Statistics/FAQ/Production Process come from the published
+// snapshot (Draft/Publish); Featured Products/Facilities/Gallery/News/Contact CTA are NOT part
+// of the Draft/Publish system and stay live-fetched, unchanged from how they've always worked.
+// The `why_choose_us` section key is unchanged (avoids a HomepageSectionConfig migration) but
+// now renders "Our Supply Network" — see README for why the old section was replaced in place.
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   const [
     homepage,
     featuredProducts,
-    productionSteps,
     facilities,
     gallery,
     latestArticles,
@@ -61,14 +61,20 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     decorativeGraphics,
     aboutPreviewGraphics,
     partnersGraphics,
-    whyChooseUsGraphics,
+    supplyNetworkGraphics,
     exportReachGraphics,
     shippingPartnersGraphics,
+    productionProcessGraphics,
+    productsGraphics,
+    facilitiesGraphics,
+    galleryGraphics,
+    articlesGraphics,
+    faqGraphics,
+    quotationGraphics,
     settings,
   ] = await Promise.all([
     getPublishedHomepage(locale),
     getFeaturedProducts(locale),
-    getProductionSteps(locale),
     getFacilities(locale),
     getGallery(undefined, locale),
     getLatestArticles(locale),
@@ -76,9 +82,16 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     getDecorativeGraphics("home"),
     getDecorativeGraphics("home-about-preview"),
     getDecorativeGraphics("home-partners"),
-    getDecorativeGraphics("home-why-choose-us"),
+    getDecorativeGraphics("home-supply-network"),
     getDecorativeGraphics("home-export-reach"),
     getDecorativeGraphics("home-shipping-partners"),
+    getDecorativeGraphics("home-production-process"),
+    getDecorativeGraphics("home-products"),
+    getDecorativeGraphics("home-facilities"),
+    getDecorativeGraphics("home-gallery"),
+    getDecorativeGraphics("home-articles"),
+    getDecorativeGraphics("home-faq"),
+    getDecorativeGraphics("home-quotation"),
     getPublicSettings(locale).catch(() => null),
   ]);
 
@@ -99,12 +112,28 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       />
     ),
     statistics: <StatisticsSection statistics={homepage.statistics} />,
-    why_choose_us: <WhyChooseUsSection items={homepage.why_choose_us} decorativeGraphics={whyChooseUsGraphics} />,
-    featured_products: <FeaturedProductsSection products={featuredProducts} />,
-    production_process: <ProductionProcessPreview steps={productionSteps} />,
-    facilities: <FacilitiesPreview facilities={facilities} />,
-    gallery: <GalleryPreview items={gallery} />,
-    news_articles: <ArticlesSection articles={latestArticles} />,
+    why_choose_us: (
+      <SupplyNetworkSection
+        section={homepage.supply_network_section}
+        items={homepage.supply_network_items}
+        connections={homepage.supply_network_connections}
+        countries={homepage.supply_network_countries}
+        decorativeGraphics={supplyNetworkGraphics}
+      />
+    ),
+    featured_products: (
+      <FeaturedProductsSection products={featuredProducts} decorativeGraphics={productsGraphics} />
+    ),
+    production_process: (
+      <ProcessSection
+        section={homepage.process_section}
+        steps={homepage.production_steps}
+        decorativeGraphics={productionProcessGraphics}
+      />
+    ),
+    facilities: <FacilitiesPreview facilities={facilities} decorativeGraphics={facilitiesGraphics} />,
+    gallery: <GalleryPreview items={gallery} decorativeGraphics={galleryGraphics} />,
+    news_articles: <ArticlesSection articles={latestArticles} decorativeGraphics={articlesGraphics} />,
     export_reach: (
       <ExportReachSection
         section={homepage.export_reach_section}
@@ -119,8 +148,8 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         decorativeGraphics={shippingPartnersGraphics}
       />
     ),
-    faq: <FaqSection faqs={homepage.faqs} />,
-    contact_cta: <QuotationSection products={allProducts} />,
+    faq: <FaqSection faqs={homepage.faqs} decorativeGraphics={faqGraphics} />,
+    contact_cta: <QuotationSection products={allProducts} decorativeGraphics={quotationGraphics} />,
   };
 
   const orderedSections = [...homepage.section_config]

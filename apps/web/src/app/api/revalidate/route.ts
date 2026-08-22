@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
  */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as
-    | { secret?: string; paths?: string[] }
+    | { secret?: string; paths?: string[]; type?: "page" | "layout" }
     | null;
 
   if (!body?.secret || body.secret !== process.env.REVALIDATE_SECRET) {
@@ -21,11 +21,12 @@ export async function POST(request: Request) {
   }
 
   const paths = Array.isArray(body.paths) ? body.paths : [];
+  const type = body.type === "layout" ? "layout" : "page";
   const revalidated: string[] = [];
   for (const path of paths) {
     for (const locale of SUPPORTED_LOCALES) {
       const localizedPath = `/${locale}${path === "/" ? "" : path}`;
-      revalidatePath(localizedPath);
+      revalidatePath(localizedPath, type);
       revalidated.push(localizedPath);
     }
   }

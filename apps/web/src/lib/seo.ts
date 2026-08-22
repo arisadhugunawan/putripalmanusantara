@@ -35,6 +35,11 @@ interface PageMetadataInput {
    * bypass the root layout's "%s | {SITE_NAME}" template instead of being appended to it.
    */
   absoluteTitle?: boolean;
+  /** Admin-settable override (Article SEO "Canonical URL" field) — an absolute URL that
+   * replaces the auto-derived canonical when set, e.g. to point at a syndicated original.
+   * Only ever comes from CMS content the Admin explicitly typed; never generated from
+   * request data, so this can't be used to inject an arbitrary canonical via user input. */
+  canonicalOverride?: string | null;
 }
 
 /**
@@ -51,10 +56,11 @@ export function buildPageMetadata({
   imageUrl,
   type = "website",
   absoluteTitle = false,
+  canonicalOverride,
 }: PageMetadataInput): Metadata {
   const resolvedLocale: Locale = isLocale(locale) ? locale : DEFAULT_LOCALE;
   const localizedPath = `/${resolvedLocale}${path === "/" ? "" : path}`;
-  const url = `${SITE_URL}${localizedPath}`;
+  const url = canonicalOverride || `${SITE_URL}${localizedPath}`;
   const images = imageUrl ? [{ url: imageUrl }] : undefined;
 
   const languages: Record<string, string> = { "x-default": `${SITE_URL}/${DEFAULT_LOCALE}${path === "/" ? "" : path}` };

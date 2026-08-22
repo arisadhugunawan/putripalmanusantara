@@ -32,6 +32,7 @@ export function toExportDestination(
     country_code_alpha3: entry.countryCodeAlpha3,
     country_name: t.countryName,
     export_status: entry.exportStatus,
+    region: entry.region,
     description: t.description,
     export_volume: entry.exportVolume,
     export_frequency: entry.exportFrequency,
@@ -40,6 +41,10 @@ export function toExportDestination(
     order: entry.order,
     enabled: entry.enabled,
     featured: entry.featured,
+    // Read by About Company's "Countries We Have Exported To" section only — Homepage's own
+    // Global Export Reach map keeps using `enabled`/`featured`/`export_status` exactly as
+    // before, this field is additive and never gates anything here.
+    show_in_company_profile: entry.showInCompanyProfile,
     updated_at: entry.updatedAt.toISOString(),
     translations: entry.translations as SharedExportDestination['translations'],
   };

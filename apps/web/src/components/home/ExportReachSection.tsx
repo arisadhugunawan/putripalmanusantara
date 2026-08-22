@@ -25,7 +25,7 @@ export function ExportReachSection({
   const destinationCodes = new Set(destinations.map((d) => d.country_code));
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-white via-primary-50/30 to-white py-16 md:py-28">
+    <section className="relative overflow-hidden bg-gradient-to-b from-white via-primary-50/30 to-white py-(--spacing-section-y-comfortable)">
       <DecorativeGraphics graphics={decorativeGraphics} />
 
       <Container className="relative">

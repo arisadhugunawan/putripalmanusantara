@@ -54,9 +54,18 @@ export const SECTION_REGISTRY: SectionRegistryEntry[] = [
   },
   {
     key: "why_choose_us",
-    label: "Why Choose Us?",
-    description: "Kartu ikon keunggulan PPN.",
-    editors: [dynamic(() => import("./_editors/WhyChooseUsEditor").then((m) => m.WhyChooseUsEditor))],
+    label: "Our Supply Network",
+    description: "Ekosistem supply 3D interaktif — farmers, collectors, suppliers, PPN, hingga global buyers.",
+    editors: [
+      dynamic(() => import("./_editors/SupplyNetworkSectionEditor").then((m) => m.SupplyNetworkSectionEditor)),
+      dynamic(() => import("./_editors/SupplyNetworkEditor").then((m) => m.SupplyNetworkEditor)),
+      dynamic(() =>
+        import("./_editors/SupplyNetworkConnectionsEditor").then((m) => m.SupplyNetworkConnectionsEditor),
+      ),
+      dynamic(() =>
+        import("./_editors/SupplyNetworkCountriesEditor").then((m) => m.SupplyNetworkCountriesEditor),
+      ),
+    ],
   },
   {
     key: "featured_products",
@@ -66,15 +75,18 @@ export const SECTION_REGISTRY: SectionRegistryEntry[] = [
   },
   {
     key: "production_process",
-    label: "Production Process",
-    description: "Tahapan proses produksi.",
-    managedElsewhere: { label: "Kelola di Proses Produksi", href: "/admin/proses-produksi" },
+    label: "Our Supply & Export Process",
+    description: "Flowchart interaktif tahapan supply & export PPN.",
+    editors: [
+      dynamic(() => import("./_editors/ProcessSectionEditor").then((m) => m.ProcessSectionEditor)),
+      dynamic(() => import("./_editors/ProductionProcessEditor").then((m) => m.ProductionProcessEditor)),
+    ],
   },
   {
     key: "facilities",
     label: "Facilities",
     description: "Fasilitas dan kapasitas produksi.",
-    managedElsewhere: { label: "Kelola di Fasilitas", href: "/admin/fasilitas" },
+    managedElsewhere: { label: "Kelola di Fasilitas", href: "/admin/about-company/facilities" },
   },
   {
     key: "gallery",

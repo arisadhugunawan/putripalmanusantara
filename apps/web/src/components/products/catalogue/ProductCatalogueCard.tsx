@@ -9,7 +9,13 @@ import { SafeImage } from "@/components/SafeImage";
  * Home page's Featured Products section, which is explicitly out of scope for this
  * redesign, so it's left untouched.
  */
-export function ProductCatalogueCard({ product }: { product: ProductSummary }) {
+export function ProductCatalogueCard({
+  product,
+  viewProductLabel = "View Product",
+}: {
+  product: ProductSummary;
+  viewProductLabel?: string;
+}) {
   return (
     <Link href={`/products/${product.slug}`} className="group block h-full">
       <Card
@@ -29,7 +35,7 @@ export function ProductCatalogueCard({ product }: { product: ProductSummary }) {
               (PageHeader), with no intermediate <h2> section heading on this page. */}
           <h2 className="mt-1.5 text-h3 text-neutral-900">{product.name}</h2>
           <p className="mt-2 flex-1 text-body text-neutral-600">{product.short_description}</p>
-          <span className={cn("mt-5 w-fit", buttonVariants("secondary", "sm"))}>View Product</span>
+          <span className={cn("mt-5 w-fit", buttonVariants("secondary", "sm"))}>{viewProductLabel}</span>
         </div>
       </Card>
     </Link>

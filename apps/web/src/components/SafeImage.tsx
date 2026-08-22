@@ -12,12 +12,17 @@ export function SafeImage({
   sizes,
   fill = true,
   priority,
+  fit = "cover",
 }: {
   media: Media | null | undefined;
   className?: string;
   sizes?: string;
   fill?: boolean;
   priority?: boolean;
+  /** "cover" (default) crops to fill the box — right for square/consistent-ratio grids.
+   * "contain" never crops, showing the whole photo letterboxed inside the box — use for
+   * uploads whose aspect ratio isn't controlled (e.g. an article's Instagram-sourced cover). */
+  fit?: "cover" | "contain";
 }) {
   if (media && media.file_type === "image") {
     return (
@@ -27,7 +32,7 @@ export function SafeImage({
         fill={fill}
         sizes={sizes}
         priority={priority}
-        className={cn("object-cover", className)}
+        className={cn(fit === "contain" ? "object-contain" : "object-cover", className)}
       />
     );
   }
@@ -47,7 +52,7 @@ export function SafeImage({
   );
 }
 
-function CoconutMark({ className }: { className?: string }) {
+export function CoconutMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className} aria-hidden="true">
       <circle cx="12" cy="13" r="8" />
