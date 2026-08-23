@@ -390,7 +390,7 @@ export class MediaService {
     try {
       await this.prisma.media.delete({ where: { id } });
     } catch (error) {
-      if ((error as { code?: string }).code === 'P2003') {
+      if (this.isMediaDeleteBlockedByLiveUsage(error)) {
         throw new ApiException(
           'MEDIA_IN_USE',
           'This media file is currently used by published content.',
@@ -401,6 +401,29 @@ export class MediaService {
     }
 
     return { deleted: true };
+  }
+
+  /** True only for the FK RESTRICT violation triggered by a live relation (e.g.
+   * `Product.coverImageId`) still pointing at this media row — never a false positive on some
+   * other unrelated DB error. Checks BOTH shapes: `P2003` is Prisma's documented "foreign key
+   * constraint failed" code, but under Prisma 7's driver-adapter architecture this specific
+   * RESTRICT violation actually surfaces as the generic unmapped-error code `P2039`, with the
+   * real Postgres SQLSTATE (`23001` = `restrict_violation`) preserved at
+   * `error.meta.driverAdapterError.cause.originalCode` — the exact same situation confirmed for
+   * `ArticlesService.isArticleDeleteRestrictedByPublishHistory()`/
+   * `ProductsService.isProductDeleteRestrictedByPublishHistory()` (P0.3-G). Reading these
+   * internal fields never leaks anything — only the fixed message above ever reaches the
+   * response body. */
+  private isMediaDeleteBlockedByLiveUsage(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: { driverAdapterError?: { cause?: { originalCode?: string } } };
+    };
+    if (err.code === 'P2003') return true;
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23001'
+    );
   }
 
   /** "Used By" — computed on demand only (media detail/delete dialog), never for every card

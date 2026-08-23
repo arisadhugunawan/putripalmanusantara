@@ -546,12 +546,34 @@ export class ProductsService {
     return toProductDetail(product);
   }
 
+  /** True only for the FK RESTRICT violation on `ProductPublishedSnapshot.productId` — never a
+   * false positive on some other unrelated DB error. Checks BOTH shapes: `P2003` is Prisma's
+   * documented "foreign key constraint failed" code, but under Prisma 7's driver-adapter
+   * architecture this specific RESTRICT violation actually surfaces as the generic
+   * unmapped-error code `P2039`, with the real Postgres SQLSTATE (`23001` =
+   * `restrict_violation`) preserved at `error.meta.driverAdapterError.cause.originalCode` —
+   * confirmed live during P0.3-G verification (this exact `P2003`-only check previously let the
+   * real error surface as a raw 500). Mirrors `ArticlesService.isArticleDeleteRestrictedByPublishHistory()`,
+   * the already-proven fix for the identical situation. Reading these internal fields never
+   * leaks anything — only the fixed message below ever reaches the response body. */
+  private isProductDeleteRestrictedByPublishHistory(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: { driverAdapterError?: { cause?: { originalCode?: string } } };
+    };
+    if (err.code === 'P2003') return true;
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23001'
+    );
+  }
+
   async remove(id: string) {
     await this.assertExists(id);
     try {
       await this.prisma.product.delete({ where: { id } });
     } catch (error) {
-      if ((error as { code?: string }).code === 'P2003') {
+      if (this.isProductDeleteRestrictedByPublishHistory(error)) {
         // Mirrors MediaService.delete()'s MEDIA_IN_USE pattern — the FK on
         // ProductPublishedSnapshot.productId has no onDelete: Cascade specifically so this
         // fails instead of silently erasing publish history.

@@ -355,6 +355,69 @@ describe('MediaService.permanentDelete', () => {
     expect(storage.delete).toHaveBeenCalledWith('https://cdn/x.png');
   });
 
+  // P0.3-G — same Prisma 7 driver-adapter fix as ProductsService.remove()/
+  // ArticlesService.remove(): `P2003` is not what this exact FK RESTRICT violation actually
+  // throws under Prisma 7 — it throws the generic unmapped code `P2039`, with the real Postgres
+  // SQLSTATE (`23001` = restrict_violation) preserved in `error.meta`.
+  it('blocks deletion with MEDIA_IN_USE for the real Prisma 7 driver-adapter P2039/23001 error', async () => {
+    const { service, prisma, storage } = buildDeletionTestService();
+    prisma.media.findUnique.mockResolvedValue({
+      id: 'm1',
+      fileUrl: 'https://cdn/x.png',
+    });
+    mockFindSnapshotUsage.mockResolvedValue([]);
+    prisma.media.delete.mockRejectedValue({
+      code: 'P2039',
+      meta: {
+        modelName: 'Media',
+        driverAdapterError: {
+          name: 'DriverAdapterError',
+          cause: { originalCode: '23001', kind: 'postgres', code: '23001' },
+        },
+      },
+    });
+
+    let thrown: { code?: string } | undefined;
+    try {
+      await service.permanentDelete('m1');
+    } catch (err) {
+      thrown = err as { code?: string };
+    }
+    expect(thrown?.code).toBe('MEDIA_IN_USE');
+    expect(storage.delete).toHaveBeenCalledWith('https://cdn/x.png');
+  });
+
+  it('does NOT convert an unrelated P2039 (a different, non-RESTRICT database error)', async () => {
+    const { service, prisma } = buildDeletionTestService();
+    prisma.media.findUnique.mockResolvedValue({
+      id: 'm1',
+      fileUrl: 'https://cdn/x.png',
+    });
+    mockFindSnapshotUsage.mockResolvedValue([]);
+    const unrelatedError = {
+      code: 'P2039',
+      meta: {
+        driverAdapterError: { cause: { originalCode: '40001' } }, // serialization_failure, unrelated
+      },
+    };
+    prisma.media.delete.mockRejectedValue(unrelatedError);
+
+    await expect(service.permanentDelete('m1')).rejects.toBe(unrelatedError);
+  });
+
+  it('re-throws any other delete error unchanged — only the FK-restriction shapes are special-cased', async () => {
+    const { service, prisma } = buildDeletionTestService();
+    prisma.media.findUnique.mockResolvedValue({
+      id: 'm1',
+      fileUrl: 'https://cdn/x.png',
+    });
+    mockFindSnapshotUsage.mockResolvedValue([]);
+    const otherError = new Error('connection lost');
+    prisma.media.delete.mockRejectedValue(otherError);
+
+    await expect(service.permanentDelete('m1')).rejects.toBe(otherError);
+  });
+
   it('deletes storage then the DB row when there are no references at all', async () => {
     const { service, prisma, storage } = buildDeletionTestService();
     prisma.media.findUnique.mockResolvedValue({

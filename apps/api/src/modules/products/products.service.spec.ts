@@ -351,6 +351,30 @@ describe('ProductsService.update — partial-payload merge safety (Phase 5F-P0.3
   });
 });
 
+// P0.3-G — live verification found that deleting a Product with published snapshot history
+// threw a raw, unhandled Prisma error (surfaced as an opaque 500) instead of the intended
+// PRODUCT_HAS_PUBLISHED_HISTORY (409). Root cause: `P2003` (Prisma's documented FK-violation
+// code) is not what Prisma 7's driver-adapter architecture actually throws for this exact
+// RESTRICT violation — it throws the generic unmapped code `P2039`, with the real Postgres
+// SQLSTATE (`23001` = restrict_violation) preserved in `error.meta`. Mirrors
+// articles.service.spec.ts's identical fix/tests exactly (`isArticleDeleteRestrictedByPublishHistory`).
+function stubDriverAdapterRestrictError() {
+  return {
+    code: 'P2039',
+    meta: {
+      modelName: 'Product',
+      driverAdapterError: {
+        name: 'DriverAdapterError',
+        cause: {
+          originalCode: '23001',
+          kind: 'postgres',
+          code: '23001',
+        },
+      },
+    },
+  };
+}
+
 describe('ProductsService.remove', () => {
   it('converts a P2003 foreign-key violation into PRODUCT_HAS_PUBLISHED_HISTORY (409)', async () => {
     const { service, product } = buildService();
@@ -366,6 +390,56 @@ describe('ProductsService.remove', () => {
     expect(thrown).toBeInstanceOf(ApiException);
     expect(thrown?.code).toBe('PRODUCT_HAS_PUBLISHED_HISTORY');
     expect(thrown?.getStatus()).toBe(409);
+  });
+
+  it('converts the real Prisma 7 driver-adapter P2039/23001 error into PRODUCT_HAS_PUBLISHED_HISTORY (409)', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' });
+    product.delete.mockRejectedValue(stubDriverAdapterRestrictError());
+
+    let thrown: ApiException | undefined;
+    try {
+      await service.remove('p1');
+    } catch (err) {
+      thrown = err as ApiException;
+    }
+    expect(thrown).toBeInstanceOf(ApiException);
+    expect(thrown?.code).toBe('PRODUCT_HAS_PUBLISHED_HISTORY');
+    expect(thrown?.getStatus()).toBe(409);
+  });
+
+  it('does NOT convert an unrelated P2039 (a different, non-RESTRICT database error)', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' });
+    const unrelatedError = {
+      code: 'P2039',
+      meta: {
+        driverAdapterError: { cause: { originalCode: '40001' } }, // serialization_failure, unrelated
+      },
+    };
+    product.delete.mockRejectedValue(unrelatedError);
+
+    await expect(service.remove('p1')).rejects.toBe(unrelatedError);
+  });
+
+  it('re-throws any other error unchanged — only the FK-restriction shapes are special-cased', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' });
+    const otherError = new Error('connection lost');
+    product.delete.mockRejectedValue(otherError);
+
+    await expect(service.remove('p1')).rejects.toBe(otherError);
+  });
+
+  it('a Product with no snapshot history still deletes normally', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' });
+    product.delete.mockResolvedValue({ id: 'p1' });
+
+    const result = await service.remove('p1');
+
+    expect(result).toEqual({ deleted: true });
+    expect(product.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
   });
 });
 
