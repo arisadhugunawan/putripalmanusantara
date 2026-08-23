@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { imageSize } from 'image-size';
 import { ApiException } from '../../common/exceptions/api.exception';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import { MediaService } from '../../media/media.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '../../../generated/prisma/client';
 import {
   resolvePageHeader,
   toPageHeader,
@@ -80,7 +82,7 @@ export class PageHeaderService {
   }
 
   async update(pageKey: string, dto: UpdatePageHeaderDto) {
-    await this.getOrCreateRow(pageKey); // ensures the row exists before the update below
+    const existing = await this.getOrCreateRow(pageKey);
     const updated = await this.prisma.pageHeader.update({
       where: { pageKey },
       data: {
@@ -95,6 +97,10 @@ export class PageHeaderService {
             ? undefined
             : dto.custom_title,
         subtitle: dto.subtitle,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
         overlayEnabled: dto.overlay_enabled,
         overlayType: dto.overlay_type,
         overlayOpacity: dto.overlay_opacity,
@@ -112,7 +118,9 @@ export class PageHeaderService {
   }
 
   /** "Reset" — clears every design field on this page's row back to null (inherit from Global
-   * Default), without touching any other page's configuration. */
+   * Default), without touching any other page's configuration. `translations` is cleared too —
+   * it only ever holds overrides for `customTitle`/`subtitle`, so leaving it behind would
+   * resurrect a translated title/subtitle the admin just asked to remove. */
   async reset(pageKey: string) {
     await this.getOrCreateRow(pageKey);
     const updated = await this.prisma.pageHeader.update({
@@ -123,6 +131,7 @@ export class PageHeaderService {
         altText: null,
         customTitle: null,
         subtitle: null,
+        translations: Prisma.JsonNull,
         overlayEnabled: null,
         overlayType: null,
         overlayOpacity: null,
@@ -140,13 +149,13 @@ export class PageHeaderService {
   }
 
   /** Public read — fully resolved through the 3-tier chain, ready to render as-is. */
-  async resolve(pageKey: string) {
+  async resolve(pageKey: string, locale?: string) {
     const [page, global] = await Promise.all([
       this.findRow(pageKey),
       this.findRow(GLOBAL_DEFAULT_PAGE_HEADER_KEY),
     ]);
     const effectivePage = page?.isActive ? page : null;
-    return resolvePageHeader(effectivePage, global);
+    return resolvePageHeader(effectivePage, global, locale);
   }
 
   /**

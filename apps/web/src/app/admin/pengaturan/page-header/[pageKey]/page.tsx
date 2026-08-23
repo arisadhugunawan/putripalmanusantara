@@ -7,6 +7,7 @@ import {
   PAGE_HEADER_OVERLAY_TYPES,
   PAGE_HEADER_POSITIONS,
   PAGE_HEADER_SYSTEM_DEFAULTS as SYSTEM_DEFAULTS,
+  type Locale,
   type Media,
   type PageHeader,
   type PageHeaderHeightPreset,
@@ -22,6 +23,7 @@ import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ColorPickerField } from "@/components/admin/ColorPickerField";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { BackgroundImageUpload } from "@/components/admin/BackgroundImageUpload";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { useToast } from "@/components/admin/Toast";
 import { useSaveState } from "@/hooks/useSaveState";
 import { PageHeaderPreview } from "@/components/page/PageHeaderPreview";
@@ -93,6 +95,24 @@ export default function PageHeaderEditorPage() {
     setRow((prev) => (prev ? { ...prev, ...update } : prev));
   }
 
+  /** Mirrors the `translations` merge every other Admin editor's LocaleTabs block builds
+   * client-side (e.g. FacilitiesEditor's `handleUpdateTranslation`) — spreads the existing
+   * per-locale object so editing one locale/field never drops another already-entered one. */
+  function patchTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "customTitle" | "subtitle",
+    value: string,
+  ) {
+    setRow((prev) => {
+      if (!prev) return prev;
+      const current = prev.translations ?? {};
+      return {
+        ...prev,
+        translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+      };
+    });
+  }
+
   async function handleSave() {
     if (!row) return;
     const result = await saveState.run(() =>
@@ -103,6 +123,7 @@ export default function PageHeaderEditorPage() {
         alt_text: row.alt_text,
         custom_title: row.custom_title,
         subtitle: row.subtitle,
+        translations: row.translations,
         overlay_enabled: row.overlay_enabled,
         overlay_type: row.overlay_type,
         overlay_opacity: row.overlay_opacity,
@@ -211,25 +232,52 @@ export default function PageHeaderEditorPage() {
               <p className="text-small font-semibold uppercase tracking-wide text-neutral-500">
                 Title & Subtitle
               </p>
-              <div className="mt-3 flex flex-col gap-4">
-                <div>
-                  <Label htmlFor="custom-title">Custom Page Title (optional)</Label>
-                  <Input
-                    id="custom-title"
-                    value={row.custom_title ?? ""}
-                    onChange={(e) => patch({ custom_title: e.target.value || null })}
-                    placeholder={`Default: "${label}"`}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="subtitle">Subtitle (optional)</Label>
-                  <Textarea
-                    id="subtitle"
-                    rows={2}
-                    value={row.subtitle ?? ""}
-                    onChange={(e) => patch({ subtitle: e.target.value || null })}
-                  />
-                </div>
+              <p className="mt-1 text-small text-neutral-500">
+                English is the default shown to any locale without its own translation below —
+                fill in only the languages you want to differ.
+              </p>
+              <div className="mt-3">
+                <LocaleTabs>
+                  {(locale) => {
+                    const isEn = locale === "en";
+                    const titleValue = isEn
+                      ? (row.custom_title ?? "")
+                      : (row.translations?.[locale]?.customTitle ?? "");
+                    const subtitleValue = isEn
+                      ? (row.subtitle ?? "")
+                      : (row.translations?.[locale]?.subtitle ?? "");
+                    return (
+                      <div className="flex flex-col gap-4">
+                        <div>
+                          <Label htmlFor={`custom-title-${locale}`}>Custom Page Title (optional)</Label>
+                          <Input
+                            id={`custom-title-${locale}`}
+                            value={titleValue}
+                            onChange={(e) =>
+                              isEn
+                                ? patch({ custom_title: e.target.value || null })
+                                : patchTranslation(locale, "customTitle", e.target.value)
+                            }
+                            placeholder={`Default: "${label}"`}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`subtitle-${locale}`}>Subtitle (optional)</Label>
+                          <Textarea
+                            id={`subtitle-${locale}`}
+                            rows={2}
+                            value={subtitleValue}
+                            onChange={(e) =>
+                              isEn
+                                ? patch({ subtitle: e.target.value || null })
+                                : patchTranslation(locale, "subtitle", e.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+                    );
+                  }}
+                </LocaleTabs>
               </div>
             </Card>
           )}

@@ -58,6 +58,9 @@ export interface PageHeader {
   breadcrumb_color: string | null;
   show_breadcrumb: boolean | null;
   updated_at: string;
+  /** i18n — non-English overrides for `custom_title`/`subtitle`, keyed by locale then field
+   * name. Never meaningful on the reserved "global-default" row, matching `custom_title`. */
+  translations?: Record<string, Record<string, string>> | null;
 }
 
 /** Final fallback tier once neither the page-specific row nor Global Default set a field —

@@ -2092,6 +2092,11 @@ model PageHeader {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
+  /// i18n — non-English overrides for customTitle/subtitle. Never read for the reserved
+  /// "global-default" row (see `customTitle`'s own comment above — a global title override
+  /// applying to every page at once isn't meaningful), same as `customTitle` itself.
+  translations Json?
+
   @@map("page_headers")
 }
 

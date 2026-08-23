@@ -2,11 +2,13 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 
 const OVERLAY_TYPES = ['dark', 'light', 'green', 'gradient'] as const;
 const POSITIONS = [
@@ -45,6 +47,12 @@ export class UpdatePageHeaderDto {
   @IsOptional()
   @IsString()
   subtitle?: string | null;
+
+  /** Non-English overrides for `custom_title`/`subtitle`. Not deep-validated (admin-only
+   * input), matching every other translation-bearing DTO in this codebase. */
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 
   @IsOptional()
   @IsBoolean()
