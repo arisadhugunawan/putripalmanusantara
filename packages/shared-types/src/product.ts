@@ -46,6 +46,9 @@ export interface ProductSpecification {
    * "Edible (White Copra)", "Regular (White Copra)") groups its spec rows under this label
    * instead of one flat mixed table. Null for the common case of a single ungrouped set. */
   variant_label: string | null;
+  /** i18n — non-English overrides for spec_key/spec_value, keyed by locale then (camelCase)
+   * field name. */
+  translations?: Record<string, Record<string, string>> | null;
 }
 
 export type ProductPackagingApplicationType = "packaging" | "application";
@@ -57,6 +60,9 @@ export interface ProductPackagingApplication {
   description: string;
   media: Media | null;
   order: number;
+  /** i18n — non-English overrides for title/description, keyed by locale then (camelCase)
+   * field name. */
+  translations?: Record<string, Record<string, string>> | null;
 }
 
 export interface ProductDownload {
@@ -83,6 +89,9 @@ export interface ProductShape {
   media: Media | null;
   sizes: string;
   order: number;
+  /** i18n — non-English overrides for name/sizes, keyed by locale then (camelCase) field
+   * name. */
+  translations?: Record<string, Record<string, string>> | null;
 }
 
 export interface ProductGalleryItem {

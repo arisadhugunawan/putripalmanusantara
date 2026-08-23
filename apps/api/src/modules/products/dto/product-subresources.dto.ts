@@ -1,6 +1,14 @@
 import { PRODUCT_MEDIA_SECTIONS } from '@ppn/shared-types';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 
 export class AddProductGalleryItemDto {
   @IsString()
@@ -57,6 +65,12 @@ export class UpsertProductSpecificationDto {
   @IsOptional()
   @IsString()
   variant_label?: string | null;
+
+  /** Non-English overrides for spec_key/spec_value. Not deep-validated (admin-only input),
+   * matching every other translation-bearing DTO in this codebase. */
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpsertProductDownloadDto {
@@ -89,6 +103,12 @@ export class UpsertProductPackagingApplicationDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  /** Non-English overrides for title/description. Not deep-validated (admin-only input),
+   * matching every other translation-bearing DTO in this codebase. */
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 export class UpsertProductShapeDto {
@@ -109,4 +129,10 @@ export class UpsertProductShapeDto {
   @Type(() => Number)
   @IsInt()
   order?: number;
+
+  /** Non-English overrides for name/sizes. Not deep-validated (admin-only input), matching
+   * every other translation-bearing DTO in this codebase. */
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }

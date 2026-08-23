@@ -9,12 +9,13 @@ import {
 } from "@ppn/shared-types";
 import type {
   GenerateTranslationsResult,
+  Locale,
   Media,
   ProductDetail,
   ProductTranslationStatusEntry,
   Translations,
 } from "@ppn/shared-types";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
@@ -713,6 +714,31 @@ function ProductSpecificationsSection({
     }
   }
 
+  async function handleUpdateTranslation(
+    spec: ProductDetail["specifications"][number],
+    locale: Exclude<Locale, "en">,
+    field: "specKey" | "specValue",
+    value: string,
+  ) {
+    const current = spec.translations ?? {};
+    try {
+      // spec_key/spec_value are required by the API, so always resend them alongside the
+      // changed translation — the same "echo back required fields" convention every other
+      // sub-resource PUT on this page already follows (see ProductShapesSection/
+      // ProductPackagingSection's own handleUpdate).
+      await adminApi.put(`/admin/products/${productId}/specifications/${spec.id}`, {
+        spec_key: spec.spec_key,
+        spec_value: spec.spec_value,
+        group: spec.group,
+        variant_label: spec.variant_label ?? undefined,
+        translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+      });
+      onChange();
+    } catch {
+      showToast("Gagal menyimpan terjemahan spesifikasi.", "error");
+    }
+  }
+
   // Each group gets its own table, so an Admin can see exactly where a row will appear.
   const specRows = specifications.filter((spec) => spec.group === "specification");
   const exportRows = specifications.filter((spec) => spec.group === "export_info");
@@ -729,12 +755,12 @@ function ProductSpecificationsSection({
       </p>
 
       <h3 className="mt-5 text-body font-medium text-neutral-900">Spesifikasi</h3>
-      <SpecTable rows={specRows} onDelete={setDeleteTargetId} />
+      <SpecTable rows={specRows} onDelete={setDeleteTargetId} onUpdateTranslation={handleUpdateTranslation} />
 
       {exportRows.length > 0 && (
         <>
           <h3 className="mt-6 text-body-lg font-medium text-neutral-900">Info Ekspor</h3>
-          <SpecTable rows={exportRows} onDelete={setDeleteTargetId} />
+          <SpecTable rows={exportRows} onDelete={setDeleteTargetId} onUpdateTranslation={handleUpdateTranslation} />
         </>
       )}
 
@@ -745,7 +771,7 @@ function ProductSpecificationsSection({
             Tampil sebagai tabel di halaman produk — mis. MOQ, Packaging, Payment Terms, Shipment Terms,
             Production Capacity.
           </p>
-          <SpecTable rows={detailRows} onDelete={setDeleteTargetId} />
+          <SpecTable rows={detailRows} onDelete={setDeleteTargetId} onUpdateTranslation={handleUpdateTranslation} />
         </>
       )}
 
@@ -808,9 +834,16 @@ function ProductSpecificationsSection({
 function SpecTable({
   rows,
   onDelete,
+  onUpdateTranslation,
 }: {
   rows: ProductDetail["specifications"];
   onDelete: (specId: string) => void;
+  onUpdateTranslation: (
+    spec: ProductDetail["specifications"][number],
+    locale: Exclude<Locale, "en">,
+    field: "specKey" | "specValue",
+    value: string,
+  ) => void;
 }) {
   if (rows.length === 0) {
     return <p className="mt-2 text-small text-neutral-500">Belum ada.</p>;
@@ -836,19 +869,68 @@ function SpecTable({
           <table className="mt-2 w-full text-body">
             <tbody>
               {group.map((spec) => (
-                <tr key={spec.id} className="border-b border-neutral-100">
-                  <td className="py-2 pr-4 font-medium text-neutral-900">{spec.spec_key}</td>
-                  <td className="py-2 pr-4 text-neutral-600">{spec.spec_value}</td>
-                  <td className="py-2">
-                    <button
-                      type="button"
-                      onClick={() => onDelete(spec.id)}
-                      className="text-small text-red-600 underline"
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
+                <Fragment key={spec.id}>
+                  <tr className="border-b border-neutral-100">
+                    <td className="py-2 pr-4 font-medium text-neutral-900">{spec.spec_key}</td>
+                    <td className="py-2 pr-4 text-neutral-600">{spec.spec_value}</td>
+                    <td className="py-2">
+                      <button
+                        type="button"
+                        onClick={() => onDelete(spec.id)}
+                        className="text-small text-red-600 underline"
+                      >
+                        Hapus
+                      </button>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-neutral-100">
+                    <td colSpan={3} className="pb-2">
+                      <details>
+                        <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                          🌐 Translations
+                          <TranslationStatusBadges
+                            translations={spec.translations}
+                            base={{ specKey: spec.spec_key, specValue: spec.spec_value }}
+                          />
+                        </summary>
+                        <div className="mt-2">
+                          <LocaleTabs>
+                            {(locale) =>
+                              locale === "en" ? (
+                                <p className="text-small text-neutral-500">
+                                  Bahasa Inggris diedit langsung pada kolom Nama dan Nilai di atas.
+                                </p>
+                              ) : (
+                                <div className="flex flex-col gap-3">
+                                  <div>
+                                    <Label className="text-small">Nama</Label>
+                                    <Input
+                                      defaultValue={spec.translations?.[locale]?.specKey ?? ""}
+                                      placeholder={spec.spec_key}
+                                      onBlur={(e) =>
+                                        onUpdateTranslation(spec, locale, "specKey", e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-small">Nilai</Label>
+                                    <Input
+                                      defaultValue={spec.translations?.[locale]?.specValue ?? ""}
+                                      placeholder={spec.spec_value}
+                                      onBlur={(e) =>
+                                        onUpdateTranslation(spec, locale, "specValue", e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              )
+                            }
+                          </LocaleTabs>
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -1084,7 +1166,16 @@ function ProductPackagingSection({
     }
   }
 
-  async function handleUpdate(entry: ProductDetail["packaging"][number], patch: Partial<{ title: string; description: string; media_id: string | null; order: number }>) {
+  async function handleUpdate(
+    entry: ProductDetail["packaging"][number],
+    patch: Partial<{
+      title: string;
+      description: string;
+      media_id: string | null;
+      order: number;
+      translations: Translations;
+    }>,
+  ) {
     try {
       await adminApi.put(`/admin/products/${productId}/packaging-applications/${entry.id}`, {
         type: entry.type,
@@ -1092,11 +1183,24 @@ function ProductPackagingSection({
         description: patch.description ?? entry.description,
         media_id: patch.media_id !== undefined ? (patch.media_id ?? undefined) : entry.media?.id,
         order: patch.order ?? entry.order,
+        translations: patch.translations ?? entry.translations,
       });
       onChange();
     } catch {
       showToast("Gagal menyimpan perubahan. Silakan coba lagi.", "error");
     }
+  }
+
+  function handleUpdateTranslation(
+    entry: ProductDetail["packaging"][number],
+    locale: Exclude<Locale, "en">,
+    field: "title" | "description",
+    value: string,
+  ) {
+    const current = entry.translations ?? {};
+    void handleUpdate(entry, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
   }
 
   async function handleReorder(rows: ProductDetail["packaging"], from: number, to: number) {
@@ -1159,6 +1263,48 @@ function ProductPackagingSection({
                 defaultValue={entry.description}
                 onBlur={(e) => void handleUpdate(entry, { description: e.target.value })}
               />
+
+              <details className="mt-3 border-t border-neutral-100 pt-3">
+                <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                  🌐 Translations
+                  <TranslationStatusBadges
+                    translations={entry.translations}
+                    base={{ title: entry.title, description: entry.description }}
+                  />
+                </summary>
+                <div className="mt-3">
+                  <LocaleTabs>
+                    {(locale) =>
+                      locale === "en" ? (
+                        <p className="text-small text-neutral-500">
+                          Bahasa Inggris diedit langsung pada field Nama dan Deskripsi di atas.
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          <div>
+                            <Label className="text-small">Nama</Label>
+                            <Input
+                              defaultValue={entry.translations?.[locale]?.title ?? ""}
+                              placeholder={entry.title}
+                              onBlur={(e) => handleUpdateTranslation(entry, locale, "title", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-small">Deskripsi</Label>
+                            <Textarea
+                              rows={2}
+                              defaultValue={entry.translations?.[locale]?.description ?? ""}
+                              placeholder={entry.description}
+                              onBlur={(e) => handleUpdateTranslation(entry, locale, "description", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+                  </LocaleTabs>
+                </div>
+              </details>
+
               <div className="mt-2 flex flex-wrap items-center gap-3 text-small">
                 <button
                   type="button"
@@ -1295,6 +1441,18 @@ function ProductShapesSection({
     }
   }
 
+  function handleUpdateTranslation(
+    shape: ProductDetail["shapes"][number],
+    locale: Exclude<Locale, "en">,
+    field: "name" | "sizes",
+    value: string,
+  ) {
+    const current = shape.translations ?? {};
+    void handleUpdate(shape.id, {
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
+  }
+
   async function handleDelete(shapeId: string) {
     try {
       await adminApi.delete(`/admin/products/${productId}/shapes/${shapeId}`);
@@ -1361,6 +1519,47 @@ function ProductShapesSection({
                 previewFit="contain"
               />
             </div>
+
+            <details className="mt-3 border-t border-neutral-100 pt-3">
+              <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                🌐 Translations
+                <TranslationStatusBadges
+                  translations={shape.translations}
+                  base={{ name: shape.name, sizes: shape.sizes }}
+                />
+              </summary>
+              <div className="mt-3">
+                <LocaleTabs>
+                  {(locale) =>
+                    locale === "en" ? (
+                      <p className="text-small text-neutral-500">
+                        Bahasa Inggris diedit langsung pada field Nama Shape dan Ukuran di atas.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <Label className="text-small">Nama Shape</Label>
+                          <Input
+                            defaultValue={shape.translations?.[locale]?.name ?? ""}
+                            placeholder={shape.name}
+                            onBlur={(e) => handleUpdateTranslation(shape, locale, "name", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-small">Ukuran</Label>
+                          <Textarea
+                            rows={3}
+                            defaultValue={shape.translations?.[locale]?.sizes ?? ""}
+                            placeholder={shape.sizes}
+                            onBlur={(e) => handleUpdateTranslation(shape, locale, "sizes", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+                </LocaleTabs>
+              </div>
+            </details>
           </div>
         ))}
       </div>

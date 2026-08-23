@@ -637,6 +637,7 @@ export class ProductsService {
         mediaId: dto.media_id ?? null,
         sizes: dto.sizes ?? '',
         order: dto.order ?? count,
+        translations: dto.translations,
       },
       include: { media: true },
     });
@@ -649,7 +650,7 @@ export class ProductsService {
     shapeId: string,
     dto: Partial<UpsertProductShapeDto>,
   ) {
-    await this.assertShapeExists(productId, shapeId);
+    const existing = await this.assertShapeExists(productId, shapeId);
     const shape = await this.prisma.productShape.update({
       where: { id: shapeId },
       data: {
@@ -657,6 +658,10 @@ export class ProductsService {
         mediaId: dto.media_id === undefined ? undefined : dto.media_id,
         sizes: dto.sizes,
         order: dto.order,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: { media: true },
     });
@@ -676,6 +681,7 @@ export class ProductsService {
       where: { id: shapeId, productId },
     });
     if (!shape) throw new ApiException('NOT_FOUND', 'Shape not found.', 404);
+    return shape;
   }
 
   // ── Specification sub-resource ─────────────────────────────────────
@@ -692,6 +698,7 @@ export class ProductsService {
         order: dto.order ?? 0,
         group: dto.group ?? 'specification',
         variantLabel: emptyToNull(dto.variant_label),
+        translations: dto.translations,
       },
     });
     await this.touchProduct(productId);
@@ -703,7 +710,7 @@ export class ProductsService {
     specId: string,
     dto: UpsertProductSpecificationDto,
   ) {
-    await this.assertSpecificationExists(productId, specId);
+    const existing = await this.assertSpecificationExists(productId, specId);
     const spec = await this.prisma.productSpecification.update({
       where: { id: specId },
       data: {
@@ -715,6 +722,10 @@ export class ProductsService {
           dto.variant_label !== undefined
             ? emptyToNull(dto.variant_label)
             : undefined,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     await this.touchProduct(productId);
@@ -776,6 +787,7 @@ export class ProductsService {
         description: dto.description,
         mediaId: dto.media_id,
         order: dto.order ?? count,
+        translations: dto.translations,
       },
       include: { media: true },
     });
@@ -788,7 +800,10 @@ export class ProductsService {
     entryId: string,
     dto: UpsertProductPackagingApplicationDto,
   ) {
-    await this.assertPackagingApplicationExists(productId, entryId);
+    const existing = await this.assertPackagingApplicationExists(
+      productId,
+      entryId,
+    );
     const entry = await this.prisma.productPackagingApplication.update({
       where: { id: entryId },
       data: {
@@ -797,6 +812,10 @@ export class ProductsService {
         description: dto.description,
         mediaId: dto.media_id,
         order: dto.order,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: { media: true },
     });
@@ -854,10 +873,11 @@ export class ProductsService {
   private async assertSpecificationExists(productId: string, specId: string) {
     const item = await this.prisma.productSpecification.findFirst({
       where: { id: specId, productId },
-      select: { id: true },
+      select: { id: true, translations: true },
     });
     if (!item)
       throw new ApiException('NOT_FOUND', 'Specification not found.', 404);
+    return item;
   }
 
   private async assertDownloadExists(productId: string, downloadId: string) {
@@ -874,7 +894,7 @@ export class ProductsService {
   ) {
     const item = await this.prisma.productPackagingApplication.findFirst({
       where: { id: entryId, productId },
-      select: { id: true },
+      select: { id: true, translations: true },
     });
     if (!item)
       throw new ApiException(
@@ -882,5 +902,6 @@ export class ProductsService {
         'Packaging/application entry not found.',
         404,
       );
+    return item;
   }
 }

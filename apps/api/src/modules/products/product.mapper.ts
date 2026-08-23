@@ -4,6 +4,7 @@ import type {
   ProductDownload as SharedProductDownload,
   ProductGalleryItem as SharedProductGalleryItem,
   ProductPackagingApplication as SharedPackagingApplication,
+  ProductShape as SharedProductShape,
   ProductSpecification as SharedProductSpecification,
   ProductSummary,
 } from '@ppn/shared-types';
@@ -87,6 +88,8 @@ export function toProductDetail(
         order: spec.order,
         group: spec.group,
         variant_label: spec.variantLabel,
+        translations:
+          spec.translations as SharedProductSpecification['translations'],
       };
     });
 
@@ -114,6 +117,8 @@ export function toProductDetail(
       description: itemT.description,
       media: item.media ? toMedia(item.media) : null,
       order: item.order,
+      translations:
+        item.translations as SharedPackagingApplication['translations'],
     };
   };
 
@@ -159,6 +164,8 @@ export function toProductDetail(
           media: shape.media ? toMedia(shape.media) : null,
           sizes: shapeT.sizes,
           order: shape.order,
+          translations:
+            shape.translations as SharedProductShape['translations'],
         };
       }),
     specifications,
