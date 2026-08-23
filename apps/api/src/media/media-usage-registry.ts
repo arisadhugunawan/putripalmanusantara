@@ -6,16 +6,21 @@ export interface LiveUsageReference {
 }
 
 /**
- * Every place a live (non-snapshot) row can point at a `Media` row — used only by
- * `MediaService.getUsage()` for the "Used By" panel, on demand (media detail/delete dialog),
- * never for every card in a list. This mirrors the ~30 relations declared on the `Media`
- * model in schema.prisma; each entry is a small, direct Prisma query rather than a generic
+ * Every place a live (non-snapshot) row can point at a `Media` row — used both by
+ * `MediaService.getUsage()` for the "Used By" panel (on demand, media detail/delete dialog,
+ * never for every card in a list) and by `MediaService.permanentDelete()` as the primary
+ * live-usage guard (P0.4-A). This mirrors the ~38 relations declared on the `Media` model in
+ * schema.prisma; each entry is a small, direct Prisma query rather than a generic
  * introspection mechanism, since Prisma has no runtime "find every table referencing this
  * row" API — hand-listing the real, finite relation set is the simplest correct approach.
- * The permanent-delete GUARD does not depend on this list being complete — Postgres's own
- * FK constraint (via `MediaService.permanentDelete()`'s existing `P2003` catch) already
- * blocks deletion of anything with a live reference, including any relation accidentally
- * left out here. This registry only affects what's *displayed*, not what's *safe*.
+ * Unlike an earlier version of this comment claimed, Postgres's own FK constraint does
+ * NOT cover most of these relations: only a minority (the gallery/logo join tables) are
+ * declared `ON DELETE RESTRICT` — the majority are `ON DELETE SET NULL`, which lets a delete
+ * succeed and silently null out a live reference instead of blocking it. This registry being
+ * complete is therefore load-bearing for `permanentDelete()`'s safety, not just for display:
+ * a relation added to the schema but not listed here would be silently unprotected by this
+ * check (falling back only to the FK catch, which — per the above — covers a minority of
+ * relations).
  */
 export async function findLiveUsage(
   prisma: PrismaService,

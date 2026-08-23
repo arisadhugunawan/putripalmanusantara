@@ -305,6 +305,9 @@ describe('MediaService.permanentDelete', () => {
   beforeEach(() => {
     mockFindLiveUsage.mockReset();
     mockFindSnapshotUsage.mockReset();
+    // Sane default for every existing test below that isn't specifically exercising the
+    // live-usage guard (P0.4-A) — overridden explicitly in the tests that need otherwise.
+    mockFindLiveUsage.mockResolvedValue([]);
   });
 
   it('blocks deletion with MEDIA_IN_VERSION_HISTORY when a published snapshot references it', async () => {
@@ -329,6 +332,32 @@ describe('MediaService.permanentDelete', () => {
       thrown = err as { code?: string };
     }
     expect(thrown?.code).toBe('MEDIA_IN_VERSION_HISTORY');
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(prisma.media.delete).not.toHaveBeenCalled();
+    // Ordering (P0.4-A): the snapshot/version-history guard runs and blocks deletion before
+    // the live-usage guard is ever consulted.
+    expect(mockFindLiveUsage).not.toHaveBeenCalled();
+  });
+
+  it('blocks deletion with MEDIA_IN_USE when findLiveUsage reports a live reference (P0.4-A — covers relations that are ON DELETE SET NULL, not just RESTRICT)', async () => {
+    const { service, prisma, storage } = buildDeletionTestService();
+    prisma.media.findUnique.mockResolvedValue({
+      id: 'm1',
+      fileUrl: 'https://cdn/x.png',
+    });
+    mockFindSnapshotUsage.mockResolvedValue([]);
+    mockFindLiveUsage.mockResolvedValue([
+      { module: 'Products', label: 'Copra — Cover' },
+    ]);
+
+    let thrown: { code?: string } | undefined;
+    try {
+      await service.permanentDelete('m1');
+    } catch (err) {
+      thrown = err as { code?: string };
+    }
+    expect(thrown?.code).toBe('MEDIA_IN_USE');
+    // Blocked before either destructive step is ever attempted.
     expect(storage.delete).not.toHaveBeenCalled();
     expect(prisma.media.delete).not.toHaveBeenCalled();
   });

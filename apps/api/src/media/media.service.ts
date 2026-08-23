@@ -374,6 +374,21 @@ export class MediaService {
       );
     }
 
+    // Most live relations to Media are ON DELETE SET NULL, not RESTRICT (P0.4-A) — the FK
+    // catch below only protects the minority of relations declared RESTRICT (e.g. gallery
+    // join tables). Without this check, deleting a media row still referenced as e.g. a
+    // Product cover image or a Site Branding logo would silently succeed and null out the
+    // live reference. This check runs first and is authoritative; the FK catch remains as
+    // defense-in-depth for the RESTRICT relations and anything not yet in the registry.
+    const liveRefs = await findLiveUsage(this.prisma, id);
+    if (liveRefs.length > 0) {
+      throw new ApiException(
+        'MEDIA_IN_USE',
+        'This media file is currently used by published content.',
+        409,
+      );
+    }
+
     try {
       await this.storage.delete(media.fileUrl);
     } catch (error) {

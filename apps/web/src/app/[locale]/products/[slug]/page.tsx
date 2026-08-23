@@ -71,6 +71,9 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
   const gallery = product.gallery ?? [];
   const shapes = product.shapes ?? [];
   const specifications = product.specifications ?? [];
+  const packaging = product.packaging ?? [];
+  const applications = product.applications ?? [];
+  const downloads = product.downloads ?? [];
 
   const galleryItems = gallery.filter((item) => (item.section ?? "gallery") === "gallery");
   const specLabItems = gallery.filter((item) => item.section === "spec_lab");
@@ -135,7 +138,7 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
                 <div className="lg:order-2 lg:mt-8">
                   <ProductQuickActions
                     productName={product.name}
-                    downloads={product.downloads}
+                    downloads={downloads}
                     whatsappNumber={settings?.whatsapp_number}
                     catalogueLabel={t.catalogue}
                     whatsappMessageTemplate={t.whatsappMessageTemplate}
@@ -223,25 +226,25 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
           )}
 
           {/* Section 7 — Packaging */}
-          {product.packaging.length > 0 && (
+          {packaging.length > 0 && (
             <section aria-labelledby="packaging-heading">
               <h2 id="packaging-heading" className="text-h2 text-neutral-900">
                 {t.packaging}
               </h2>
               <div className="mt-6">
-                <PackagingCards items={product.packaging} />
+                <PackagingCards items={packaging} />
               </div>
             </section>
           )}
 
           {/* Section 8 — Applications */}
-          {product.applications.length > 0 && (
+          {applications.length > 0 && (
             <section aria-labelledby="applications-heading">
               <h2 id="applications-heading" className="text-h2 text-neutral-900">
                 {t.applications}
               </h2>
               <div className="mt-6">
-                <ApplicationCards items={product.applications} />
+                <ApplicationCards items={applications} />
               </div>
             </section>
           )}
