@@ -235,4 +235,10 @@ export class UpdateContactLocationDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  /** Non-English overrides for `label` only. Not deep-validated (admin-only input), matching
+   * every other translation-bearing DTO in this codebase. */
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }

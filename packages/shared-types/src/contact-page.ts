@@ -15,6 +15,9 @@ export interface ContactLocation {
   order: number;
   active: boolean;
   updated_at: string;
+  /** i18n — non-English overrides for `label` only (P0.3-B3-C). `name`/`address`/
+   * `google_maps_url`/`phone`/`email` stay global. */
+  translations?: Record<string, Record<string, string>> | null;
 }
 
 /** Admin (draft) view of the Contact page's singleton settings — hero, contact info,

@@ -14,6 +14,7 @@ import {
 import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  resolveContactLocationsLocale,
   resolveContactPageSettingsLocale,
   toContactLocation,
   toContactPageSettings,
@@ -128,7 +129,7 @@ export class ContactPageService {
   }
 
   async updateLocation(id: string, dto: UpdateContactLocationDto) {
-    await this.assertLocationExists(id);
+    const existing = await this.assertLocationExists(id);
     if (dto.location_type === 'head_office') {
       await this.demoteExistingHeadOffice(id);
     }
@@ -144,6 +145,10 @@ export class ContactPageService {
         email: dto.email,
         order: dto.order,
         active: dto.active,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toContactLocation(location);
@@ -180,6 +185,7 @@ export class ContactPageService {
     });
     if (!location)
       throw new ApiException('NOT_FOUND', 'Contact location not found.', 404);
+    return location;
   }
 
   // ── Social links (draft, open platform list) ────────────────────────────
@@ -365,7 +371,10 @@ export class ContactPageService {
       locations: SharedContactLocation[];
       social_links?: SharedContactSocialLink[];
     };
-    const locations = [...raw.locations].sort((a, b) => a.order - b.order);
+    const locations = resolveContactLocationsLocale(
+      [...raw.locations].sort((a, b) => a.order - b.order),
+      locale,
+    );
     const mainMapLocation =
       locations.find((l) => l.id === raw.settings.main_map_location_id) ??
       locations[0] ??

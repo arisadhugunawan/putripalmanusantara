@@ -1,10 +1,12 @@
 "use client";
 
 import { Badge, Button, Card, Input, Label } from "@ppn/ui-components";
-import type { ContactLocation, ContactLocationType } from "@ppn/shared-types";
+import type { ContactLocation, ContactLocationType, Locale } from "@ppn/shared-types";
 import { FormEvent, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 const LOCATION_TYPE_LABEL: Record<ContactLocationType, string> = {
@@ -81,6 +83,17 @@ export function LocationsEditor({
     } catch (err) {
       showToast(err instanceof ApiRequestError ? err.message : "Gagal menyimpan perubahan.", "error");
     }
+  }
+
+  async function handleUpdateTranslation(
+    location: ContactLocation,
+    locale: Exclude<Locale, "en">,
+    value: string,
+  ) {
+    const current = location.translations ?? {};
+    await handleUpdate(location.id, {
+      translations: { ...current, [locale]: { ...current[locale], label: value } },
+    });
   }
 
   async function handleDelete(id: string) {
@@ -222,6 +235,36 @@ export function LocationsEditor({
                 />
               </div>
             </div>
+
+            <details className="mt-3 border-t border-neutral-100 pt-3">
+              <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+                🌐 Translations
+                <TranslationStatusBadges
+                  translations={location.translations}
+                  base={{ label: location.label }}
+                />
+              </summary>
+              <div className="mt-3">
+                <LocaleTabs>
+                  {(locale) =>
+                    locale === "en" ? (
+                      <p className="text-small text-neutral-500">
+                        Bahasa Inggris diedit langsung pada field Label di atas.
+                      </p>
+                    ) : (
+                      <div>
+                        <Label className="text-small">Label</Label>
+                        <Input
+                          defaultValue={location.translations?.[locale]?.label ?? ""}
+                          placeholder={location.label}
+                          onBlur={(e) => void handleUpdateTranslation(location, locale, e.target.value)}
+                        />
+                      </div>
+                    )
+                  }
+                </LocaleTabs>
+              </div>
+            </details>
           </div>
         ))}
       </div>

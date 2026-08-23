@@ -1995,6 +1995,11 @@ model ContactLocation {
   active        Boolean             @default(true)
   updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at")
 
+  /// i18n — non-English overrides for `label` only (P0.3-B3-C). `name`/`address`/
+  /// `googleMapsUrl`/`phone`/`email` stay global — same "only what's actually rendered gets
+  /// translated" rule B3-B applied to `ContactPageSettings`.
+  translations Json?
+
   mainMapSettingsOf ContactPageSettings[] @relation("ContactMainMapLocation")
 
   @@map("contact_locations")

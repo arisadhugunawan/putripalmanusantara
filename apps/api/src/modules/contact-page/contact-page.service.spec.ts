@@ -45,6 +45,11 @@ function buildService() {
   };
   const contactLocation = {
     findMany: jest.fn<Promise<unknown[]>, unknown[]>().mockResolvedValue([]),
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+    updateMany: jest
+      .fn<Promise<unknown>, unknown[]>()
+      .mockResolvedValue({ count: 0 }),
   };
   const contactSocialLink = {
     findMany: jest.fn<Promise<unknown[]>, unknown[]>().mockResolvedValue([]),
@@ -347,5 +352,364 @@ describe('ContactPageService — publish → getPublished locale resolution (Pha
     });
 
     expect(await service.getPublished('id')).toBeNull();
+  });
+});
+
+function stubLocationRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'loc-1',
+    name: 'Tolitoli',
+    locationType: 'head_office',
+    label: 'Main Warehouse',
+    address: 'Jl. Tolitoli No. 1',
+    googleMapsUrl: 'https://maps.app.goo.gl/tolitoli',
+    phone: '+62123456789',
+    email: 'tolitoli@ppn.co.id',
+    order: 0,
+    active: true,
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    translations: null,
+    ...overrides,
+  };
+}
+
+// Phase P0.3-B3-C — `updateLocation()` now merges `translations` (label only) the same way
+// `updateSettings()` does since B3-B. `name`/`address`/`google_maps_url`/`phone`/`email` must
+// never be touched by a translations-only patch.
+describe('ContactPageService.updateLocation — translation merge safety (Phase P0.3-B3-C)', () => {
+  it('a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, contactLocation } = buildService();
+    contactLocation.findUnique.mockResolvedValue(
+      stubLocationRow({
+        translations: {
+          id: { label: 'Gudang Lama' },
+          zh: { label: '旧仓库' },
+        },
+      }),
+    );
+    contactLocation.update.mockResolvedValue(stubLocationRow());
+
+    await service.updateLocation('loc-1', {
+      translations: { th: { label: 'คลังสินค้าใหม่' } },
+    });
+
+    const [call] = contactLocation.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({ label: 'คลังสินค้าใหม่' });
+    expect(call.data.translations.id).toEqual({ label: 'Gudang Lama' });
+    expect(call.data.translations.zh).toEqual({ label: '旧仓库' });
+  });
+
+  it('does not touch translations when the caller omits it from the patch', async () => {
+    const { service, contactLocation } = buildService();
+    contactLocation.findUnique.mockResolvedValue(
+      stubLocationRow({ translations: { id: { label: 'Gudang Lama' } } }),
+    );
+    contactLocation.update.mockResolvedValue(stubLocationRow());
+
+    await service.updateLocation('loc-1', { name: 'Tolitoli Renamed' });
+
+    const [call] = contactLocation.update.mock.calls[0] as [
+      { data: { translations: unknown } },
+    ];
+    expect(call.data.translations).toBeUndefined();
+  });
+
+  it('a legacy row with no translations object at all still updates successfully (backward compatibility)', async () => {
+    const { service, contactLocation } = buildService();
+    contactLocation.findUnique.mockResolvedValue(
+      stubLocationRow({ translations: null }),
+    );
+    contactLocation.update.mockResolvedValue(stubLocationRow());
+
+    await expect(
+      service.updateLocation('loc-1', {
+        translations: { id: { label: 'Gudang Baru' } },
+      }),
+    ).resolves.toBeDefined();
+
+    const [call] = contactLocation.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.id).toEqual({ label: 'Gudang Baru' });
+  });
+
+  it('does not change name/address/google_maps_url/phone/email/order/active when only translations are patched', async () => {
+    const { service, contactLocation } = buildService();
+    contactLocation.findUnique.mockResolvedValue(stubLocationRow());
+    contactLocation.update.mockResolvedValue(stubLocationRow());
+
+    await service.updateLocation('loc-1', {
+      translations: { id: { label: 'Gudang Baru' } },
+    });
+
+    const [call] = contactLocation.update.mock.calls[0] as [
+      {
+        data: {
+          name: unknown;
+          address: unknown;
+          googleMapsUrl: unknown;
+          phone: unknown;
+          email: unknown;
+          order: unknown;
+          active: unknown;
+        };
+      },
+    ];
+    expect(call.data.name).toBeUndefined();
+    expect(call.data.address).toBeUndefined();
+    expect(call.data.googleMapsUrl).toBeUndefined();
+    expect(call.data.phone).toBeUndefined();
+    expect(call.data.email).toBeUndefined();
+    expect(call.data.order).toBeUndefined();
+    expect(call.data.active).toBeUndefined();
+  });
+
+  it('editing one location does not alter the translations sent for another location', async () => {
+    const { service, contactLocation } = buildService();
+    contactLocation.findUnique.mockResolvedValueOnce(
+      stubLocationRow({
+        id: 'loc-1',
+        translations: { id: { label: 'Gudang Tolitoli' } },
+      }),
+    );
+    contactLocation.update.mockResolvedValueOnce(stubLocationRow());
+    await service.updateLocation('loc-1', {
+      translations: { zh: { label: '多利多利仓库' } },
+    });
+
+    contactLocation.findUnique.mockResolvedValueOnce(
+      stubLocationRow({
+        id: 'loc-2',
+        label: 'Palu Facility',
+        translations: { id: { label: 'Fasilitas Palu Lama' } },
+      }),
+    );
+    contactLocation.update.mockResolvedValueOnce(stubLocationRow());
+    await service.updateLocation('loc-2', {
+      translations: { th: { label: 'สิ่งอำนวยความสะดวกปาลู' } },
+    });
+
+    const [firstCall] = contactLocation.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    const [secondCall] = contactLocation.update.mock.calls[1] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(firstCall.data.translations.id).toEqual({
+      label: 'Gudang Tolitoli',
+    });
+    expect(firstCall.data.translations.zh).toEqual({
+      label: '多利多利仓库',
+    });
+    expect(secondCall.data.translations.id).toEqual({
+      label: 'Fasilitas Palu Lama',
+    });
+    expect(secondCall.data.translations.th).toEqual({
+      label: 'สิ่งอำนวยความสะดวกปาลู',
+    });
+  });
+});
+
+// Phase P0.3-B3-C — locations are embedded into the frozen snapshot exactly like settings; the
+// most important regression here is the same draft/publish isolation guarantee the whole module
+// is built around: a draft translation edit must never leak onto the public page before an
+// explicit Publish, and republishing must carry every previously-saved locale forward.
+describe('ContactPageService — publish → getPublished locale resolution for locations (Phase P0.3-B3-C)', () => {
+  function wireSnapshot(
+    contactPagePublishedSnapshot: ReturnType<
+      typeof buildService
+    >['contactPagePublishedSnapshot'],
+  ) {
+    let storedSnapshotData: unknown;
+    contactPagePublishedSnapshot.findFirst.mockImplementation(() =>
+      Promise.resolve({
+        id: 'snap-1',
+        isPublished: true,
+        data: storedSnapshotData,
+      }),
+    );
+    contactPagePublishedSnapshot.update.mockImplementation(
+      ({
+        data,
+      }: {
+        data: { data: unknown; isPublished: boolean; publishedAt: Date };
+      }) => {
+        storedSnapshotData = data.data;
+        return Promise.resolve({
+          id: 'snap-1',
+          isPublished: data.isPublished,
+          publishedAt: data.publishedAt,
+        });
+      },
+    );
+  }
+
+  it('a translation saved to the draft location and then published resolves correctly per locale on the public read path', async () => {
+    const {
+      service,
+      contactLocation,
+      contactPageSettings,
+      contactPagePublishedSnapshot,
+    } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    wireSnapshot(contactPagePublishedSnapshot);
+    contactLocation.findMany.mockResolvedValue([
+      stubLocationRow({
+        translations: { id: { label: 'Gudang Utama' } },
+      }),
+    ]);
+
+    await service.publish();
+
+    const idResult = await service.getPublished('id');
+    const enResult = await service.getPublished('en');
+    expect(idResult?.locations[0]?.label).toBe('Gudang Utama');
+    expect(enResult?.locations[0]?.label).toBe('Main Warehouse');
+  });
+
+  it('draft location update does NOT leak into the public snapshot before Contact is republished', async () => {
+    const {
+      service,
+      contactLocation,
+      contactPageSettings,
+      contactPagePublishedSnapshot,
+    } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    wireSnapshot(contactPagePublishedSnapshot);
+
+    // First publish — the draft has no Indonesian translation yet.
+    contactLocation.findMany.mockResolvedValue([
+      stubLocationRow({ translations: null }),
+    ]);
+    await service.publish();
+
+    // Admin now edits the draft location's Indonesian label, but does NOT republish.
+    contactLocation.findUnique.mockResolvedValue(
+      stubLocationRow({ translations: null }),
+    );
+    contactLocation.update.mockResolvedValue(
+      stubLocationRow({ translations: { id: { label: 'Gudang Baru' } } }),
+    );
+    await service.updateLocation('loc-1', {
+      translations: { id: { label: 'Gudang Baru' } },
+    });
+
+    // Public read must still show the old, already-published label.
+    const idResult = await service.getPublished('id');
+    expect(idResult?.locations[0]?.label).toBe('Main Warehouse');
+  });
+
+  it('after Contact is republished, the newly translated label becomes public', async () => {
+    const {
+      service,
+      contactLocation,
+      contactPageSettings,
+      contactPagePublishedSnapshot,
+    } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    wireSnapshot(contactPagePublishedSnapshot);
+
+    contactLocation.findMany.mockResolvedValueOnce([
+      stubLocationRow({ translations: null }),
+    ]);
+    await service.publish();
+
+    // Draft now has the translation (simulating the update above already having happened).
+    contactLocation.findMany.mockResolvedValueOnce([
+      stubLocationRow({ translations: { id: { label: 'Gudang Baru' } } }),
+    ]);
+    await service.publish();
+
+    const idResult = await service.getPublished('id');
+    expect(idResult?.locations[0]?.label).toBe('Gudang Baru');
+  });
+
+  it('re-publishing after adding a second locale carries every locale forward, not just the newest one', async () => {
+    const {
+      service,
+      contactLocation,
+      contactPageSettings,
+      contactPagePublishedSnapshot,
+    } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    wireSnapshot(contactPagePublishedSnapshot);
+
+    contactLocation.findMany.mockResolvedValueOnce([
+      stubLocationRow({ translations: { id: { label: 'Gudang Utama' } } }),
+    ]);
+    await service.publish();
+
+    contactLocation.findMany.mockResolvedValueOnce([
+      stubLocationRow({
+        translations: {
+          id: { label: 'Gudang Utama' },
+          zh: { label: '主要仓库' },
+        },
+      }),
+    ]);
+    await service.publish();
+
+    const idResult = await service.getPublished('id');
+    const zhResult = await service.getPublished('zh');
+    expect(idResult?.locations[0]?.label).toBe('Gudang Utama');
+    expect(zhResult?.locations[0]?.label).toBe('主要仓库');
+  });
+
+  it('an old snapshot with no translations key on its location objects still renders the base label without error', async () => {
+    const { service, contactPagePublishedSnapshot } = buildService();
+    const legacyLocation = stubLocationRow();
+    delete (legacyLocation as { translations?: unknown }).translations;
+    contactPagePublishedSnapshot.findFirst.mockResolvedValue({
+      id: 'snap-1',
+      isPublished: true,
+      data: {
+        settings: {},
+        locations: [
+          {
+            id: 'loc-1',
+            name: 'Tolitoli',
+            location_type: 'head_office',
+            label: 'Main Warehouse',
+            address: 'Jl. Tolitoli No. 1',
+            google_maps_url: 'https://maps.app.goo.gl/tolitoli',
+            phone: null,
+            email: null,
+            order: 0,
+            active: true,
+            updated_at: '2026-01-01T00:00:00.000Z',
+            // no `translations` key at all — simulates a pre-B3-C snapshot
+          },
+        ],
+      },
+    });
+
+    const idResult = await service.getPublished('id');
+    expect(idResult?.locations[0]?.label).toBe('Main Warehouse');
+  });
+
+  it('label translation never changes name/address/google_maps_url across locales on the public read path', async () => {
+    const {
+      service,
+      contactLocation,
+      contactPageSettings,
+      contactPagePublishedSnapshot,
+    } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    wireSnapshot(contactPagePublishedSnapshot);
+    contactLocation.findMany.mockResolvedValue([
+      stubLocationRow({ translations: { id: { label: 'Gudang Utama' } } }),
+    ]);
+    await service.publish();
+
+    const en = (await service.getPublished('en'))!.locations[0];
+    const id = (await service.getPublished('id'))!.locations[0];
+    expect(id.label).not.toBe(en.label);
+    expect(id.name).toBe(en.name);
+    expect(id.address).toBe(en.address);
+    expect(id.google_maps_url).toBe(en.google_maps_url);
+    expect(id.phone).toBe(en.phone);
+    expect(id.email).toBe(en.email);
   });
 });

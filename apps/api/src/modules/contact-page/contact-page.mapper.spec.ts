@@ -1,6 +1,8 @@
 import type { ContactPageSettings as SharedContactPageSettings } from '@ppn/shared-types';
 import {
+  resolveContactLocationsLocale,
   resolveContactPageSettingsLocale,
+  toContactLocation,
   toContactPageSettings,
 } from './contact-page.mapper';
 
@@ -219,5 +221,126 @@ describe('resolveContactPageSettingsLocale — locale resolution against the fro
     const en = resolveContactPageSettingsLocale(settings, 'en');
     const th = resolveContactPageSettingsLocale(settings, 'th');
     expect(en.hero_heading).not.toBe(th.hero_heading);
+  });
+});
+
+function stubLocationRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'loc-1',
+    name: 'Tolitoli',
+    locationType: 'head_office',
+    label: 'Main Warehouse',
+    address: 'Jl. Tolitoli No. 1',
+    googleMapsUrl: 'https://maps.app.goo.gl/tolitoli',
+    phone: '+62123456789',
+    email: 'tolitoli@ppn.co.id',
+    order: 0,
+    active: true,
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    translations: null,
+    ...overrides,
+  } as Parameters<typeof toContactLocation>[0];
+}
+
+const locationTranslations = {
+  id: { label: 'Gudang Utama' },
+  zh: { label: '主要仓库' },
+  th: { label: 'คลังสินค้าหลัก' },
+  hi: { label: 'मुख्य गोदाम' },
+  vi: { label: 'Kho chính' },
+};
+
+// Phase P0.3-B3-C — `ContactLocation.label` gains the same per-field translation support Contact
+// Hero/WhatsApp got in B3-B. `name`/`address`/`google_maps_url`/`phone`/`email` must never be
+// touched by this — these tests prove both the passthrough and that isolation.
+describe('toContactLocation — translations passthrough (Phase P0.3-B3-C)', () => {
+  it('carries the raw translations object through unchanged', () => {
+    const row = stubLocationRow({ translations: locationTranslations });
+    const result = toContactLocation(row);
+    expect(result.translations).toEqual(locationTranslations);
+  });
+
+  it('a legacy row with translations = null maps successfully (backward compatibility)', () => {
+    const row = stubLocationRow({ translations: null });
+    const result = toContactLocation(row);
+    expect(result.translations).toBeNull();
+    expect(result.label).toBe('Main Warehouse');
+  });
+});
+
+describe('resolveContactLocationsLocale — label-only locale resolution (Phase P0.3-B3-C)', () => {
+  function baseLocations(overrides: Record<string, unknown> = {}) {
+    return [toContactLocation(stubLocationRow(overrides))];
+  }
+
+  it('returns the base (English) label for the default "en" locale', () => {
+    const locations = baseLocations({ translations: locationTranslations });
+    const [result] = resolveContactLocationsLocale(locations, 'en');
+    expect(result.label).toBe('Main Warehouse');
+  });
+
+  it('resolves the Indonesian label for "id"', () => {
+    const locations = baseLocations({ translations: locationTranslations });
+    const [result] = resolveContactLocationsLocale(locations, 'id');
+    expect(result.label).toBe('Gudang Utama');
+  });
+
+  it('resolves the Chinese label for "zh"', () => {
+    const locations = baseLocations({ translations: locationTranslations });
+    const [result] = resolveContactLocationsLocale(locations, 'zh');
+    expect(result.label).toBe('主要仓库');
+  });
+
+  it('resolves the Thai label for "th"', () => {
+    const locations = baseLocations({ translations: locationTranslations });
+    const [result] = resolveContactLocationsLocale(locations, 'th');
+    expect(result.label).toBe('คลังสินค้าหลัก');
+  });
+
+  it('resolves the Hindi label for "hi"', () => {
+    const locations = baseLocations({ translations: locationTranslations });
+    const [result] = resolveContactLocationsLocale(locations, 'hi');
+    expect(result.label).toBe('मुख्य गोदाम');
+  });
+
+  it('resolves the Vietnamese label for "vi"', () => {
+    const locations = baseLocations({ translations: locationTranslations });
+    const [result] = resolveContactLocationsLocale(locations, 'vi');
+    expect(result.label).toBe('Kho chính');
+  });
+
+  it('falls back to the base label when the requested locale has no translation', () => {
+    const locations = baseLocations({ translations: null });
+    const [result] = resolveContactLocationsLocale(locations, 'zh');
+    expect(result.label).toBe('Main Warehouse');
+  });
+
+  it('never changes name/address/google_maps_url/phone/email regardless of locale', () => {
+    const locations = baseLocations({ translations: locationTranslations });
+    const en = resolveContactLocationsLocale(locations, 'en')[0];
+    const id = resolveContactLocationsLocale(locations, 'id')[0];
+    expect(id.name).toBe(en.name);
+    expect(id.address).toBe(en.address);
+    expect(id.google_maps_url).toBe(en.google_maps_url);
+    expect(id.phone).toBe(en.phone);
+    expect(id.email).toBe(en.email);
+  });
+
+  it('editing one location does not alter translations of another location in the same array', () => {
+    const locations = [
+      toContactLocation(
+        stubLocationRow({ id: 'loc-1', translations: locationTranslations }),
+      ),
+      toContactLocation(
+        stubLocationRow({
+          id: 'loc-2',
+          label: 'Palu Facility',
+          translations: null,
+        }),
+      ),
+    ];
+    const resolved = resolveContactLocationsLocale(locations, 'id');
+    expect(resolved[0].label).toBe('Gudang Utama');
+    expect(resolved[1].label).toBe('Palu Facility');
   });
 });

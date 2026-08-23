@@ -154,7 +154,31 @@ export function toContactLocation(
     order: entry.order,
     active: entry.active,
     updated_at: entry.updatedAt.toISOString(),
+    translations: entry.translations as SharedContactLocation['translations'],
   };
+}
+
+/**
+ * Resolves `translations` (`label` only) for every location in the requested locale, against
+ * the already-mapped (snake_case) array embedded in the frozen Contact snapshot — the
+ * `ContactLocation` counterpart to `resolveContactPageSettingsLocale()` above, same reasoning:
+ * the public read comes from `ContactPagePublishedSnapshot.data`, not a live Prisma row, so
+ * resolution happens against the snapshot's snake_case shape rather than a camelCase query
+ * result. `name`/`address`/`google_maps_url`/`phone`/`email` are untouched — only `label`.
+ */
+export function resolveContactLocationsLocale(
+  locations: SharedContactLocation[],
+  locale: string,
+): SharedContactLocation[] {
+  return locations.map((location) => {
+    const resolved = translate(
+      { label: location.label },
+      location.translations,
+      locale,
+      ['label'],
+    );
+    return { ...location, label: resolved.label };
+  });
 }
 
 export function toContactSocialLink(
