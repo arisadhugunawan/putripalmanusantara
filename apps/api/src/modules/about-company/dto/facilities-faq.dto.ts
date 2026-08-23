@@ -1,5 +1,8 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
-import { Type } from 'class-transformer';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
@@ -54,6 +57,9 @@ export class UpdateAboutCompanyFacilitiesFaqSectionDto {
   cta_secondary_href?: string;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -93,6 +99,9 @@ export class CreateFacilitiesFaqItemDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -132,6 +141,9 @@ export class UpdateFacilitiesFaqItemDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -155,6 +167,9 @@ export class CreateFacilitiesFaqProductTagDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -174,6 +189,9 @@ export class UpdateFacilitiesFaqProductTagDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

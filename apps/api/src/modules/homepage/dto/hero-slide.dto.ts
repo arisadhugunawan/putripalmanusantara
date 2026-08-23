@@ -1,5 +1,8 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
-import { Type } from 'class-transformer';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -98,6 +101,9 @@ export class CreateHeroSlideDto {
   publish_date?: string;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -184,6 +190,9 @@ export class UpdateHeroSlideDto {
   publish_date?: string;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

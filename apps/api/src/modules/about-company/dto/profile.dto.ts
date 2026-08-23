@@ -1,5 +1,8 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
-import { Type } from 'class-transformer';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -188,6 +191,9 @@ export class UpdateAboutCompanyProfileDto {
   closing_visible?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -213,6 +219,9 @@ export class CreateAboutCompanyFactDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -240,6 +249,9 @@ export class UpdateAboutCompanyFactDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

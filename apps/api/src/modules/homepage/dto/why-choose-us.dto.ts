@@ -1,5 +1,8 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
-import { Type } from 'class-transformer';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
@@ -44,6 +47,9 @@ export class CreateWhyChooseUsDto {
   featured?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -71,6 +77,9 @@ export class UpdateWhyChooseUsDto {
   featured?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

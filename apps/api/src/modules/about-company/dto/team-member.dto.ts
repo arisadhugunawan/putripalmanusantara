@@ -1,4 +1,7 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -81,6 +84,9 @@ export class CreateTeamMemberDto {
   featured?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -142,6 +148,9 @@ export class UpdateTeamMemberDto {
   featured?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -172,6 +181,9 @@ export class UpdateAboutCompanyTeamSectionDto {
   show_counter?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

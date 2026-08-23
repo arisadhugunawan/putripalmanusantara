@@ -1,6 +1,9 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
 import { PRODUCTION_STEP_ICON_KEYS } from '@ppn/shared-types';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
@@ -50,6 +53,9 @@ export class CreateProductionStepDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -93,6 +99,9 @@ export class UpdateProductionStepDto {
   active?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

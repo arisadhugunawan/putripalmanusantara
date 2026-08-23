@@ -1,5 +1,8 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
-import { Type } from 'class-transformer';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -33,6 +36,9 @@ export class UpdatePartnersSectionDto {
   enabled?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

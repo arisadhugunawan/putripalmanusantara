@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
@@ -8,7 +9,10 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
 
 const OVERLAY_TYPES = [
   'dark_green',
@@ -60,6 +64,9 @@ export class UpdateFooterSettingsDto {
   /** Non-English overrides for `tagline`/`description`. Not deep-validated (admin-only
    * input), matching every other translation-bearing DTO in this codebase. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 

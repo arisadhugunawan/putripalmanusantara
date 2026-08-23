@@ -1,5 +1,8 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
-import { Type } from 'class-transformer';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -36,7 +39,13 @@ export class CreateGalleryCategoryDto {
   @IsBoolean()
   active?: boolean;
 
+  /** Structurally normalized (unknown locale keys / non-string field values silently
+   * dropped, see `normalizeTranslationsInput()`) but not field-name-whitelisted —
+   * Phase P0.3-E pilot. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -55,7 +64,13 @@ export class UpdateGalleryCategoryDto {
   @IsBoolean()
   active?: boolean;
 
+  /** Structurally normalized (unknown locale keys / non-string field values silently
+   * dropped, see `normalizeTranslationsInput()`) but not field-name-whitelisted —
+   * Phase P0.3-E pilot. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

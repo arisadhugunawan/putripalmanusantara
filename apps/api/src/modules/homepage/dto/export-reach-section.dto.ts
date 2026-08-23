@@ -1,4 +1,8 @@
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
+import { Transform } from 'class-transformer';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
 import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdateExportReachSectionDto {
@@ -15,6 +19,9 @@ export class UpdateExportReachSectionDto {
   enabled?: boolean;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

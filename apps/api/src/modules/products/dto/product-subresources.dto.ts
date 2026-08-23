@@ -1,5 +1,5 @@
 import { PRODUCT_MEDIA_SECTIONS } from '@ppn/shared-types';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsIn,
   IsInt,
@@ -8,7 +8,10 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
 
 export class AddProductGalleryItemDto {
   @IsString()
@@ -66,9 +69,13 @@ export class UpsertProductSpecificationDto {
   @IsString()
   variant_label?: string | null;
 
-  /** Non-English overrides for spec_key/spec_value. Not deep-validated (admin-only input),
-   * matching every other translation-bearing DTO in this codebase. */
+  /** Non-English overrides for spec_key/spec_value. Structurally normalized (unknown locale
+   * keys / non-string field values silently dropped, see `normalizeTranslationsInput()`) but
+   * not field-name-whitelisted — Phase P0.3-E pilot. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -104,9 +111,13 @@ export class UpsertProductPackagingApplicationDto {
   @IsInt()
   order?: number;
 
-  /** Non-English overrides for title/description. Not deep-validated (admin-only input),
-   * matching every other translation-bearing DTO in this codebase. */
+  /** Non-English overrides for title/description. Structurally normalized (unknown locale
+   * keys / non-string field values silently dropped, see `normalizeTranslationsInput()`) but
+   * not field-name-whitelisted — Phase P0.3-E pilot. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -130,9 +141,13 @@ export class UpsertProductShapeDto {
   @IsInt()
   order?: number;
 
-  /** Non-English overrides for name/sizes. Not deep-validated (admin-only input), matching
-   * every other translation-bearing DTO in this codebase. */
+  /** Non-English overrides for name/sizes. Structurally normalized (unknown locale keys /
+   * non-string field values silently dropped, see `normalizeTranslationsInput()`) but not
+   * field-name-whitelisted — Phase P0.3-E pilot. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }

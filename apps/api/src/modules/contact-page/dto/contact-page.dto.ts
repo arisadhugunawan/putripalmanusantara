@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -20,7 +20,10 @@ import {
   IsOptionalPhone,
   IsOptionalUrl,
 } from '../../about-company/dto/optional-contact.validators';
-import type { TranslationsInput } from '../../../common/dto/translations.dto';
+import {
+  normalizeTranslationsInput,
+  type TranslationsInput,
+} from '../../../common/dto/translations.dto';
 
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -149,9 +152,13 @@ export class UpdateContactPageSettingsDto {
   @IsString()
   main_map_location_id?: string | null;
 
-  /** Non-English overrides for the hero copy and WhatsApp message template. Not deep-validated
-   * (admin-only input), matching every other translation-bearing DTO in this codebase. */
+  /** Non-English overrides for the hero copy and WhatsApp message template. Structurally
+   * normalized (unknown locale keys / non-string field values silently dropped, see
+   * `normalizeTranslationsInput()`) but not field-name-whitelisted — Phase P0.3-E pilot. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
@@ -236,9 +243,13 @@ export class UpdateContactLocationDto {
   @IsBoolean()
   active?: boolean;
 
-  /** Non-English overrides for `label` only. Not deep-validated (admin-only input), matching
-   * every other translation-bearing DTO in this codebase. */
+  /** Non-English overrides for `label` only. Structurally normalized (unknown locale keys /
+   * non-string field values silently dropped, see `normalizeTranslationsInput()`) but not
+   * field-name-whitelisted — Phase P0.3-E pilot. */
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    normalizeTranslationsInput(value),
+  )
   @IsObject()
   translations?: TranslationsInput;
 }
