@@ -14,9 +14,18 @@ import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/facilities">): Promise<Metadata> {
   const { locale } = await params;
+  // Same `getPublishedAboutCompany` call the page body below already makes (line ~36) — Next.js
+  // dedupes identical `fetch()` calls within one render pass, so this costs no second
+  // round-trip. `facilities_section.heading`/`description` is the CMS's own translated heading
+  // for this page's eponymous first section and is already locale-resolved via `translate()`;
+  // it does not summarize the MOQ/Shipment/FAQ sections further down the page, but it is real,
+  // existing, translated content rather than an invented string. The `||` fallback preserves
+  // today's exact English copy for any locale without an admin-entered override.
+  const aboutCompany = await getPublishedAboutCompany(locale).catch(() => null);
   return buildPageMetadata({
-    title: "Facilities",
+    title: aboutCompany?.facilities_section.heading || "Facilities",
     description:
+      aboutCompany?.facilities_section.description ||
       "Explore CV Putri Palma Nusantara's production facilities, MOQ and payment terms, and shipment logistics for coconut product exports.",
     path: "/facilities",
     locale,

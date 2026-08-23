@@ -9,9 +9,17 @@ export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/production-process">): Promise<Metadata> {
   const { locale } = await params;
+  // Same `getPublishedHomepage` call the page body below already makes (line ~28) — Next.js
+  // dedupes identical `fetch()` calls within one render pass, so this costs no second
+  // round-trip. `process_section.heading`/`description` is the CMS's own translated heading
+  // for this exact subject (Homepage renders the identical section under "Our Supply & Export
+  // Process") and is already locale-resolved via `translate()`; the `||` fallback preserves
+  // today's exact English copy for any locale without an admin-entered override.
+  const homepage = await getPublishedHomepage(locale).catch(() => null);
   return buildPageMetadata({
-    title: "Our Supply & Export Process",
+    title: homepage?.process_section.heading || "Our Supply & Export Process",
     description:
+      homepage?.process_section.description ||
       "From local sourcing to global delivery: the structured process behind every CV Putri Palma Nusantara shipment.",
     path: "/production-process",
     locale,

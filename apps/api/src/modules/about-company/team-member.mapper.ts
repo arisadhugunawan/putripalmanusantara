@@ -32,6 +32,7 @@ export function toTeamMember(
     'position',
     'biography',
     'responsibilities',
+    'department',
   ]);
   return {
     id: entry.id,
@@ -39,7 +40,7 @@ export function toTeamMember(
     position: t.position,
     biography: t.biography,
     responsibilities: t.responsibilities,
-    department: entry.department,
+    department: t.department,
     photo: entry.photo ? toMedia(entry.photo) : null,
     linkedin_url: entry.linkedinUrl,
     email: entry.email,

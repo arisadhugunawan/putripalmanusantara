@@ -31,9 +31,22 @@ import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
   const { locale } = await params;
+  // Same `getPublicSettings` call the page body below already makes (line ~95) — Next.js
+  // dedupes identical `fetch()` calls made during one render pass (see `request()` in
+  // `lib/api.ts`, which sets `next: { revalidate }`), so this costs no second round-trip in
+  // practice; the Product/Article detail pages already rely on the same dedup for their own
+  // `generateMetadata`. `default_meta_title`/`default_meta_description` are the CMS's
+  // purpose-built SEO fields for this exact page (seeded with this exact English text) and are
+  // already locale-resolved via `translate()` on the backend — the `||` fallback preserves
+  // today's exact English copy for any locale without an admin-entered override, per the
+  // established CMS-field-with-fallback pattern used by every other page's metadata.
+  const settings = await getPublicSettings(locale).catch(() => null);
   return buildPageMetadata({
-    title: "CV Putri Palma Nusantara — Indonesian Coconut Product Exporter",
+    title:
+      settings?.default_meta_title ||
+      "CV Putri Palma Nusantara — Indonesian Coconut Product Exporter",
     description:
+      settings?.default_meta_description ||
       "CV Putri Palma Nusantara exports Semi Husked Coconut, Copra, Coconut Shell Charcoal, and Coconut Timber to buyers across Asia, the Middle East, and Europe.",
     path: "/",
     locale,
