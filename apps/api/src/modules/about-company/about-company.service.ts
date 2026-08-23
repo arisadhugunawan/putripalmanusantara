@@ -14,6 +14,7 @@ import {
   CONTENT_PUBLISHED_EVENT,
   type ContentPublishedEvent,
 } from '../../common/events/content-published.event';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import {
   sanitizeRichText,
   sanitizeTranslationsRichText,
@@ -742,10 +743,10 @@ export class AboutCompanyService {
         closingCtaHref: dto.closing_cta_href,
         closingVisible: dto.closing_visible,
 
-        translations: sanitizeTranslationsRichText(dto.translations, [
-          'mainDescription',
-          'companyOverview',
-        ]) as never,
+        translations: sanitizeTranslationsRichText(
+          mergeTranslations(existing.translations, dto.translations),
+          ['mainDescription', 'companyOverview'],
+        ) as never,
       },
       include: PROFILE_INCLUDE,
     });
@@ -777,7 +778,11 @@ export class AboutCompanyService {
   }
 
   async updateFact(id: string, dto: UpdateAboutCompanyFactDto) {
-    await this.assertExists(this.prisma.aboutCompanyFact, id, 'Company fact');
+    const existing = await this.assertExists(
+      this.prisma.aboutCompanyFact,
+      id,
+      'Company fact',
+    );
     const fact = await this.prisma.aboutCompanyFact.update({
       where: { id },
       data: {
@@ -786,7 +791,10 @@ export class AboutCompanyService {
         icon: dto.icon,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyFact(fact);
@@ -956,7 +964,11 @@ export class AboutCompanyService {
   }
 
   async updateTeamMember(id: string, dto: UpdateTeamMemberDto) {
-    await this.assertExists(this.prisma.teamMember, id, 'Team member');
+    const existing = await this.assertExists(
+      this.prisma.teamMember,
+      id,
+      'Team member',
+    );
     const member = await this.prisma.teamMember.update({
       where: { id },
       data: {
@@ -972,7 +984,10 @@ export class AboutCompanyService {
         order: dto.order,
         active: dto.active,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: TEAM_MEMBER_INCLUDE,
     });
@@ -1004,6 +1019,7 @@ export class AboutCompanyService {
         order: count,
         active: false,
         featured: false,
+        translations: source.translations as never,
       },
       include: TEAM_MEMBER_INCLUDE,
     });
@@ -1034,7 +1050,10 @@ export class AboutCompanyService {
         ctaLabel: emptyToNull(dto.cta_label),
         ctaHref: emptyToNull(dto.cta_href),
         showCounter: dto.show_counter,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyTeamSection(updated);
@@ -1072,7 +1091,11 @@ export class AboutCompanyService {
   }
 
   async updateWhatWeDoItem(id: string, dto: UpdateWhatWeDoItemDto) {
-    await this.assertExists(this.prisma.whatWeDoItem, id, 'What We Do item');
+    const existing = await this.assertExists(
+      this.prisma.whatWeDoItem,
+      id,
+      'What We Do item',
+    );
     const item = await this.prisma.whatWeDoItem.update({
       where: { id },
       data: {
@@ -1085,7 +1108,10 @@ export class AboutCompanyService {
         order: dto.order,
         active: dto.active,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: WHAT_WE_DO_INCLUDE,
     });
@@ -1114,6 +1140,7 @@ export class AboutCompanyService {
         order: count,
         active: false,
         featured: false,
+        translations: source.translations as never,
       },
       include: WHAT_WE_DO_INCLUDE,
     });
@@ -1151,7 +1178,10 @@ export class AboutCompanyService {
         supplierCtaHeading: dto.supplier_cta_heading,
         supplierCtaDescription: dto.supplier_cta_description,
         supplierCtaButtonText: dto.supplier_cta_button_text,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyWhatWeDoSection(updated);
@@ -1182,7 +1212,7 @@ export class AboutCompanyService {
   }
 
   async updateWhoWeSupplyItem(id: string, dto: UpdateWhoWeSupplyItemDto) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.whoWeSupplyItem,
       id,
       'Who We Supply item',
@@ -1195,7 +1225,10 @@ export class AboutCompanyService {
         icon: dto.icon,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toWhoWeSupplyItem(item);
@@ -1306,7 +1339,10 @@ export class AboutCompanyService {
         order: dto.order,
         active: dto.active,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: LEGAL_DOCUMENT_INCLUDE,
     });
@@ -1351,6 +1387,7 @@ export class AboutCompanyService {
         // badge must never appear without an explicit tick (README "Legal & Company
         // Information" — no automatic verification).
         verified: false,
+        translations: source.translations as never,
       },
       include: LEGAL_DOCUMENT_INCLUDE,
     });
@@ -1398,7 +1435,11 @@ export class AboutCompanyService {
   }
 
   async updateLegalCategory(id: string, dto: UpdateLegalDocumentCategoryDto) {
-    await this.assertExists(this.prisma.legalDocumentCategory, id, 'Category');
+    const existing = await this.assertExists(
+      this.prisma.legalDocumentCategory,
+      id,
+      'Category',
+    );
     const category = await this.prisma.legalDocumentCategory.update({
       where: { id },
       data: {
@@ -1406,7 +1447,10 @@ export class AboutCompanyService {
         description: emptyToNull(dto.description),
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toLegalDocumentCategory(category);
@@ -1453,7 +1497,10 @@ export class AboutCompanyService {
         heading: dto.heading,
         description: dto.description,
         hideExpired: dto.hide_expired,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyLegalSection(updated);
@@ -1490,7 +1537,10 @@ export class AboutCompanyService {
         operationalInfo: dto.operational_info,
         capacity: dto.capacity,
         additionalNotes: dto.additional_notes,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: FACTORY_INCLUDE,
     });
@@ -1559,7 +1609,11 @@ export class AboutCompanyService {
   }
 
   async updateFacility(id: string, dto: UpdateFacilityDto) {
-    await this.assertExists(this.prisma.facility, id, 'Facility');
+    const existing = await this.assertExists(
+      this.prisma.facility,
+      id,
+      'Facility',
+    );
     const facility = await this.prisma.facility.update({
       where: { id },
       data: {
@@ -1572,7 +1626,10 @@ export class AboutCompanyService {
         order: dto.order,
         active: dto.active,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: FACILITY_INCLUDE,
     });
@@ -1671,7 +1728,10 @@ export class AboutCompanyService {
         description: dto.description,
         autoRotate: dto.auto_rotate,
         rotateIntervalSeconds: dto.rotate_interval_seconds,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyFacilitiesSection(updated);
@@ -1709,7 +1769,10 @@ export class AboutCompanyService {
         ctaDescription: dto.cta_description,
         ctaButtonLabel: dto.cta_button_label,
         ctaButtonHref: dto.cta_button_href,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyMoqPaymentSection(updated);
@@ -1742,7 +1805,11 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateMoqPaymentQuickCardDto,
   ) {
-    await this.assertExists(this.prisma.moqPaymentQuickCard, id, 'Quick card');
+    const existing = await this.assertExists(
+      this.prisma.moqPaymentQuickCard,
+      id,
+      'Quick card',
+    );
     const card = await this.prisma.moqPaymentQuickCard.update({
       where: { id },
       data: {
@@ -1751,7 +1818,10 @@ export class AboutCompanyService {
         icon: dto.icon,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toMoqPaymentQuickCard(card);
@@ -1789,7 +1859,7 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateMoqPaymentBusinessTermDto,
   ) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.moqPaymentBusinessTerm,
       id,
       'Business term',
@@ -1801,7 +1871,10 @@ export class AboutCompanyService {
         value: dto.value,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toMoqPaymentBusinessTerm(term);
@@ -1848,7 +1921,10 @@ export class AboutCompanyService {
         ctaLabel: dto.cta_label,
         ctaHref: dto.cta_href,
         ctaOpenNewTab: dto.cta_open_new_tab,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyShipmentTermsSection(updated);
@@ -1882,7 +1958,7 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateShippingArrangementItemDto,
   ) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.shippingArrangementItem,
       id,
       'Shipping arrangement item',
@@ -1896,7 +1972,10 @@ export class AboutCompanyService {
         description: dto.description,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toShippingArrangementItem(item);
@@ -1940,7 +2019,7 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateShipmentLoadingLocationDto,
   ) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.shipmentLoadingLocation,
       id,
       'Loading location',
@@ -1954,7 +2033,10 @@ export class AboutCompanyService {
         mapsUrl: dto.maps_url,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toShipmentLoadingLocation(location);
@@ -1995,7 +2077,7 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateShipmentContainerTypeDto,
   ) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.shipmentContainerType,
       id,
       'Container type',
@@ -2006,7 +2088,10 @@ export class AboutCompanyService {
         label: dto.label,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toShipmentContainerType(type);
@@ -2049,7 +2134,7 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateShipmentScheduleStepDto,
   ) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.shipmentScheduleStep,
       id,
       'Schedule step',
@@ -2062,7 +2147,10 @@ export class AboutCompanyService {
         icon: dto.icon,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toShipmentScheduleStep(step);
@@ -2102,7 +2190,11 @@ export class AboutCompanyService {
   }
 
   async updateShipmentDocument(id: string, dto: UpdateShipmentDocumentDto) {
-    await this.assertExists(this.prisma.shipmentDocument, id, 'Document');
+    const existing = await this.assertExists(
+      this.prisma.shipmentDocument,
+      id,
+      'Document',
+    );
     const document = await this.prisma.shipmentDocument.update({
       where: { id },
       data: {
@@ -2111,7 +2203,10 @@ export class AboutCompanyService {
         url: dto.url,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toShipmentDocument(document);
@@ -2150,7 +2245,7 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateShipmentCommitmentItemDto,
   ) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.shipmentCommitmentItem,
       id,
       'Commitment item',
@@ -2163,7 +2258,10 @@ export class AboutCompanyService {
         icon: dto.icon,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toShipmentCommitmentItem(item);
@@ -2212,7 +2310,10 @@ export class AboutCompanyService {
         ctaPrimaryHref: dto.cta_primary_href,
         ctaSecondaryLabel: dto.cta_secondary_label,
         ctaSecondaryHref: dto.cta_secondary_href,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toAboutCompanyFacilitiesFaqSection(updated);
@@ -2247,7 +2348,11 @@ export class AboutCompanyService {
   }
 
   async updateFacilitiesFaqItem(id: string, dto: UpdateFacilitiesFaqItemDto) {
-    await this.assertExists(this.prisma.facilitiesFaqItem, id, 'FAQ item');
+    const existing = await this.assertExists(
+      this.prisma.facilitiesFaqItem,
+      id,
+      'FAQ item',
+    );
     const item = await this.prisma.facilitiesFaqItem.update({
       where: { id },
       data: {
@@ -2259,7 +2364,10 @@ export class AboutCompanyService {
         highlightText: dto.highlight_text,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: { tags: true },
     });
@@ -2305,7 +2413,7 @@ export class AboutCompanyService {
     id: string,
     dto: UpdateFacilitiesFaqProductTagDto,
   ) {
-    await this.assertExists(
+    const existing = await this.assertExists(
       this.prisma.facilitiesFaqProductTag,
       id,
       'Product tag',
@@ -2316,7 +2424,10 @@ export class AboutCompanyService {
         name: dto.name,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toFacilitiesFaqProductTag(tag);
@@ -3392,15 +3503,16 @@ export class AboutCompanyService {
     };
   }
 
-  private async assertExists(
+  private async assertExists<T>(
     delegate: {
-      findUnique: (args: { where: { id: string } }) => Promise<unknown>;
+      findUnique: (args: { where: { id: string } }) => Promise<T | null>;
     },
     id: string,
     label: string,
-  ) {
+  ): Promise<T> {
     const entry = await delegate.findUnique({ where: { id } });
     if (!entry) throw new ApiException('NOT_FOUND', `${label} not found.`, 404);
+    return entry;
   }
 }
 

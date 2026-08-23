@@ -11,7 +11,7 @@ import {
   CONTENT_PUBLISHED_EVENT,
   type ContentPublishedEvent,
 } from '../../common/events/content-published.event';
-import { translate } from '../../common/utils/i18n.util';
+import { mergeTranslations, translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   toHomepageProcessSection,
@@ -188,7 +188,7 @@ export class HomepageService {
   }
 
   async updateHeroSlide(id: string, dto: UpdateHeroSlideDto) {
-    await this.assertHeroSlideExists(id);
+    const existing = await this.assertHeroSlideExists(id);
     const slide = await this.prisma.heroSlide.update({
       where: { id },
       data: {
@@ -211,7 +211,10 @@ export class HomepageService {
         order: dto.order,
         enabled: dto.enabled,
         publishDate: dto.publish_date,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: HERO_SLIDE_INCLUDE,
     });
@@ -264,6 +267,7 @@ export class HomepageService {
     const slide = await this.prisma.heroSlide.findUnique({ where: { id } });
     if (!slide)
       throw new ApiException('NOT_FOUND', 'Hero slide not found.', 404);
+    return slide;
   }
 
   // ── Partner Logos (Post-Launch) ────────────────────────────────────────
@@ -301,7 +305,7 @@ export class HomepageService {
   }
 
   async updatePartnerLogo(id: string, dto: UpdatePartnerLogoDto) {
-    await this.assertPartnerLogoExists(id);
+    const existing = await this.assertPartnerLogoExists(id);
     const logo = await this.prisma.partnerLogo.update({
       where: { id },
       data: {
@@ -315,7 +319,10 @@ export class HomepageService {
         order: dto.order,
         enabled: dto.enabled,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: PARTNER_LOGO_INCLUDE,
     });
@@ -359,6 +366,7 @@ export class HomepageService {
     const logo = await this.prisma.partnerLogo.findUnique({ where: { id } });
     if (!logo)
       throw new ApiException('NOT_FOUND', 'Partner logo not found.', 404);
+    return logo;
   }
 
   // ── Shipping Partners (Post-Launch) ────────────────────────────────────
@@ -395,7 +403,7 @@ export class HomepageService {
   }
 
   async updateShippingPartner(id: string, dto: UpdateShippingPartnerDto) {
-    await this.assertShippingPartnerExists(id);
+    const existing = await this.assertShippingPartnerExists(id);
     const partner = await this.prisma.shippingPartner.update({
       where: { id },
       data: {
@@ -409,7 +417,10 @@ export class HomepageService {
         order: dto.order,
         enabled: dto.enabled,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: SHIPPING_PARTNER_INCLUDE,
     });
@@ -457,6 +468,7 @@ export class HomepageService {
     });
     if (!partner)
       throw new ApiException('NOT_FOUND', 'Shipping partner not found.', 404);
+    return partner;
   }
 
   // ── Decorative Graphics (Post-Launch) ──────────────────────────────────
@@ -553,7 +565,10 @@ export class HomepageService {
         videoMediaId: dto.video_media_id,
         videoThumbnailId: dto.video_thumbnail_id,
         enabled: dto.enabled,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: ABOUT_PREVIEW_INCLUDE,
     });
@@ -585,7 +600,7 @@ export class HomepageService {
   }
 
   async updateHighlight(id: string, dto: UpdateHighlightDto) {
-    await this.assertHighlightExists(id);
+    const existing = await this.assertHighlightExists(id);
     const highlight = await this.prisma.homepageHighlight.update({
       where: { id },
       data: {
@@ -594,7 +609,10 @@ export class HomepageService {
         description: dto.description,
         order: dto.order,
         enabled: dto.enabled,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toHighlight(highlight);
@@ -612,6 +630,7 @@ export class HomepageService {
     });
     if (!highlight)
       throw new ApiException('NOT_FOUND', 'Highlight not found.', 404);
+    return highlight;
   }
 
   // ── Partners Section (Post-Launch, singleton) ──────────────────────────
@@ -636,7 +655,10 @@ export class HomepageService {
         subtitle: dto.subtitle,
         marqueeDurationSeconds: dto.marquee_duration_seconds,
         enabled: dto.enabled,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toPartnersSection(updated);
@@ -666,7 +688,10 @@ export class HomepageService {
         showPartnerName: dto.show_partner_name,
         showRelationshipType: dto.show_relationship_type,
         enabled: dto.enabled,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toShippingSection(updated);
@@ -699,7 +724,7 @@ export class HomepageService {
   }
 
   async updateWhyChooseUs(id: string, dto: UpdateWhyChooseUsDto) {
-    await this.assertWhyChooseUsExists(id);
+    const existing = await this.assertWhyChooseUsExists(id);
     const item = await this.prisma.homepageWhyChooseUs.update({
       where: { id },
       data: {
@@ -708,7 +733,10 @@ export class HomepageService {
         order: dto.order,
         enabled: dto.enabled,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toWhyChooseUs(item);
@@ -726,6 +754,7 @@ export class HomepageService {
     });
     if (!item)
       throw new ApiException('NOT_FOUND', 'Why Choose Us item not found.', 404);
+    return item;
   }
 
   // ── Export Destinations / Global Export Reach (Post-Launch) ─────────────
@@ -771,7 +800,7 @@ export class HomepageService {
   }
 
   async updateExportDestination(id: string, dto: UpdateExportDestinationDto) {
-    await this.assertExportDestinationExists(id);
+    const existing = await this.assertExportDestinationExists(id);
     const countryMeta = dto.country_code
       ? this.resolveCountryMeta(dto.country_code)
       : undefined;
@@ -793,7 +822,10 @@ export class HomepageService {
         order: dto.order,
         enabled: dto.enabled,
         featured: dto.featured,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: EXPORT_DESTINATION_INCLUDE,
     });
@@ -819,6 +851,7 @@ export class HomepageService {
     });
     if (!destination)
       throw new ApiException('NOT_FOUND', 'Export destination not found.', 404);
+    return destination;
   }
 
   private async getOrCreateExportReachSection() {
@@ -840,7 +873,10 @@ export class HomepageService {
         heading: dto.heading,
         subtitle: dto.subtitle,
         enabled: dto.enabled,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toExportReachSection(updated);

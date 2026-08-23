@@ -9,6 +9,7 @@ import {
   CONTENT_PUBLISHED_EVENT,
   type ContentPublishedEvent,
 } from '../../common/events/content-published.event';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import {
   sanitizeRichText,
   sanitizeTranslationsRichText,
@@ -553,9 +554,10 @@ export class ArticlesService {
         // real gate: any authenticated admin could publish/unpublish by including `status` in
         // an otherwise ordinary save. Publishing is now only ever reachable through the two
         // dedicated, `@Roles('super_admin')`-gated endpoints.
-        translations: sanitizeTranslationsRichText(dto.translations, [
-          'content',
-        ]) as never,
+        translations: sanitizeTranslationsRichText(
+          mergeTranslations(existing.translations, dto.translations),
+          ['content'],
+        ) as never,
       },
       include: DETAIL_INCLUDE,
     });
@@ -845,6 +847,7 @@ export class ArticlesService {
         readingTimeMinutes: source.readingTimeMinutes,
         status: 'draft',
         publishedAt: null,
+        translations: source.translations as never,
         galleryImages: {
           create: (
             await this.prisma.articleGalleryImage.findMany({
@@ -1014,7 +1017,7 @@ export class ArticlesService {
   }
 
   async updateCategory(id: string, dto: UpdateArticleCategoryDto) {
-    await this.assertCategoryExists(id);
+    const existing = await this.assertCategoryExists(id);
     const category = await this.prisma.articleCategory.update({
       where: { id },
       data: {
@@ -1022,7 +1025,10 @@ export class ArticlesService {
         description: emptyToNull(dto.description),
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toArticleCategory(category);
@@ -1051,6 +1057,7 @@ export class ArticlesService {
     });
     if (!category)
       throw new ApiException('NOT_FOUND', 'Category not found.', 404);
+    return category;
   }
 
   // ── Gallery (Instagram carousel / article image gallery) ─────────────

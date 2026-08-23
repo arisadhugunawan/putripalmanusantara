@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE, type Faq } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
-import { translate } from '../../common/utils/i18n.util';
+import { mergeTranslations, translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateFaqDto, UpdateFaqDto } from './dto/faq.dto';
 
@@ -47,7 +47,7 @@ export class FaqsService {
   }
 
   async update(id: string, dto: UpdateFaqDto) {
-    await this.assertExists(id);
+    const existing = await this.assertExists(id);
     return this.prisma.faq.update({
       where: { id },
       data: {
@@ -55,7 +55,10 @@ export class FaqsService {
         answer: dto.answer,
         order: dto.order,
         status: dto.status,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
   }
@@ -69,5 +72,6 @@ export class FaqsService {
   private async assertExists(id: string) {
     const faq = await this.prisma.faq.findUnique({ where: { id } });
     if (!faq) throw new ApiException('NOT_FOUND', 'FAQ not found.', 404);
+    return faq;
   }
 }

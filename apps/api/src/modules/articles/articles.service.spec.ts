@@ -49,10 +49,14 @@ function buildService() {
     findMany: jest.fn<Promise<unknown[]>, unknown[]>(),
     create: jest.fn<Promise<unknown>, [{ data: Record<string, unknown> }]>(),
   };
+  const articleGalleryImage = {
+    findMany: jest.fn<Promise<unknown[]>, unknown[]>().mockResolvedValue([]),
+  };
   const prisma = {
     article,
     articleCategory,
     articlePublishedSnapshot,
+    articleGalleryImage,
     $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
   const events = { emit: jest.fn() };
@@ -64,6 +68,7 @@ function buildService() {
     article,
     articleCategory,
     articlePublishedSnapshot,
+    articleGalleryImage,
     events,
   };
 }
@@ -439,6 +444,180 @@ describe('ArticlesService.update — translation preservation (Phase 5E-C)', () 
   });
 });
 
+// Phase 5F-P0.3-A — the actual data-preservation guarantee, distinct from the Phase 5E-C tests
+// above (which only prove the service round-trips whatever complete object the *client*
+// pre-merged). These tests simulate a genuinely partial payload — the shape any non-UI caller,
+// or a future admin surface, might legitimately send — against a row that already has other
+// locales saved in the database, and prove the server itself now preserves them.
+describe('ArticlesService.update — partial-payload merge safety (Phase 5F-P0.3-A)', () => {
+  const EXISTING_TRANSLATIONS = {
+    en: { title: 'Title EN' },
+    id: { title: 'Judul ID' },
+    zh: { title: '标题 ZH' },
+    th: { title: 'หัวข้อ TH' },
+    hi: { title: 'शीर्षक HI' },
+    vi: { title: 'Tiêu đề VI' },
+  };
+
+  it('A/B/C/D/E/F — a genuinely partial payload for one locale preserves all five others from the database', async () => {
+    for (const locale of ['id', 'zh', 'th', 'hi', 'vi'] as const) {
+      const { service, article } = buildService();
+      article.findUnique.mockResolvedValue(
+        stubArticleRow({ translations: EXISTING_TRANSLATIONS }),
+      );
+      article.update.mockResolvedValue(stubArticleRow());
+
+      await service.update('a1', {
+        translations: { [locale]: { title: `Updated via ${locale}` } },
+      });
+
+      const [call] = article.update.mock.calls[0] as [
+        { data: { translations: Record<string, Record<string, string>> } },
+      ];
+      expect(call.data.translations[locale].title).toBe(
+        `Updated via ${locale}`,
+      );
+      for (const other of ['en', 'id', 'zh', 'th', 'hi', 'vi'] as const) {
+        if (other === locale) continue;
+        expect(call.data.translations[other]).toEqual(
+          EXISTING_TRANSLATIONS[other],
+        );
+      }
+    }
+  });
+
+  it('G — a partial field within one locale preserves sibling fields already saved in that same locale', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(
+      stubArticleRow({
+        translations: { th: { title: 'หัวข้อ', excerpt: 'บทคัดย่อ' } },
+      }),
+    );
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', {
+      translations: { th: { title: 'หัวข้อใหม่' } },
+    });
+
+    const [call] = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({
+      title: 'หัวข้อใหม่',
+      excerpt: 'บทคัดย่อ',
+    });
+  });
+
+  it('H — updating an SEO translation field preserves the content translation already saved for that locale', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(
+      stubArticleRow({
+        translations: {
+          th: { content: '<p>เนื้อหาเดิม</p>', metaTitle: 'SEO เดิม' },
+        },
+      }),
+    );
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', {
+      translations: { th: { metaTitle: 'SEO ใหม่' } },
+    });
+
+    const [call] = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({
+      content: '<p>เนื้อหาเดิม</p>',
+      metaTitle: 'SEO ใหม่',
+    });
+  });
+
+  it('I — updating content preserves the SEO translation already saved for that locale', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(
+      stubArticleRow({
+        translations: {
+          th: { content: '<p>เนื้อหาเดิม</p>', metaTitle: 'SEO' },
+        },
+      }),
+    );
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', {
+      translations: { th: { content: '<p>เนื้อหาใหม่</p>' } },
+    });
+
+    const [call] = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({
+      content: '<p>เนื้อหาใหม่</p>',
+      metaTitle: 'SEO',
+    });
+  });
+
+  it('J — an empty translations object preserves every existing locale exactly', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(
+      stubArticleRow({ translations: EXISTING_TRANSLATIONS }),
+    );
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', { translations: {} });
+
+    const [call] = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations).toEqual(EXISTING_TRANSLATIONS);
+  });
+
+  it('L — a multi-locale partial payload leaves every untouched locale exactly as saved', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(
+      stubArticleRow({ translations: EXISTING_TRANSLATIONS }),
+    );
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', {
+      translations: {
+        id: { title: 'Judul Baru' },
+        zh: { title: '新标题' },
+      },
+    });
+
+    const [call] = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.id.title).toBe('Judul Baru');
+    expect(call.data.translations.zh.title).toBe('新标题');
+    expect(call.data.translations.en).toEqual(EXISTING_TRANSLATIONS.en);
+    expect(call.data.translations.th).toEqual(EXISTING_TRANSLATIONS.th);
+    expect(call.data.translations.hi).toEqual(EXISTING_TRANSLATIONS.hi);
+    expect(call.data.translations.vi).toEqual(EXISTING_TRANSLATIONS.vi);
+  });
+
+  it('rich-text sanitization still applies to the merged content field, not just newly-incoming locales', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(
+      stubArticleRow({ translations: { en: { title: 'Existing' } } }),
+    );
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.update('a1', {
+      translations: {
+        vi: { content: '<script>alert(1)</script><p>Sạch</p>' },
+      },
+    });
+
+    const [call] = article.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.vi.content).not.toContain('<script');
+    expect(call.data.translations.vi.content).toContain('<p>Sạch</p>');
+    expect(call.data.translations.en).toEqual({ title: 'Existing' });
+  });
+});
+
 describe('ArticlesService.updateCategory — translation preservation (Phase 5E-C)', () => {
   it('a TH-only category name edit persists all other locale translations unchanged', async () => {
     const { service, articleCategory } = buildService();
@@ -464,6 +643,30 @@ describe('ArticlesService.updateCategory — translation preservation (Phase 5E-
     expect(args[0].data.translations.vi).toEqual({
       name: 'Tin tức xuất khẩu',
     });
+  });
+
+  it('Phase 5F-P0.3-A — a genuinely partial payload preserves locales already saved in the database, not just those the client happened to resend', async () => {
+    const { service, articleCategory } = buildService();
+    articleCategory.findUnique.mockResolvedValue(
+      stubArticleCategoryRow({
+        translations: {
+          id: { name: 'Berita Ekspor' },
+          zh: { name: '出口新闻' },
+        },
+      }),
+    );
+    articleCategory.update.mockResolvedValue(stubArticleCategoryRow());
+
+    await service.updateCategory('cat-1', {
+      translations: { th: { name: 'ข่าวการส่งออก' } },
+    });
+
+    const args = articleCategory.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(args[0].data.translations.th).toEqual({ name: 'ข่าวการส่งออก' });
+    expect(args[0].data.translations.id).toEqual({ name: 'Berita Ekspor' });
+    expect(args[0].data.translations.zh).toEqual({ name: '出口新闻' });
   });
 });
 
@@ -1933,5 +2136,53 @@ describe('ArticlesService.restoreSnapshot — AI sync event (Phase 5F-P0.2b-D)',
       'article.update',
       'event.emit',
     ]);
+  });
+});
+
+// Phase 5F-P0.3-A (final hardening) — duplicate() clones an entire article into a brand-new
+// draft row. It was found missing `translations: source.translations` entirely, so a duplicated
+// article silently started with zero translations regardless of how many locales the source had
+// filled in — a genuine translation-loss bug distinct from the wholesale-replace-on-update bug
+// this phase otherwise fixes. Homepage's `duplicateHeroSlide` etc. already carried this line
+// correctly; this brings Articles' `duplicate()` in line with that pattern.
+describe('ArticlesService.duplicate — preserves the source translations (Phase 5F-P0.3-A final hardening)', () => {
+  it('the new draft carries the complete six-locale translations object from the source', async () => {
+    const { service, article } = buildService();
+    const sixLocaleTranslations = {
+      en: { title: 'English', content: '<p>English</p>' },
+      id: { title: 'Indonesia', content: '<p>Indonesia</p>' },
+      zh: { title: '标题', content: '<p>内容</p>' },
+      th: { title: 'หัวข้อ', content: '<p>เนื้อหา</p>' },
+      hi: { title: 'शीर्षक', content: '<p>सामग्री</p>' },
+      vi: { title: 'Tiêu đề', content: '<p>Nội dung</p>' },
+    };
+    article.findUnique.mockResolvedValueOnce(
+      stubArticleRow({ translations: sixLocaleTranslations }),
+    ); // duplicate()'s own source lookup
+    article.findUnique.mockResolvedValueOnce(null); // resolveSlug -> slugTaken: slug is free
+    article.create.mockResolvedValue(
+      stubArticleRow({ id: 'a2', translations: sixLocaleTranslations }),
+    );
+
+    const result = await service.duplicate('a1');
+
+    const [call] = article.create.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations).toEqual(sixLocaleTranslations);
+    expect(Object.keys(call.data.translations)).toEqual([
+      'en',
+      'id',
+      'zh',
+      'th',
+      'hi',
+      'vi',
+    ]);
+    // Existing duplicate-specific behavior (new draft, not featured, fresh slug) survives
+    // unchanged.
+    expect(result.id).toBe('a2');
+    expect(result.id).not.toBe('a1');
+    // The source row is only ever read (source lookup + slug-uniqueness check), never written.
+    expect(article.update).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   toHomepageProcessSection,
@@ -50,7 +51,7 @@ export class ProductionStepsService {
   }
 
   async update(id: string, dto: UpdateProductionStepDto) {
-    await this.assertExists(id);
+    const existing = await this.assertExists(id);
     const step = await this.prisma.productionStep.update({
       where: { id },
       data: {
@@ -63,7 +64,10 @@ export class ProductionStepsService {
         ctaHref: dto.cta_href,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: { illustration: true },
     });
@@ -119,6 +123,7 @@ export class ProductionStepsService {
     const step = await this.prisma.productionStep.findUnique({ where: { id } });
     if (!step)
       throw new ApiException('NOT_FOUND', 'Process stage not found.', 404);
+    return step;
   }
 
   // ── Section header + closing CTA (singleton) ────────────────────────────
@@ -148,7 +153,10 @@ export class ProductionStepsService {
         primaryCtaHref: dto.primary_cta_href,
         secondaryCtaLabel: dto.secondary_cta_label,
         secondaryCtaHref: dto.secondary_cta_href,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toHomepageProcessSection(updated);

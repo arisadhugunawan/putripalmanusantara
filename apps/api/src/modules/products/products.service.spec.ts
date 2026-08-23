@@ -241,6 +241,116 @@ describe('ProductsService.update', () => {
   });
 });
 
+// Phase 5F-P0.3-A — update() previously wrote `translations: dto.translations` as a straight
+// column replace; it now merges against the row's existing translations first (fetched via the
+// same `assertExists()` call that already ran for every update, just widened by one column).
+describe('ProductsService.update — partial-payload merge safety (Phase 5F-P0.3-A)', () => {
+  it('a single-locale partial payload preserves every other locale already saved in the database', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({
+      id: 'p1',
+      translations: {
+        id: { name: 'Kopra' },
+        zh: { name: '椰干' },
+      },
+    });
+    product.update.mockResolvedValue({
+      id: 'p1',
+      gallery: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await service.update('p1', {
+      translations: { th: { name: 'มะพร้าวแห้ง' } },
+    });
+
+    const [call] = product.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({ name: 'มะพร้าวแห้ง' });
+    expect(call.data.translations.id).toEqual({ name: 'Kopra' });
+    expect(call.data.translations.zh).toEqual({ name: '椰干' });
+  });
+
+  it('a single-field edit preserves sibling fields already saved in that same locale', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({
+      id: 'p1',
+      translations: {
+        th: { name: 'ชื่อเดิม', shortDescription: 'คำอธิบายเดิม' },
+      },
+    });
+    product.update.mockResolvedValue({
+      id: 'p1',
+      gallery: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await service.update('p1', {
+      translations: { th: { name: 'ชื่อใหม่' } },
+    });
+
+    const [call] = product.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({
+      name: 'ชื่อใหม่',
+      shortDescription: 'คำอธิบายเดิม',
+    });
+  });
+
+  it('updating an SEO translation field preserves the normal content translation for that locale', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({
+      id: 'p1',
+      translations: {
+        vi: { shortDescription: 'Mô tả', metaTitle: 'SEO cũ' },
+      },
+    });
+    product.update.mockResolvedValue({
+      id: 'p1',
+      gallery: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await service.update('p1', {
+      translations: { vi: { metaTitle: 'SEO mới' } },
+    });
+
+    const [call] = product.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.vi).toEqual({
+      shortDescription: 'Mô tả',
+      metaTitle: 'SEO mới',
+    });
+  });
+
+  it('omitting translations from the patch leaves the column untouched', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({
+      id: 'p1',
+      translations: { id: { name: 'Kopra' } },
+    });
+    product.update.mockResolvedValue({
+      id: 'p1',
+      gallery: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await service.update('p1', { name: 'New Name' });
+
+    const [call] = product.update.mock.calls[0] as [
+      { data: { translations: unknown } },
+    ];
+    expect(call.data.translations).toBeUndefined();
+  });
+});
+
 describe('ProductsService.remove', () => {
   it('converts a P2003 foreign-key violation into PRODUCT_HAS_PUBLISHED_HISTORY (409)', async () => {
     const { service, product } = buildService();

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE } from '@ppn/shared-types';
 import { buildPaginationMeta } from '../../common/dto/pagination-query.dto';
 import { ApiException } from '../../common/exceptions/api.exception';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CreateGalleryCategoryDto,
@@ -80,14 +81,17 @@ export class GalleryService {
   }
 
   async updateCategory(id: string, dto: UpdateGalleryCategoryDto) {
-    await this.assertCategoryExists(id);
+    const existing = await this.assertCategoryExists(id);
     const category = await this.prisma.galleryCategory.update({
       where: { id },
       data: {
         name: dto.name,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toGalleryCategory(category);
@@ -124,6 +128,7 @@ export class GalleryService {
     });
     if (!category)
       throw new ApiException('NOT_FOUND', 'Gallery category not found.', 404);
+    return category;
   }
 
   // ── Items ─────────────────────────────────────────────────────────────
@@ -259,7 +264,10 @@ export class GalleryService {
         featured: dto.featured,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: ITEM_INCLUDE,
     });

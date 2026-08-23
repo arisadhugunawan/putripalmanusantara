@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   toHomepageSupplyNetworkSection,
@@ -62,7 +63,7 @@ export class SupplyNetworkService {
   }
 
   async update(id: string, dto: UpdateSupplyNetworkItemDto) {
-    await this.assertExists(id);
+    const existing = await this.assertExists(id);
     const item = await this.prisma.supplyNetworkItem.update({
       where: { id },
       data: {
@@ -77,7 +78,10 @@ export class SupplyNetworkService {
         position: dto.position,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: { illustration: true },
     });
@@ -147,6 +151,7 @@ export class SupplyNetworkService {
         'Supply network item not found.',
         404,
       );
+    return item;
   }
 
   // ── Connections ("From Node → To Node") ─────────────────────────────────
@@ -230,7 +235,7 @@ export class SupplyNetworkService {
   }
 
   async updateCountry(id: string, dto: UpdateSupplyNetworkCountryDto) {
-    await this.assertCountryExists(id);
+    const existing = await this.assertCountryExists(id);
     const country = await this.prisma.supplyNetworkCountry.update({
       where: { id },
       data: {
@@ -239,7 +244,10 @@ export class SupplyNetworkService {
         status: dto.status,
         order: dto.order,
         active: dto.active,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toSupplyNetworkCountry(country);
@@ -264,6 +272,7 @@ export class SupplyNetworkService {
     });
     if (!country)
       throw new ApiException('NOT_FOUND', 'Country not found.', 404);
+    return country;
   }
 
   // ── Section header + center node copy + closing CTA (singleton) ─────────
@@ -301,7 +310,10 @@ export class SupplyNetworkService {
         particleFlow: dto.particle_flow,
         hoverEffect: dto.hover_effect,
         effect3d: dto.effect_3d,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
     });
     return toHomepageSupplyNetworkSection(updated);

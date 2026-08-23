@@ -7,6 +7,7 @@ import {
   type ContentPublishedEvent,
 } from '../../common/events/content-published.event';
 import { buildPaginationMeta } from '../../common/dto/pagination-query.dto';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AddProductGalleryItemDto,
@@ -510,7 +511,7 @@ export class ProductsService {
   }
 
   async update(id: string, dto: UpdateProductDto) {
-    await this.assertExists(id);
+    const existing = await this.assertExists(id);
     if (dto.slug) {
       await this.assertSlugAvailable(dto.slug, id);
     }
@@ -535,7 +536,10 @@ export class ProductsService {
         // change public visibility). Only publish()/unpublish()/restoreSnapshot() may change
         // status, matching the brief's Edit → Save Draft → Publish separation.
         order: dto.order,
-        translations: dto.translations,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: DETAIL_INCLUDE,
     });
@@ -821,9 +825,10 @@ export class ProductsService {
   private async assertExists(id: string) {
     const exists = await this.prisma.product.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, translations: true },
     });
     if (!exists) throw new ApiException('NOT_FOUND', 'Product not found.', 404);
+    return exists;
   }
 
   private async assertSlugAvailable(slug: string, excludeId?: string) {

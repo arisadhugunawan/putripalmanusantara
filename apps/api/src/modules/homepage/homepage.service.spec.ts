@@ -19,10 +19,50 @@ function buildService() {
     findFirst: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
+  const partnerLogo = {
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const shippingPartner = {
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const homepageHighlight = {
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const homepagePartnersSection = {
+    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const homepageShippingSection = {
+    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const homepageWhyChooseUs = {
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const exportDestination = {
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const homepageExportReach = {
+    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
   const prisma = {
     homepagePublishedSnapshot,
     heroSlide,
     homepageAboutPreview,
+    partnerLogo,
+    shippingPartner,
+    homepageHighlight,
+    homepagePartnersSection,
+    homepageShippingSection,
+    homepageWhyChooseUs,
+    exportDestination,
+    homepageExportReach,
     $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
   const events = { emit: jest.fn() };
@@ -36,6 +76,14 @@ function buildService() {
     homepagePublishedSnapshot,
     heroSlide,
     homepageAboutPreview,
+    partnerLogo,
+    shippingPartner,
+    homepageHighlight,
+    homepagePartnersSection,
+    homepageShippingSection,
+    homepageWhyChooseUs,
+    exportDestination,
+    homepageExportReach,
     events,
   };
 }
@@ -259,5 +307,378 @@ describe('HomepageService.updateAboutPreview — translation preservation (Phase
     expect(args[0].data.ctaLink).toBeUndefined();
     expect(args[0].data.videoSource).toBeUndefined();
     expect(args[0].data.enabled).toBeUndefined();
+  });
+});
+
+// Phase 5F-P0.3-A — the Phase 5D/5E-B tests above only prove the service round-trips whatever
+// complete object the client pre-merged; they never exercise a row that already has *different*
+// locale data sitting in the database independent of what the test sends. These simulate a
+// genuinely partial payload — one locale, sometimes one field — against a row whose `translations`
+// already holds other locales/fields, proving the server itself (not just editor-side convention)
+// now preserves them, for every one of Homepage's 10 translation-bearing update paths.
+function stubExistingTranslations(overrides: Record<string, unknown> = {}) {
+  return {
+    id: { title: 'Judul Indonesia', description: 'Deskripsi Indonesia' },
+    zh: { title: '标题', description: '描述' },
+    th: { title: 'หัวข้อ', description: 'คำอธิบาย' },
+    hi: { title: 'शीर्षक', description: 'विवरण' },
+    vi: { title: 'Tiêu đề', description: 'Mô tả' },
+    ...overrides,
+  };
+}
+
+describe('HomepageService — partial-payload merge safety against saved data (Phase 5F-P0.3-A)', () => {
+  it('updateHeroSlide: an EN-only, single-field edit preserves every other locale and every other EN field already saved', async () => {
+    const { service, heroSlide } = buildService();
+    heroSlide.findUnique.mockResolvedValue({
+      id: 'slide-1',
+      translations: stubExistingTranslations({
+        en: { title: 'Old English', description: 'Keep this' },
+      }),
+    });
+    heroSlide.update.mockResolvedValue(stubHeroSlideRow());
+
+    await service.updateHeroSlide('slide-1', {
+      translations: { en: { title: 'New English' } },
+    });
+
+    const [call] = heroSlide.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({
+      title: 'New English',
+      description: 'Keep this',
+    });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  function stubPartnerLogoRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'logo-1',
+      logo: {
+        id: 'media-1',
+        fileUrl: 'https://example.com/logo.png',
+        fileType: 'image',
+        altText: null,
+        width: 100,
+        height: 100,
+        uploadedAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+      partnerName: 'Partner',
+      description: null,
+      websiteUrl: null,
+      openInNewTab: true,
+      altText: null,
+      category: 'Other',
+      order: 0,
+      enabled: true,
+      featured: true,
+      translations: null,
+      ...overrides,
+    };
+  }
+
+  it('updatePartnerLogo: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, partnerLogo } = buildService();
+    partnerLogo.findUnique.mockResolvedValue({
+      id: 'logo-1',
+      translations: stubExistingTranslations(),
+    });
+    partnerLogo.update.mockResolvedValue(stubPartnerLogoRow());
+
+    await service.updatePartnerLogo('logo-1', {
+      translations: { en: { title: 'New Logo Title' } },
+    });
+
+    const [call] = partnerLogo.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ title: 'New Logo Title' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  function stubShippingPartnerRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'partner-1',
+      logo: {
+        id: 'media-1',
+        fileUrl: 'https://example.com/logo.png',
+        fileType: 'image',
+        altText: null,
+        width: 100,
+        height: 100,
+        uploadedAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+      partnerName: 'Partner',
+      relationshipType: 'carrier',
+      description: null,
+      websiteUrl: null,
+      openInNewTab: true,
+      altText: null,
+      order: 0,
+      enabled: true,
+      featured: true,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      translations: null,
+      ...overrides,
+    };
+  }
+
+  it('updateShippingPartner: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, shippingPartner } = buildService();
+    shippingPartner.findUnique.mockResolvedValue({
+      id: 'partner-1',
+      translations: stubExistingTranslations(),
+    });
+    shippingPartner.update.mockResolvedValue(stubShippingPartnerRow());
+
+    await service.updateShippingPartner('partner-1', {
+      translations: { en: { title: 'New Partner Title' } },
+    });
+
+    const [call] = shippingPartner.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ title: 'New Partner Title' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateAboutPreview: a single-locale partial payload against a row with saved data preserves every other locale', async () => {
+    const { service, homepageAboutPreview } = buildService();
+    homepageAboutPreview.findFirst.mockResolvedValue(
+      stubAboutPreviewRow({ translations: stubExistingTranslations() }),
+    );
+    homepageAboutPreview.update.mockResolvedValue(stubAboutPreviewRow());
+
+    await service.updateAboutPreview({
+      translations: { en: { title: 'New About Title' } },
+    });
+
+    const [call] = homepageAboutPreview.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ title: 'New About Title' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  function stubHighlightRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'highlight-1',
+      icon: 'quality',
+      title: 'Highlight',
+      description: null,
+      order: 0,
+      enabled: true,
+      translations: null,
+      ...overrides,
+    };
+  }
+
+  it('updateHighlight: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, homepageHighlight } = buildService();
+    homepageHighlight.findUnique.mockResolvedValue({
+      id: 'highlight-1',
+      translations: stubExistingTranslations(),
+    });
+    homepageHighlight.update.mockResolvedValue(stubHighlightRow());
+
+    await service.updateHighlight('highlight-1', {
+      translations: { en: { title: 'New Highlight Title' } },
+    });
+
+    const [call] = homepageHighlight.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({
+      title: 'New Highlight Title',
+    });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updatePartnersSection: a single-locale partial payload against a saved row preserves every other locale', async () => {
+    const { service, homepagePartnersSection } = buildService();
+    homepagePartnersSection.findFirst.mockResolvedValue({
+      id: 'section-1',
+      translations: stubExistingTranslations(),
+    });
+    homepagePartnersSection.update.mockResolvedValue({
+      id: 'section-1',
+      title: null,
+      subtitle: null,
+      marqueeDurationSeconds: 30,
+      enabled: true,
+      translations: null,
+    });
+
+    await service.updatePartnersSection({
+      translations: { en: { title: 'New Partners Title' } },
+    });
+
+    const [call] = homepagePartnersSection.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ title: 'New Partners Title' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateShippingSection: a single-locale partial payload against a saved row preserves every other locale', async () => {
+    const { service, homepageShippingSection } = buildService();
+    homepageShippingSection.findFirst.mockResolvedValue({
+      id: 'section-1',
+      translations: stubExistingTranslations(),
+    });
+    homepageShippingSection.update.mockResolvedValue({
+      id: 'section-1',
+      title: null,
+      subtitle: null,
+      marqueeDurationSeconds: 30,
+      showPartnerName: true,
+      showRelationshipType: true,
+      enabled: true,
+      translations: null,
+    });
+
+    await service.updateShippingSection({
+      translations: { en: { title: 'New Shipping Title' } },
+    });
+
+    const [call] = homepageShippingSection.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ title: 'New Shipping Title' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  function stubWhyChooseUsRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'item-1',
+      icon: 'quality',
+      title: 'Item',
+      order: 0,
+      enabled: true,
+      featured: true,
+      translations: null,
+      ...overrides,
+    };
+  }
+
+  it('updateWhyChooseUs: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, homepageWhyChooseUs } = buildService();
+    homepageWhyChooseUs.findUnique.mockResolvedValue({
+      id: 'item-1',
+      translations: stubExistingTranslations(),
+    });
+    homepageWhyChooseUs.update.mockResolvedValue(stubWhyChooseUsRow());
+
+    await service.updateWhyChooseUs('item-1', {
+      translations: { en: { title: 'New Why Choose Us Title' } },
+    });
+
+    const [call] = homepageWhyChooseUs.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({
+      title: 'New Why Choose Us Title',
+    });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  function stubExportDestinationRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'dest-1',
+      countryCode: 'ID',
+      countryCodeAlpha3: 'IDN',
+      countryName: 'Indonesia',
+      exportStatus: 'active_destination',
+      region: null,
+      description: null,
+      exportVolume: null,
+      exportFrequency: null,
+      destinationPort: null,
+      products: [],
+      order: 0,
+      enabled: true,
+      featured: false,
+      showInCompanyProfile: false,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      translations: null,
+      ...overrides,
+    };
+  }
+
+  it('updateExportDestination: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, exportDestination } = buildService();
+    exportDestination.findUnique.mockResolvedValue({
+      id: 'dest-1',
+      translations: stubExistingTranslations(),
+    });
+    exportDestination.update.mockResolvedValue(stubExportDestinationRow());
+
+    await service.updateExportDestination('dest-1', {
+      translations: { en: { title: 'New Destination Title' } },
+    });
+
+    const [call] = exportDestination.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({
+      title: 'New Destination Title',
+    });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateExportReachSection: a single-locale partial payload against a saved row preserves every other locale', async () => {
+    const { service, homepageExportReach } = buildService();
+    homepageExportReach.findFirst.mockResolvedValue({
+      id: 'reach-1',
+      translations: stubExistingTranslations(),
+    });
+    homepageExportReach.update.mockResolvedValue({
+      id: 'reach-1',
+      heading: null,
+      subtitle: null,
+      enabled: true,
+      translations: null,
+    });
+
+    await service.updateExportReachSection({
+      translations: { en: { title: 'New Export Reach Title' } },
+    });
+
+    const [call] = homepageExportReach.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({
+      title: 'New Export Reach Title',
+    });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
   });
 });

@@ -6,10 +6,24 @@ function buildService() {
     findUnique: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
-  const prisma = { supplyNetworkItem };
+  const supplyNetworkCountry = {
+    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const homepageSupplyNetworkSection = {
+    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    update: jest.fn<Promise<unknown>, unknown[]>(),
+  };
+  const prisma = {
+    supplyNetworkItem,
+    supplyNetworkCountry,
+    homepageSupplyNetworkSection,
+  };
   return {
     service: new SupplyNetworkService(prisma as unknown as PrismaService),
     supplyNetworkItem,
+    supplyNetworkCountry,
+    homepageSupplyNetworkSection,
   };
 }
 
@@ -135,5 +149,90 @@ describe('SupplyNetworkService.update — translation preservation (Phase 5E-B)'
     expect(args[0].data.position).toBeUndefined();
     expect(args[0].data.order).toBeUndefined();
     expect(args[0].data.active).toBeUndefined();
+  });
+});
+
+// Phase 5F-P0.3-A — the tests above only prove the service round-trips whatever complete
+// object the client pre-merged. These simulate a genuinely partial payload against a row that
+// already has other locales saved in the database, proving the server itself now preserves
+// them for Item, Country, and Section — the three sub-models in this module.
+describe('SupplyNetworkService — partial-payload merge safety against saved data (Phase 5F-P0.3-A)', () => {
+  it('Item.update: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, supplyNetworkItem } = buildService();
+    supplyNetworkItem.findUnique.mockResolvedValue(
+      stubSupplyNetworkItemRow({
+        translations: {
+          id: { title: 'Jaringan Petani' },
+          zh: { title: '农民网络' },
+        },
+      }),
+    );
+    supplyNetworkItem.update.mockResolvedValue(stubSupplyNetworkItemRow());
+
+    await service.update('node-1', {
+      translations: { th: { title: 'เครือข่ายเกษตรกร' } },
+    });
+
+    const [call] = supplyNetworkItem.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({ title: 'เครือข่ายเกษตรกร' });
+    expect(call.data.translations.id).toEqual({ title: 'Jaringan Petani' });
+    expect(call.data.translations.zh).toEqual({ title: '农民网络' });
+  });
+
+  it('Country.updateCountry: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, supplyNetworkCountry } = buildService();
+    supplyNetworkCountry.findUnique.mockResolvedValue({
+      id: 'country-1',
+      name: 'Indonesia',
+      flagEmoji: '🇮🇩',
+      status: 'active',
+      order: 0,
+      active: true,
+      translations: {
+        id: { name: 'Indonesia' },
+        zh: { name: '印度尼西亚' },
+      },
+    });
+    supplyNetworkCountry.update.mockResolvedValue({});
+
+    await service.updateCountry('country-1', {
+      translations: { th: { name: 'อินโดนีเซีย' } },
+    });
+
+    const [call] = supplyNetworkCountry.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({ name: 'อินโดนีเซีย' });
+    expect(call.data.translations.id).toEqual({ name: 'Indonesia' });
+    expect(call.data.translations.zh).toEqual({ name: '印度尼西亚' });
+  });
+
+  it('Section.updateSection: a single-locale partial payload preserves every other locale already saved', async () => {
+    const { service, homepageSupplyNetworkSection } = buildService();
+    homepageSupplyNetworkSection.findFirst.mockResolvedValue({
+      id: 'section-1',
+      translations: {
+        id: { heading: 'Jaringan Pasokan Kami' },
+        zh: { heading: '我们的供应网络' },
+      },
+    });
+    homepageSupplyNetworkSection.update.mockResolvedValue({});
+
+    await service.updateSection({
+      translations: { th: { heading: 'เครือข่ายห่วงโซ่อุปทานของเรา' } },
+    });
+
+    const [call] = homepageSupplyNetworkSection.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.th).toEqual({
+      heading: 'เครือข่ายห่วงโซ่อุปทานของเรา',
+    });
+    expect(call.data.translations.id).toEqual({
+      heading: 'Jaringan Pasokan Kami',
+    });
+    expect(call.data.translations.zh).toEqual({ heading: '我们的供应网络' });
   });
 });

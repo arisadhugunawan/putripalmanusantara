@@ -529,3 +529,448 @@ describe('AboutCompanyService.updateProfile — stored-XSS hardening (Phase 5F-P
     expect(args[0].data.companyOverview).toBeUndefined();
   });
 });
+
+// Phase 5F-P0.3-A — the Phase 5E-A tests above only prove the service round-trips whatever
+// complete object the client pre-merged; the mocked rows they read back never carry *different*
+// locale data than what the test itself sends. These simulate a genuinely partial payload
+// against a row whose `translations` column already holds other locales/fields in the database,
+// proving the server itself (not just Admin-editor convention) now preserves them. This module
+// has 25 update paths sharing exactly two wiring shapes — the generic `assertExists<T>()` helper
+// (used by every repeatable child row) and the `getOrCreateX()` singleton getter (used by every
+// section/profile singleton) — so this suite exercises a representative sample of each shape,
+// plus `updateProfile`'s combined merge+sanitize ordering, which is the highest-risk site in the
+// file since it layers `sanitizeTranslationsRichText` on top of the merge.
+function stubExistingTranslations(overrides: Record<string, unknown> = {}) {
+  return {
+    id: { title: 'Judul Indonesia', description: 'Deskripsi Indonesia' },
+    zh: { title: '标题', description: '描述' },
+    th: { title: 'หัวข้อ', description: 'คำอธิบาย' },
+    hi: { title: 'शीर्षक', description: 'विवरण' },
+    vi: { title: 'Tiêu đề', description: 'Mô tả' },
+    ...overrides,
+  };
+}
+
+describe('AboutCompanyService — partial-payload merge safety against saved data (Phase 5F-P0.3-A)', () => {
+  it('updateProfile: an EN-only edit preserves every other locale already saved, through the merge+sanitize pipeline', async () => {
+    const aboutCompanyProfile = {
+      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { aboutCompanyProfile } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    aboutCompanyProfile.findFirst.mockResolvedValue(
+      stubProfileRow({ translations: stubExistingTranslations() }),
+    );
+    aboutCompanyProfile.update.mockResolvedValue(stubProfileRow());
+
+    await service.updateProfile({
+      translations: { en: { eyebrow: 'New English Eyebrow' } },
+    });
+
+    const [call] = aboutCompanyProfile.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({
+      eyebrow: 'New English Eyebrow',
+    });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateFact (generic assertExists-based repeatable row): a single-locale payload preserves every other locale already saved', async () => {
+    const aboutCompanyFact = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { aboutCompanyFact } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    aboutCompanyFact.findUnique.mockResolvedValue({
+      id: 'fact-1',
+      translations: stubExistingTranslations(),
+    });
+    aboutCompanyFact.update.mockResolvedValue({
+      id: 'fact-1',
+      label: 'Location',
+      value: 'Palu',
+      icon: null,
+      order: 0,
+      active: true,
+      translations: null,
+    });
+
+    await service.updateFact('fact-1', {
+      translations: { en: { label: 'New English Label' } },
+    });
+
+    const [call] = aboutCompanyFact.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ label: 'New English Label' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateFacility (assertExists-based repeatable row, media-heavy DTO): preserves every other locale already saved', async () => {
+    const facility = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { facility } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    facility.findUnique.mockResolvedValue({
+      id: 'facility-1',
+      translations: stubExistingTranslations(),
+    });
+    facility.update.mockResolvedValue({
+      id: 'facility-1',
+      name: 'Warehouse',
+      description: '',
+      facilityType: 'warehouse',
+      location: '',
+      status: 'operational',
+      coverImage: null,
+      gallery: [],
+      order: 0,
+      active: true,
+      featured: false,
+      translations: null,
+    });
+
+    await service.updateFacility('facility-1', {
+      translations: { en: { name: 'New Warehouse Name' } },
+    });
+
+    const [call] = facility.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ name: 'New Warehouse Name' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateTeamSection (getOrCreate-based singleton): a single-locale payload against a saved row preserves every other locale', async () => {
+    const aboutCompanyTeamSection = {
+      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { aboutCompanyTeamSection } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    aboutCompanyTeamSection.findFirst.mockResolvedValue({
+      id: 'section-1',
+      translations: stubExistingTranslations(),
+    });
+    aboutCompanyTeamSection.update.mockResolvedValue({
+      id: 'section-1',
+      eyebrow: null,
+      heading: null,
+      description: null,
+      ctaLabel: null,
+      ctaHref: null,
+      showCounter: true,
+      translations: null,
+    });
+
+    await service.updateTeamSection({
+      translations: { en: { heading: 'New Team Heading' } },
+    });
+
+    const [call] = aboutCompanyTeamSection.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ heading: 'New Team Heading' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateMoqPaymentQuickCard: a single-locale payload preserves every other locale already saved', async () => {
+    const moqPaymentQuickCard = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { moqPaymentQuickCard } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    moqPaymentQuickCard.findUnique.mockResolvedValue({
+      id: 'card-1',
+      translations: stubExistingTranslations(),
+    });
+    moqPaymentQuickCard.update.mockResolvedValue({
+      id: 'card-1',
+      label: 'MOQ',
+      value: '1 container',
+      icon: 'container',
+      order: 0,
+      active: true,
+      translations: null,
+    });
+
+    await service.updateMoqPaymentQuickCard('card-1', {
+      translations: { en: { label: 'New MOQ Label' } },
+    });
+
+    const [call] = moqPaymentQuickCard.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ label: 'New MOQ Label' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.zh).toEqual(stubExistingTranslations().zh);
+    expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
+    expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  it('updateFacilitiesFaqSection (getOrCreate-based singleton): a single-locale payload preserves every other locale already saved', async () => {
+    const aboutCompanyFacilitiesFaqSection = {
+      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { aboutCompanyFacilitiesFaqSection } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    aboutCompanyFacilitiesFaqSection.findFirst.mockResolvedValue({
+      id: 'faq-section-1',
+      translations: stubExistingTranslations(),
+    });
+    aboutCompanyFacilitiesFaqSection.update.mockResolvedValue({
+      id: 'faq-section-1',
+      eyebrow: null,
+      heading: null,
+      description: null,
+      accordionMode: 'single',
+      ctaTitle: null,
+      ctaDescription: null,
+      ctaPrimaryLabel: null,
+      ctaPrimaryHref: null,
+      ctaSecondaryLabel: null,
+      ctaSecondaryHref: null,
+      translations: null,
+    });
+
+    await service.updateFacilitiesFaqSection({
+      translations: { en: { heading: 'New FAQ Heading' } },
+    });
+
+    const [call] = aboutCompanyFacilitiesFaqSection.update.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations.en).toEqual({ heading: 'New FAQ Heading' });
+    expect(call.data.translations.id).toEqual(stubExistingTranslations().id);
+    expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+});
+
+// Phase 5F-P0.3-A (final hardening) — duplicate* methods clone an entire row into a brand-new
+// one; unlike update(), there is no partial payload to merge, so the fix here is simply "copy
+// `source.translations` into the new row's `create()` call," matching the pattern Homepage's
+// `duplicateHeroSlide`/`duplicatePartnerLogo`/`duplicateShippingPartner` already used correctly.
+// These three About Company duplicate methods were found missing that one line entirely — a
+// duplicate silently started from zero translations regardless of how many locales the source
+// had filled in.
+function stubSixLocaleTranslations(overrides: Record<string, unknown> = {}) {
+  return {
+    en: { title: 'English', description: 'English description' },
+    id: { title: 'Indonesia', description: 'Deskripsi Indonesia' },
+    zh: { title: '标题', description: '描述' },
+    th: { title: 'หัวข้อ', description: 'คำอธิบาย' },
+    hi: { title: 'शीर्षक', description: 'विवरण' },
+    vi: { title: 'Tiêu đề', description: 'Mô tả' },
+    ...overrides,
+  };
+}
+
+describe('AboutCompanyService — duplicate* preserves the source translations (Phase 5F-P0.3-A final hardening)', () => {
+  it('duplicateTeamMember: the new row carries the complete six-locale translations object', async () => {
+    const teamMember = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      count: jest.fn<Promise<number>, unknown[]>(),
+      create: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { teamMember } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    const source = {
+      id: 'member-1',
+      name: 'Jane Doe',
+      position: 'CEO',
+      biography: '',
+      responsibilities: '',
+      department: null,
+      photoId: null,
+      linkedinUrl: null,
+      email: null,
+      phone: null,
+      active: true,
+      featured: false,
+      translations: stubSixLocaleTranslations(),
+    };
+    teamMember.findUnique.mockResolvedValue(source);
+    teamMember.count.mockResolvedValue(3);
+    teamMember.create.mockResolvedValue({
+      id: 'member-2',
+      name: 'Jane Doe — Copy',
+      translations: stubSixLocaleTranslations(),
+    });
+
+    await service.duplicateTeamMember('member-1');
+
+    const [call] = teamMember.create.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations).toEqual(stubSixLocaleTranslations());
+    expect(Object.keys(call.data.translations)).toEqual([
+      'en',
+      'id',
+      'zh',
+      'th',
+      'hi',
+      'vi',
+    ]);
+    // The source row itself is never written to — only read once via findUnique.
+    expect(teamMember.findUnique).toHaveBeenCalledTimes(1);
+    expect(teamMember.update).not.toHaveBeenCalled();
+  });
+
+  it('duplicateWhatWeDoItem: the new row carries the complete six-locale translations object', async () => {
+    const whatWeDoItem = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      count: jest.fn<Promise<number>, unknown[]>(),
+      create: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { whatWeDoItem } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    const source = {
+      id: 'item-1',
+      title: 'Export',
+      shortDescription: '',
+      detailedDescription: '',
+      keyPoints: [],
+      mediaId: null,
+      productId: null,
+      active: true,
+      featured: false,
+      translations: stubSixLocaleTranslations(),
+    };
+    whatWeDoItem.findUnique.mockResolvedValue(source);
+    whatWeDoItem.count.mockResolvedValue(2);
+    whatWeDoItem.create.mockResolvedValue({
+      id: 'item-2',
+      title: 'Export — Copy',
+      translations: stubSixLocaleTranslations(),
+    });
+
+    await service.duplicateWhatWeDoItem('item-1');
+
+    const [call] = whatWeDoItem.create.mock.calls[0] as [
+      { data: { translations: Record<string, Record<string, string>> } },
+    ];
+    expect(call.data.translations).toEqual(stubSixLocaleTranslations());
+    expect(Object.keys(call.data.translations)).toEqual([
+      'en',
+      'id',
+      'zh',
+      'th',
+      'hi',
+      'vi',
+    ]);
+    expect(whatWeDoItem.update).not.toHaveBeenCalled();
+  });
+
+  it('duplicateLegalDocument: the new row carries the complete six-locale translations object, and a new id, with verified reset to false', async () => {
+    const legalCertificateDocument = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      count: jest.fn<Promise<number>, unknown[]>(),
+      create: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      { legalCertificateDocument } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    const source = {
+      id: 'doc-1',
+      title: 'Export License',
+      documentType: 'license',
+      categoryId: null,
+      country: null,
+      documentNumber: null,
+      issuingOrganization: null,
+      issueDate: null,
+      expiryDate: null,
+      description: null,
+      fileId: 'file-1',
+      previewImageId: null,
+      active: true,
+      featured: false,
+      verified: true,
+      translations: stubSixLocaleTranslations(),
+    };
+    legalCertificateDocument.findUnique.mockResolvedValue(source);
+    legalCertificateDocument.count.mockResolvedValue(1);
+    legalCertificateDocument.create.mockResolvedValue({
+      id: 'doc-2',
+      title: 'Export License — Copy',
+      verified: false,
+      translations: stubSixLocaleTranslations(),
+    });
+
+    const result = await service.duplicateLegalDocument('doc-1');
+
+    const [call] = legalCertificateDocument.create.mock.calls[0] as [
+      {
+        data: {
+          translations: Record<string, Record<string, string>>;
+          verified: boolean;
+        };
+      },
+    ];
+    expect(call.data.translations).toEqual(stubSixLocaleTranslations());
+    expect(Object.keys(call.data.translations)).toEqual([
+      'en',
+      'id',
+      'zh',
+      'th',
+      'hi',
+      'vi',
+    ]);
+    // Existing duplicate-specific behavior (verified is deliberately reset, never copied) must
+    // survive this fix unchanged.
+    expect(call.data.verified).toBe(false);
+    expect(result.id).toBe('doc-2');
+    expect(result.id).not.toBe(source.id);
+    expect(legalCertificateDocument.update).not.toHaveBeenCalled();
+  });
+});
