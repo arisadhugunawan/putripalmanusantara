@@ -25,6 +25,10 @@ describe('AiPublishSyncListener', () => {
     ['home', 'publish:home'],
     ['about_company', 'publish:about_company'],
     ['contact', 'publish:contact'],
+    // Phase 5F-P0.2b-D: Articles now emits this event too, using source='news' (the same
+    // AiSourceKey Articles' extraction has always used) — this listener needed zero changes to
+    // support it, since it was already fully source-agnostic.
+    ['news', 'publish:news'],
   ] as const)(
     'handles source=%s (no entityId) as trigger=%s',
     (source, expectedTrigger) => {

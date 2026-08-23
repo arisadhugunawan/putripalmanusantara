@@ -3,7 +3,12 @@
  * this event must never require a content module to import anything AI-flavored. */
 export const CONTENT_PUBLISHED_EVENT = 'content.published';
 
-export type PublishedContentSource = 'home' | 'about_company' | 'contact' | 'products';
+// 'news' — not 'articles' — deliberately matches the AI module's own `AiSourceKey` value for
+// this content type (see @ppn/shared-types' AI_SOURCE_KEYS) exactly like every other entry here
+// already does (home/about_company/contact/products all match their AiSourceKey 1:1). Phase
+// 5F-P0.2b-D: Articles' publish()/restoreSnapshot() now emit this too.
+export type PublishedContentSource =
+  'home' | 'about_company' | 'contact' | 'products' | 'news';
 
 /** Payload is intentionally minimal: an enum-like `source` plus an optional id. Never the
  * published entity itself — a listener that needs the actual content re-reads it through the

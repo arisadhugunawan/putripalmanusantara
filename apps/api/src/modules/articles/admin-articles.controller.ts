@@ -9,7 +9,11 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
+import type { CurrentAdminPayload } from '../../common/decorators/current-admin.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { RevalidationService } from '../../revalidation/revalidation.service';
 import { ArticlesService } from './articles.service';
 import { AdminArticleQueryDto } from './dto/admin-article-query.dto';
@@ -24,7 +28,7 @@ import {
 } from './dto/article.dto';
 
 @Controller('api/v1/admin/articles')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminArticlesController {
   constructor(
     private readonly articlesService: ArticlesService,
@@ -105,6 +109,64 @@ export class AdminArticlesController {
       '/',
     ]);
     return article;
+  }
+
+  // Publish/unpublish/restore are the only Article actions restricted to super_admin —
+  // matching the exact scope Homepage/About Company/Products already use (Phase 5F-P0.2 /
+  // P0.2b-C). Ordinary content CRUD above (create/update/delete/gallery/categories) and version
+  // history below stay open to every authenticated admin, unchanged.
+  @Post(':id/publish')
+  @Roles('super_admin')
+  async publish(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: CurrentAdminPayload,
+  ) {
+    const snapshot = await this.articlesService.publish(id, admin);
+    const slug = await this.articlesService.getSlug(id);
+    await this.revalidation.revalidate([
+      '/articles',
+      ...(slug ? [`/articles/${slug}`] : []),
+      '/',
+    ]);
+    return snapshot;
+  }
+
+  @Post(':id/unpublish')
+  @Roles('super_admin')
+  async unpublish(@Param('id') id: string) {
+    const article = await this.articlesService.unpublish(id);
+    await this.revalidation.revalidate([
+      '/articles',
+      `/articles/${article.slug}`,
+      '/',
+    ]);
+    return article;
+  }
+
+  @Get(':id/snapshots')
+  listSnapshots(@Param('id') id: string) {
+    return this.articlesService.listSnapshots(id);
+  }
+
+  @Post(':id/snapshots/:snapshotId/restore')
+  @Roles('super_admin')
+  async restoreSnapshot(
+    @Param('id') id: string,
+    @Param('snapshotId') snapshotId: string,
+    @CurrentAdmin() admin: CurrentAdminPayload,
+  ) {
+    const snapshot = await this.articlesService.restoreSnapshot(
+      id,
+      snapshotId,
+      admin,
+    );
+    const slug = await this.articlesService.getSlug(id);
+    await this.revalidation.revalidate([
+      '/articles',
+      ...(slug ? [`/articles/${slug}`] : []),
+      '/',
+    ]);
+    return snapshot;
   }
 
   @Delete(':id')

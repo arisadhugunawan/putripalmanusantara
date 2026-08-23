@@ -420,7 +420,15 @@ model Article {
   /// i18n — non-English overrides for title/excerpt/content/metaTitle/metaDescription/category.
   translations Json?
 
+  /// Set only by publish()/restoreSnapshot() — never by ordinary update() — so it reflects
+  /// exactly when the currently-live published snapshot was produced, independent of any
+  /// draft edits made since. Denormalized alongside `snapshots` purely to avoid an extra query
+  /// on every admin list/detail read just to show "Last published". (P0.2b-A: column added,
+  /// not yet written by publish()/restoreSnapshot() — those don't exist yet; see P0.2b-B.)
+  lastPublishedAt DateTime? @map("last_published_at")
+
   galleryImages ArticleGalleryImage[]
+  snapshots     ArticlePublishedSnapshot[]
 
   @@index([status])
   @@index([publishedAt])
@@ -428,6 +436,34 @@ model Article {
   @@index([featured])
   @@index([instagramUrl])
   @@map("articles")
+}
+
+/// Append-only publish history for one Article — same `data: Json` snapshot idiom as
+/// `ProductPublishedSnapshot`/`AboutCompanyPublishedSnapshot`/`HomepagePublishedSnapshot` (the
+/// whole live row + every relation serialized as one blob, re-mapped through the normal
+/// locale-aware mappers at read time), scoped per-article with a per-article `version` counter
+/// since Articles is a collection of many independently-publishable items, not a single
+/// page/section. No `onDelete: Cascade` on `articleId` — deleting an Article with existing
+/// snapshots must fail (default RESTRICT), never silently erase publish history; a future
+/// `ArticlesService.remove()` change should turn that FK violation into a clear 409, mirroring
+/// `ProductsService.remove()`'s `PRODUCT_HAS_PUBLISHED_HISTORY` pattern (P0.2b-B, not this
+/// phase). `publishedById`/`publishedByName` are plain denormalized strings, not a relation to
+/// `Admin` — same reasoning as `AdminActivityLog`: history must stay readable even if the admin
+/// account is later renamed or removed. (P0.2b-A: table + backfill only — nothing reads from
+/// this table yet; the public API still reads the live `Article` row until P0.2b-B.)
+model ArticlePublishedSnapshot {
+  id              String   @id @default(cuid())
+  articleId       String   @map("article_id")
+  article         Article  @relation(fields: [articleId], references: [id])
+  version         Int
+  data            Json
+  publishedById   String   @map("published_by_id")
+  publishedByName String   @map("published_by_name")
+  publishedAt     DateTime @default(now()) @map("published_at")
+
+  @@unique([articleId, version])
+  @@index([articleId, publishedAt])
+  @@map("article_published_snapshots")
 }
 
 // ── 3.8 GalleryItem ─────────────────────────────────────────────────────

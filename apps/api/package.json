@@ -22,7 +22,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:backfill-article-snapshots": "tsx prisma/run-backfill-article-published-snapshots.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
