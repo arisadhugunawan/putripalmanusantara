@@ -1,14 +1,16 @@
 "use client";
 
 import { Badge, Button, Card, cn, EmptyState, Input, Label, Pagination, Select, Textarea } from "@ppn/ui-components";
-import type { GalleryCategory, GalleryItem, GalleryMediaType, Media, PaginationMeta } from "@ppn/shared-types";
+import type { GalleryCategory, GalleryItem, GalleryMediaType, Locale, Media, PaginationMeta } from "@ppn/shared-types";
 import Image from "next/image";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
+import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
 
 const MEDIA_TYPE_LABELS: Record<GalleryMediaType, string> = {
@@ -511,6 +513,13 @@ function GalleryItemRow({
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
 }) {
+  function onUpdateTranslation(locale: Exclude<Locale, "en">, field: "title" | "shortDescription", value: string) {
+    const current = item.translations ?? {};
+    onUpdate({
+      translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+    });
+  }
+
   return (
     <div className="rounded-field border border-neutral-200 p-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -598,6 +607,47 @@ function GalleryItemRow({
           </div>
         )}
       </div>
+
+      <details className="mt-3 border-t border-neutral-100 pt-3">
+        <summary className="flex cursor-pointer items-center gap-2 text-small font-medium text-neutral-700">
+          🌐 Translations
+          <TranslationStatusBadges
+            translations={item.translations}
+            base={{ title: item.title, shortDescription: item.short_description }}
+          />
+        </summary>
+        <div className="mt-3">
+          <LocaleTabs>
+            {(locale) =>
+              locale === "en" ? (
+                <p className="text-small text-neutral-500">
+                  Bahasa Inggris diedit langsung pada field Judul dan Deskripsi Singkat di atas.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Label className="text-small">Judul</Label>
+                    <Input
+                      defaultValue={item.translations?.[locale]?.title ?? ""}
+                      placeholder={item.title ?? ""}
+                      onBlur={(e) => onUpdateTranslation(locale, "title", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-small">Deskripsi Singkat</Label>
+                    <Textarea
+                      defaultValue={item.translations?.[locale]?.shortDescription ?? ""}
+                      placeholder={item.short_description ?? ""}
+                      rows={2}
+                      onBlur={(e) => onUpdateTranslation(locale, "shortDescription", e.target.value)}
+                    />
+                  </div>
+                </div>
+              )
+            }
+          </LocaleTabs>
+        </div>
+      </details>
     </div>
   );
 }
