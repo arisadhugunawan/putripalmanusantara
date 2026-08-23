@@ -1,11 +1,13 @@
-import type {
-  FooterSettings as SharedFooterSettings,
-  Media as SharedMedia,
+import {
+  DEFAULT_LOCALE,
+  type FooterSettings as SharedFooterSettings,
+  type Media as SharedMedia,
 } from '@ppn/shared-types';
 import type {
   FooterSettingsModel as FooterSettings,
   MediaModel as Media,
 } from '../../../generated/prisma/models';
+import { translate } from '../../common/utils/i18n.util';
 
 export type FooterSettingsWithRelations = FooterSettings & {
   backgroundImage: Media | null;
@@ -26,7 +28,12 @@ function toMedia(media: Media): SharedMedia {
 
 export function toFooterSettings(
   entry: FooterSettingsWithRelations,
+  locale: string = DEFAULT_LOCALE,
 ): SharedFooterSettings {
+  const t = translate(entry, entry.translations, locale, [
+    'tagline',
+    'description',
+  ]);
   return {
     id: entry.id,
     enabled: entry.enabled,
@@ -35,8 +42,8 @@ export function toFooterSettings(
     show_contact: entry.showContact,
     show_navigation: entry.showNavigation,
     company_name: entry.companyName,
-    tagline: entry.tagline,
-    description: entry.description,
+    tagline: t.tagline,
+    description: t.description,
     background_image: entry.backgroundImage
       ? toMedia(entry.backgroundImage)
       : null,
@@ -53,5 +60,6 @@ export function toFooterSettings(
     cta_primary_text: entry.ctaPrimaryText,
     cta_secondary_text: entry.ctaSecondaryText,
     updated_at: entry.updatedAt.toISOString(),
+    translations: entry.translations as SharedFooterSettings['translations'],
   };
 }

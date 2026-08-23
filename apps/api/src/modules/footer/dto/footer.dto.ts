@@ -2,11 +2,13 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 
 const OVERLAY_TYPES = [
   'dark_green',
@@ -54,6 +56,12 @@ export class UpdateFooterSettingsDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  /** Non-English overrides for `tagline`/`description`. Not deep-validated (admin-only
+   * input), matching every other translation-bearing DTO in this codebase. */
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 
   @IsOptional()
   @IsString()

@@ -103,7 +103,7 @@ export async function Footer({
   aboutNav?: AboutNavState;
 }) {
   const [footerSettings, contactPage, products] = await Promise.all([
-    getFooterSettings().catch(() => null),
+    getFooterSettings(locale).catch(() => null),
     getPublicContactPage().catch(() => null),
     getProducts(locale).catch(() => []),
   ]);

@@ -191,8 +191,8 @@ export async function getPageHeader(
 /** Footer Management (Admin → Settings → Footer) — enable toggles, brand-area copy, background
  * treatment, CTA copy. Contact info/social links/office locations are deliberately NOT part of
  * this payload; the Footer component fetches those separately via `getPublicContactPage()`. */
-export async function getFooterSettings(): Promise<PublicFooterSettings> {
-  const json = await request<PublicFooterSettings>("/footer");
+export async function getFooterSettings(locale?: string): Promise<PublicFooterSettings> {
+  const json = await request<PublicFooterSettings>(withLocale("/footer", locale));
   return json.data;
 }
 

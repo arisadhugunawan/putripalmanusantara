@@ -29,6 +29,10 @@ export interface FooterSettings {
   cta_primary_text: string;
   cta_secondary_text: string;
   updated_at: string;
+  /** i18n — non-English overrides for `tagline`/`description`, keyed by locale then field
+   * name. `cta_*` is deliberately excluded — not currently rendered anywhere on the public
+   * site (P0.3-B3 audit), so it stays out of scope until it has a real consumer. */
+  translations?: Record<string, Record<string, string>> | null;
 }
 
 /** Public read shape — identical fields to the admin view (there's nothing sensitive on this

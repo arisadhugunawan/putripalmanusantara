@@ -2149,6 +2149,12 @@ model FooterSettings {
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
+  /// i18n — non-English overrides for tagline/description, the only two currently-rendered
+  /// marketing-copy fields on this model (P0.3-B3 audit: cta_* is dead on the public frontend,
+  /// company_name/media/toggles/colors are global). Never touched for cta_* unless/until those
+  /// fields gain a real public consumer.
+  translations Json?
+
   @@map("footer_settings")
 }
 

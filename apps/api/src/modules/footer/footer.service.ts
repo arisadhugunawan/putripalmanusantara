@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { imageSize } from 'image-size';
 import { ApiException } from '../../common/exceptions/api.exception';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import { MediaService } from '../../media/media.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -38,8 +39,8 @@ export class FooterService {
     return this.prisma.footerSettings.create({ data: {}, include: INCLUDE });
   }
 
-  async find() {
-    return toFooterSettings(await this.getOrCreate());
+  async find(locale?: string) {
+    return toFooterSettings(await this.getOrCreate(), locale);
   }
 
   async update(dto: UpdateFooterSettingsDto) {
@@ -55,6 +56,10 @@ export class FooterService {
         companyName: dto.company_name,
         tagline: dto.tagline,
         description: dto.description,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
         backgroundImageId: dto.background_image_id,
         mobileBackgroundImageId: dto.mobile_background_image_id,
         backgroundAltText: dto.background_alt_text,

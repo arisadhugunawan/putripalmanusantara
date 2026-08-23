@@ -6,6 +6,7 @@ import {
   PAGE_HEADER_POSITIONS,
   type FooterOverlayType,
   type FooterSettings,
+  type Locale,
   type Media,
   type PageHeaderPosition,
 } from "@ppn/shared-types";
@@ -14,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { BackgroundImageUpload } from "@/components/admin/BackgroundImageUpload";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { useToast } from "@/components/admin/Toast";
 import { useSaveState } from "@/hooks/useSaveState";
 
@@ -67,6 +69,25 @@ export default function FooterManagementPage() {
     setRow((prev) => (prev ? { ...prev, ...update } : prev));
   }
 
+  /** Mirrors the `translations` merge every other Admin editor's LocaleTabs block builds
+   * client-side (e.g. FacilitiesEditor's `handleUpdateTranslation`, PageHeader's
+   * `patchTranslation`) — spreads the existing per-locale object so editing one locale/field
+   * never drops another already-entered one. */
+  function patchTranslation(
+    locale: Exclude<Locale, "en">,
+    field: "tagline" | "description",
+    value: string,
+  ) {
+    setRow((prev) => {
+      if (!prev) return prev;
+      const current = prev.translations ?? {};
+      return {
+        ...prev,
+        translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+      };
+    });
+  }
+
   async function handleSave() {
     if (!row) return;
     const result = await saveState.run(() =>
@@ -79,6 +100,7 @@ export default function FooterManagementPage() {
         company_name: row.company_name,
         tagline: row.tagline,
         description: row.description,
+        translations: row.translations,
         background_image_id: row.background_image?.id ?? null,
         mobile_background_image_id: row.mobile_background_image?.id ?? null,
         background_alt_text: row.background_alt_text,
@@ -157,17 +179,53 @@ export default function FooterManagementPage() {
               />
             </div>
             <div>
-              <Label htmlFor="tagline">Headline</Label>
-              <Input id="tagline" value={row.tagline} onChange={(e) => patch({ tagline: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                rows={3}
-                value={row.description}
-                onChange={(e) => patch({ description: e.target.value })}
-              />
+              <p className="text-small font-medium text-neutral-700">Headline &amp; Description</p>
+              <p className="mt-1 text-small text-neutral-500">
+                English is the default shown to any locale without its own translation below —
+                fill in only the languages you want to differ.
+              </p>
+              <div className="mt-3">
+                <LocaleTabs>
+                  {(locale) => {
+                    const isEn = locale === "en";
+                    const taglineValue = isEn
+                      ? row.tagline
+                      : (row.translations?.[locale]?.tagline ?? "");
+                    const descriptionValue = isEn
+                      ? row.description
+                      : (row.translations?.[locale]?.description ?? "");
+                    return (
+                      <div className="flex flex-col gap-4">
+                        <div>
+                          <Label htmlFor={`tagline-${locale}`}>Headline</Label>
+                          <Input
+                            id={`tagline-${locale}`}
+                            value={taglineValue}
+                            onChange={(e) =>
+                              isEn
+                                ? patch({ tagline: e.target.value })
+                                : patchTranslation(locale, "tagline", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`description-${locale}`}>Description</Label>
+                          <Textarea
+                            id={`description-${locale}`}
+                            rows={3}
+                            value={descriptionValue}
+                            onChange={(e) =>
+                              isEn
+                                ? patch({ description: e.target.value })
+                                : patchTranslation(locale, "description", e.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+                    );
+                  }}
+                </LocaleTabs>
+              </div>
             </div>
           </div>
         </Card>
