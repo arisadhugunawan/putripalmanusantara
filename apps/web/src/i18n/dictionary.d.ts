@@ -113,6 +113,10 @@ export interface Dictionary {
     sectionOurProducts: string;
     viewProduct: string;
     whatsappFloatingCta: string;
+    /** Middle sentence of the per-product WhatsApp message built by `buildWhatsAppProductMessage()`
+     * (`apps/web/src/lib/whatsapp.ts`) — wrapped between the CMS-configured greeting/closing.
+     * Must contain the literal "{product}" placeholder. */
+    whatsappProductMessageTemplate: string;
   };
   /** Fixed diagram captions for the Shipment Terms route visualization (Facilities page) — the
    * 4 stage labels are structural UI chrome, not admin-editable content, so they live here like

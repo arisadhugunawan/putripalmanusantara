@@ -75,7 +75,7 @@ export default async function ContactPage({
   const matchedProduct =
     typeof productSlug === "string" ? products.find((p) => p.slug === productSlug) : undefined;
   const whatsappMessage = matchedProduct
-    ? buildWhatsAppProductMessage(settings, matchedProduct.name)
+    ? buildWhatsAppProductMessage(settings, matchedProduct.name, t.whatsappProductMessageTemplate)
     : buildWhatsAppMessage(settings, products.map((p) => p.name));
 
   const weekdayShort = {

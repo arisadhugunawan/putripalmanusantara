@@ -36,14 +36,19 @@ export function buildWhatsAppMessage(
 
 /** Per-product variant (reached via a Product page's "WhatsApp" CTA, `?product=` slug) — reuses
  * the same Admin-configured greeting/closing so an Admin edit to either still applies here,
- * with the single product name substituted in place of the full catalog list. */
+ * with the single product name substituted in place of the full catalog list. `messageTemplate`
+ * is the locale-resolved middle sentence (`dictionary.contact.whatsappProductMessageTemplate`,
+ * see `[locale]/contact/page.tsx`) — same `{product}`-placeholder convention already used by
+ * `ProductQuickActions.tsx`'s `whatsappMessageTemplate`, so both per-product WhatsApp messages
+ * in this codebase share one interpolation pattern. */
 export function buildWhatsAppProductMessage(
   settings: WhatsAppMessageSettings,
   productName: string,
+  messageTemplate: string,
 ): string {
   return [
     settings.whatsapp_message_greeting,
-    `I am interested in your ${productName} and would like to request more information.`,
+    messageTemplate.replace("{product}", productName),
     settings.whatsapp_message_closing,
   ]
     .filter(Boolean)

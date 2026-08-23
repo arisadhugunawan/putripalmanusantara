@@ -100,6 +100,8 @@ const dictionary: Dictionary = {
     sectionOurProducts: "Our Products",
     viewProduct: "View Product",
     whatsappFloatingCta: "Chat with PPN",
+    whatsappProductMessageTemplate:
+      "I am interested in your {product} and would like to request more information.",
   },
   shipmentRoute: {
     loading: "Loading",

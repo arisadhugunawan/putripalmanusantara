@@ -102,6 +102,8 @@ const dictionary: Dictionary = {
     sectionOurProducts: "Sản phẩm của chúng tôi",
     viewProduct: "Xem sản phẩm",
     whatsappFloatingCta: "Trò chuyện với PPN",
+    whatsappProductMessageTemplate:
+      "Tôi quan tâm đến {product} của quý công ty và muốn yêu cầu thêm thông tin.",
   },
   shipmentRoute: {
     loading: "Xếp hàng",
