@@ -84,18 +84,6 @@ export class AiContentExtractorService {
   async extractAll(settings: AiSettingsModel): Promise<ExtractedChunk[]> {
     const chunks: ExtractedChunk[] = [];
 
-    // Contact is locale-invariant (confirmed: ContactPageService.getPublished() takes no
-    // locale — addresses/emails/phone numbers don't get translated), so it's fetched once and
-    // replicated per language below rather than re-fetched per locale like everything else.
-    const contactPayload = settings.includeContact
-      ? await this.contactPageService.getPublished().catch((err) => {
-          this.logger.warn(
-            `Contact Page extraction failed: ${(err as Error).message}`,
-          );
-          return null;
-        })
-      : null;
-
     // Each source is wrapped in its OWN try/catch — one source throwing (e.g. a locale this
     // module hasn't been translated into yet) must never skip the sources listed after it for
     // that same locale; a shared try/catch around the whole block did exactly that in an
@@ -160,8 +148,12 @@ export class AiContentExtractorService {
           )),
         );
       }
-      if (contactPayload) {
-        chunks.push(...this.extractContact(contactPayload, language));
+      if (settings.includeContact) {
+        chunks.push(
+          ...(await safely(`contact/${language}`, () =>
+            this.extractContact(language),
+          )),
+        );
       }
     }
 
@@ -658,12 +650,10 @@ export class AiContentExtractorService {
     return chunks;
   }
 
-  private extractContact(
-    payload: NonNullable<
-      Awaited<ReturnType<ContactPageService['getPublished']>>
-    >,
-    language: Locale,
-  ): ExtractedChunk[] {
+  private async extractContact(language: Locale): Promise<ExtractedChunk[]> {
+    const payload = await this.contactPageService.getPublished(language);
+    if (!payload) return [];
+
     const now = new Date();
     const s = payload.settings;
     const hours = `${s.business_hours_open_days.join(', ')} ${s.business_hours_open_time}-${s.business_hours_close_time} (GMT${s.business_hours_utc_offset >= 0 ? '+' : ''}${s.business_hours_utc_offset})`;
