@@ -1968,6 +1968,14 @@ model ContactPageSettings {
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
+  /// i18n — non-English overrides for the hero copy and the WhatsApp message template, the
+  /// only fields on this model actually rendered on the public site (P0.3-B3-B audit: every
+  /// cta_* field is dead — removed from the Contact page per an earlier redesign request — and
+  /// email/whatsapp_number/business_hours/main_map_location_id are operational, never
+  /// translated). Never touched for cta_* unless/until those fields gain a real public
+  /// consumer.
+  translations Json?
+
   @@map("contact_page_settings")
 }
 

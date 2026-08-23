@@ -44,7 +44,7 @@ export default async function ContactPage({
   const { locale } = await params;
   const { product: productSlug } = await searchParams;
   const [contactPage, products, dictionary] = await Promise.all([
-    getPublicContactPage().catch(() => null),
+    getPublicContactPage(locale).catch(() => null),
     getProducts(locale).catch(() => []),
     getDictionary(locale as Locale),
   ]);

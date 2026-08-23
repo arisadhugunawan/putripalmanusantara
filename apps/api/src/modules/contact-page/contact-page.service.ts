@@ -1,17 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import type {
-  ContactLocation as SharedContactLocation,
-  ContactPageSettings as SharedContactPageSettings,
-  ContactSocialLink as SharedContactSocialLink,
+import {
+  DEFAULT_LOCALE,
+  type ContactLocation as SharedContactLocation,
+  type ContactPageSettings as SharedContactPageSettings,
+  type ContactSocialLink as SharedContactSocialLink,
 } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
 import {
   CONTENT_PUBLISHED_EVENT,
   type ContentPublishedEvent,
 } from '../../common/events/content-published.event';
+import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  resolveContactPageSettingsLocale,
   toContactLocation,
   toContactPageSettings,
   toContactSocialLink,
@@ -84,6 +87,10 @@ export class ContactPageService {
           dto.whatsapp_message_product_list_label,
         whatsappMessageClosing: dto.whatsapp_message_closing,
         mainMapLocationId: dto.main_map_location_id,
+        translations: mergeTranslations(
+          existing.translations,
+          dto.translations,
+        ),
       },
       include: SETTINGS_INCLUDE,
     });
@@ -343,8 +350,13 @@ export class ContactPageService {
 
   /** The public Contact page's single data source. Returns `null` when nothing has ever been
    * published, or after an explicit Unpublish — the page then renders nothing rather than
-   * risking a stale or draft payload leaking through. */
-  async getPublished() {
+   * risking a stale or draft payload leaking through.
+   *
+   * `locale` defaults to English so every existing caller — most notably the AI content
+   * extractor, which fetches this once and deliberately reuses it across every language (see
+   * `ai-content-extractor.service.ts`, "Contact is locale-invariant") — keeps getting exactly
+   * the same payload as before this phase. Only the public controller passes a real locale. */
+  async getPublished(locale: string = DEFAULT_LOCALE) {
     const snapshot = await this.getOrCreateSnapshot();
     if (!snapshot.isPublished || !snapshot.data) return null;
 
@@ -366,7 +378,7 @@ export class ContactPageService {
     );
 
     return {
-      settings: raw.settings,
+      settings: resolveContactPageSettingsLocale(raw.settings, locale),
       locations,
       social_links: socialLinks,
       main_map_location: mainMapLocation,

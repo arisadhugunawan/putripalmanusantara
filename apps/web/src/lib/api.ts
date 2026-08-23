@@ -268,13 +268,13 @@ export async function getPublishedAboutCompany(locale?: string): Promise<Publish
 }
 
 /** The Contact page's single data source (Draft/Publish — see README "Contact Page — Full
- * Redesign"). No `locale` param: unlike Homepage/About Company, none of this payload's fields
- * are ever translated — real addresses/email/phone numbers/URLs stay identical in every
- * language (brief §32). Returns `null` when nothing has ever been published, or after an
- * explicit Unpublish — callers should render the page as if no data exists rather than
- * throwing, exactly like every other "not yet configured" gap in this project. */
-export async function getPublicContactPage(): Promise<PublishedContactPagePayload | null> {
-  const json = await request<PublishedContactPagePayload | null>("/contact-page");
+ * Redesign"). Hero copy and the WhatsApp message template resolve per `locale` (P0.3-B3-B);
+ * everything else — addresses/email/phone numbers/URLs — stays identical in every language.
+ * Returns `null` when nothing has ever been published, or after an explicit Unpublish —
+ * callers should render the page as if no data exists rather than throwing, exactly like every
+ * other "not yet configured" gap in this project. */
+export async function getPublicContactPage(locale?: string): Promise<PublishedContactPagePayload | null> {
+  const json = await request<PublishedContactPagePayload | null>(withLocale("/contact-page", locale));
   return json.data;
 }
 

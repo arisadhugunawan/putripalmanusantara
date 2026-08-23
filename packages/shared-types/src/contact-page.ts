@@ -50,6 +50,11 @@ export interface ContactPageSettings {
   whatsapp_message_closing: string;
   main_map_location_id: string | null;
   updated_at: string;
+  /** i18n — non-English overrides for `hero_eyebrow`/`hero_heading`/`hero_description` and the
+   * four `whatsapp_message_*` fields, keyed by locale then (camelCase) field name. `cta_*` is
+   * deliberately excluded — not rendered anywhere on the public site (P0.3-B3-B audit), so it
+   * stays out of scope until it has a real consumer. */
+  translations?: Record<string, Record<string, string>> | null;
 }
 
 /** Admin (draft) view of a single "Connect With PPN" social platform row — open-ended list,

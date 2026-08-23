@@ -9,6 +9,21 @@ import type {
   ContactSocialLinkModel as ContactSocialLink,
   MediaModel as Media,
 } from '../../../generated/prisma/models';
+import { translate } from '../../common/utils/i18n.util';
+
+/** The camelCase (Prisma) name for each of `toContactPageSettings()`'s translatable fields,
+ * paired with the snake_case (API) field it resolves — needed because, unlike every other
+ * translated model, Contact's public read path resolves locale against the already-mapped
+ * snapshot JSON (see `resolveContactPageSettingsLocale()` below), not the live Prisma row. */
+const TRANSLATABLE_SETTINGS_FIELDS = [
+  ['hero_eyebrow', 'heroEyebrow'],
+  ['hero_heading', 'heroHeading'],
+  ['hero_description', 'heroDescription'],
+  ['whatsapp_message_greeting', 'whatsappMessageGreeting'],
+  ['whatsapp_message_intro', 'whatsappMessageIntro'],
+  ['whatsapp_message_product_list_label', 'whatsappMessageProductListLabel'],
+  ['whatsapp_message_closing', 'whatsappMessageClosing'],
+] as const;
 
 type ContactPageSettingsWithRelations = {
   id: string;
@@ -38,6 +53,7 @@ type ContactPageSettingsWithRelations = {
   whatsappMessageClosing: string;
   mainMapLocationId: string | null;
   updatedAt: Date;
+  translations?: unknown;
 };
 
 function toMedia(media: Media): SharedMedia {
@@ -83,7 +99,44 @@ export function toContactPageSettings(
     whatsapp_message_closing: entry.whatsappMessageClosing,
     main_map_location_id: entry.mainMapLocationId,
     updated_at: entry.updatedAt.toISOString(),
+    translations:
+      entry.translations as SharedContactPageSettings['translations'],
   };
+}
+
+/**
+ * Resolves `translations` for the requested locale against an already-mapped (snake_case)
+ * `ContactPageSettings` object — the counterpart to every other mapper's `translate()` call,
+ * adapted for Contact's draft/publish split. Every other translated model resolves locale at
+ * *read* time straight off the live Prisma row (see Footer/PageHeader); Contact's public read
+ * instead comes from `ContactPagePublishedSnapshot.data`, a frozen JSON blob with no live row
+ * to re-query. `publish()` embeds the settings row's full `translations` object into that
+ * snapshot as-is (see `contact-page.service.ts`), so this function re-resolves it from the
+ * snapshot at request time — same `translate()` primitive as everywhere else, just called
+ * against a small camelCase-keyed adapter object built from the snake_case fields instead of
+ * a live Prisma row, since the snapshot only has the snake_case shape to work with.
+ */
+export function resolveContactPageSettingsLocale(
+  settings: SharedContactPageSettings,
+  locale: string,
+): SharedContactPageSettings {
+  const camelBase = Object.fromEntries(
+    TRANSLATABLE_SETTINGS_FIELDS.map(([snakeField, camelKey]) => [
+      camelKey,
+      settings[snakeField],
+    ]),
+  );
+  const resolved = translate(
+    camelBase,
+    settings.translations,
+    locale,
+    TRANSLATABLE_SETTINGS_FIELDS.map(([, camelKey]) => camelKey),
+  );
+  const result = { ...settings };
+  for (const [snakeField, camelKey] of TRANSLATABLE_SETTINGS_FIELDS) {
+    result[snakeField] = resolved[camelKey];
+  }
+  return result;
 }
 
 export function toContactLocation(

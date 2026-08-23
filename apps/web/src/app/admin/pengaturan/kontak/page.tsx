@@ -1,19 +1,31 @@
 "use client";
 
 import { Button, Card, Input, Label } from "@ppn/ui-components";
-import type { ContactLocation, ContactPageSettings, ContactPagePublishStatus } from "@ppn/shared-types";
+import type { ContactLocation, ContactPageSettings, ContactPagePublishStatus, Locale } from "@ppn/shared-types";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { useSaveState } from "@/hooks/useSaveState";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
+import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { PublishContactPageButton } from "@/components/admin/PublishContactPageButton";
 import { SaveStateIndicator } from "@/components/admin/SaveStateIndicator";
 import { useToast } from "@/components/admin/Toast";
 import { LocationsEditor } from "./LocationsEditor";
 import { SocialLinksEditor } from "./SocialLinksEditor";
+
+/** Matches the camelCase (Prisma) field names `resolveContactPageSettingsLocale()` on the
+ * backend resolves `translations` against — see `contact-page.mapper.ts`. */
+type TranslatableField =
+  | "heroEyebrow"
+  | "heroHeading"
+  | "heroDescription"
+  | "whatsappMessageGreeting"
+  | "whatsappMessageIntro"
+  | "whatsappMessageProductListLabel"
+  | "whatsappMessageClosing";
 
 const WEEKDAYS: { key: string; label: string }[] = [
   { key: "mon", label: "Mon" },
@@ -59,6 +71,20 @@ export default function AdminContactPage() {
     if (data && !form) setForm(data.settings);
   }, [data, form]);
 
+  /** Mirrors the `translations` merge every other Admin editor's LocaleTabs block builds
+   * client-side (e.g. Footer's `patchTranslation`) — spreads the existing per-locale object so
+   * editing one locale/field never drops another already-entered one. */
+  function patchTranslation(locale: Exclude<Locale, "en">, field: TranslatableField, value: string) {
+    setForm((prev) => {
+      if (!prev) return prev;
+      const current = prev.translations ?? {};
+      return {
+        ...prev,
+        translations: { ...current, [locale]: { ...current[locale], [field]: value } },
+      };
+    });
+  }
+
   async function handleSaveDraft() {
     if (!form) return;
     const result = await run(() =>
@@ -88,6 +114,7 @@ export default function AdminContactPage() {
         whatsapp_message_product_list_label: form.whatsapp_message_product_list_label,
         whatsapp_message_closing: form.whatsapp_message_closing,
         main_map_location_id: form.main_map_location_id,
+        translations: form.translations,
       }),
     );
     if (result.success) {
@@ -284,45 +311,78 @@ export default function AdminContactPage() {
         <h2 className="text-h3 text-neutral-900">WhatsApp Message Template</h2>
         <p className="mt-1 text-small text-neutral-600">
           Pesan yang terisi otomatis saat pengunjung mengklik tombol WhatsApp. Daftar produk selalu diambil dari
-          katalog produk yang sedang aktif — tidak perlu diketik manual di sini.
+          katalog produk yang sedang aktif — tidak perlu diketik manual di sini. English is the default shown to
+          any locale without its own translation below — fill in only the languages you want to differ.
         </p>
-        <div className="mt-4 flex flex-col gap-4">
-          <div>
-            <Label htmlFor="wa-greeting">Greeting</Label>
-            <Input
-              id="wa-greeting"
-              value={form.whatsapp_message_greeting}
-              onChange={(e) => setForm({ ...form, whatsapp_message_greeting: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="wa-intro">Message</Label>
-            <textarea
-              id="wa-intro"
-              value={form.whatsapp_message_intro}
-              onChange={(e) => setForm({ ...form, whatsapp_message_intro: e.target.value })}
-              rows={3}
-              className="w-full rounded-field border border-neutral-300 px-3 py-2 text-body"
-            />
-          </div>
-          <div>
-            <Label htmlFor="wa-product-label">Product List Label</Label>
-            <Input
-              id="wa-product-label"
-              value={form.whatsapp_message_product_list_label}
-              onChange={(e) => setForm({ ...form, whatsapp_message_product_list_label: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="wa-closing">Closing</Label>
-            <textarea
-              id="wa-closing"
-              value={form.whatsapp_message_closing}
-              onChange={(e) => setForm({ ...form, whatsapp_message_closing: e.target.value })}
-              rows={2}
-              className="w-full rounded-field border border-neutral-300 px-3 py-2 text-body"
-            />
-          </div>
+        <div className="mt-4">
+          <LocaleTabs>
+            {(locale) => {
+              const isEn = locale === "en";
+              const t = form.translations?.[locale];
+              const greetingValue = isEn ? form.whatsapp_message_greeting : (t?.whatsappMessageGreeting ?? "");
+              const introValue = isEn ? form.whatsapp_message_intro : (t?.whatsappMessageIntro ?? "");
+              const productLabelValue = isEn
+                ? form.whatsapp_message_product_list_label
+                : (t?.whatsappMessageProductListLabel ?? "");
+              const closingValue = isEn ? form.whatsapp_message_closing : (t?.whatsappMessageClosing ?? "");
+              return (
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Label htmlFor={`wa-greeting-${locale}`}>Greeting</Label>
+                    <Input
+                      id={`wa-greeting-${locale}`}
+                      value={greetingValue}
+                      onChange={(e) =>
+                        isEn
+                          ? setForm({ ...form, whatsapp_message_greeting: e.target.value })
+                          : patchTranslation(locale, "whatsappMessageGreeting", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`wa-intro-${locale}`}>Message</Label>
+                    <textarea
+                      id={`wa-intro-${locale}`}
+                      value={introValue}
+                      onChange={(e) =>
+                        isEn
+                          ? setForm({ ...form, whatsapp_message_intro: e.target.value })
+                          : patchTranslation(locale, "whatsappMessageIntro", e.target.value)
+                      }
+                      rows={3}
+                      className="w-full rounded-field border border-neutral-300 px-3 py-2 text-body"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`wa-product-label-${locale}`}>Product List Label</Label>
+                    <Input
+                      id={`wa-product-label-${locale}`}
+                      value={productLabelValue}
+                      onChange={(e) =>
+                        isEn
+                          ? setForm({ ...form, whatsapp_message_product_list_label: e.target.value })
+                          : patchTranslation(locale, "whatsappMessageProductListLabel", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`wa-closing-${locale}`}>Closing</Label>
+                    <textarea
+                      id={`wa-closing-${locale}`}
+                      value={closingValue}
+                      onChange={(e) =>
+                        isEn
+                          ? setForm({ ...form, whatsapp_message_closing: e.target.value })
+                          : patchTranslation(locale, "whatsappMessageClosing", e.target.value)
+                      }
+                      rows={2}
+                      className="w-full rounded-field border border-neutral-300 px-3 py-2 text-body"
+                    />
+                  </div>
+                </div>
+              );
+            }}
+          </LocaleTabs>
         </div>
       </Card>
 
@@ -331,25 +391,62 @@ export default function AdminContactPage() {
       {/* Contact Hero */}
       <Card className="mt-6">
         <h2 className="text-h3 text-neutral-900">Contact Hero</h2>
+        <p className="mt-1 text-small text-neutral-500">
+          English is the default shown to any locale without its own translation below — fill in only the
+          languages you want to differ.
+        </p>
         <div className="mt-4 flex flex-col gap-4">
-          <div>
-            <Label htmlFor="hero-eyebrow">Eyebrow</Label>
-            <Input id="hero-eyebrow" value={form.hero_eyebrow} onChange={(e) => setForm({ ...form, hero_eyebrow: e.target.value })} />
-          </div>
-          <div>
-            <Label htmlFor="hero-heading">Heading</Label>
-            <Input id="hero-heading" value={form.hero_heading} onChange={(e) => setForm({ ...form, hero_heading: e.target.value })} />
-          </div>
-          <div>
-            <Label htmlFor="hero-description">Description</Label>
-            <textarea
-              id="hero-description"
-              value={form.hero_description}
-              onChange={(e) => setForm({ ...form, hero_description: e.target.value })}
-              rows={3}
-              className="w-full rounded-field border border-neutral-300 px-3 py-2 text-body"
-            />
-          </div>
+          <LocaleTabs>
+            {(locale) => {
+              const isEn = locale === "en";
+              const t = form.translations?.[locale];
+              const eyebrowValue = isEn ? form.hero_eyebrow : (t?.heroEyebrow ?? "");
+              const headingValue = isEn ? form.hero_heading : (t?.heroHeading ?? "");
+              const descriptionValue = isEn ? form.hero_description : (t?.heroDescription ?? "");
+              return (
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Label htmlFor={`hero-eyebrow-${locale}`}>Eyebrow</Label>
+                    <Input
+                      id={`hero-eyebrow-${locale}`}
+                      value={eyebrowValue}
+                      onChange={(e) =>
+                        isEn
+                          ? setForm({ ...form, hero_eyebrow: e.target.value })
+                          : patchTranslation(locale, "heroEyebrow", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`hero-heading-${locale}`}>Heading</Label>
+                    <Input
+                      id={`hero-heading-${locale}`}
+                      value={headingValue}
+                      onChange={(e) =>
+                        isEn
+                          ? setForm({ ...form, hero_heading: e.target.value })
+                          : patchTranslation(locale, "heroHeading", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`hero-description-${locale}`}>Description</Label>
+                    <textarea
+                      id={`hero-description-${locale}`}
+                      value={descriptionValue}
+                      onChange={(e) =>
+                        isEn
+                          ? setForm({ ...form, hero_description: e.target.value })
+                          : patchTranslation(locale, "heroDescription", e.target.value)
+                      }
+                      rows={3}
+                      className="w-full rounded-field border border-neutral-300 px-3 py-2 text-body"
+                    />
+                  </div>
+                </div>
+              );
+            }}
+          </LocaleTabs>
           <MediaUploadField
             label="Background Image (optional)"
             media={form.hero_image}

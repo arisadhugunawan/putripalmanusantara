@@ -5,6 +5,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
@@ -19,6 +20,7 @@ import {
   IsOptionalPhone,
   IsOptionalUrl,
 } from '../../about-company/dto/optional-contact.validators';
+import type { TranslationsInput } from '../../../common/dto/translations.dto';
 
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -146,6 +148,12 @@ export class UpdateContactPageSettingsDto {
   @IsOptional()
   @IsString()
   main_map_location_id?: string | null;
+
+  /** Non-English overrides for the hero copy and WhatsApp message template. Not deep-validated
+   * (admin-only input), matching every other translation-bearing DTO in this codebase. */
+  @IsOptional()
+  @IsObject()
+  translations?: TranslationsInput;
 }
 
 const LOCATION_TYPES = ['head_office', 'operational', 'business'];
