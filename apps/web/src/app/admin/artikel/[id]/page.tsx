@@ -255,7 +255,10 @@ export default function EditArticlePage() {
     if (html) update("content", html);
   }
 
-  async function persist(statusOverride?: "draft" | "published") {
+  // Saves ordinary content fields only — `status` is never part of this call (Phase 5F-P0.2).
+  // Publishing/unpublishing are separate, `@Roles('super_admin')`-gated actions below, so this
+  // save can never be used to sneak a status change past that gate.
+  async function persist() {
     if (!form) return null;
     return run(() =>
       adminApi.put<ArticleDetail>(`/admin/articles/${id}`, {
@@ -287,7 +290,6 @@ export default function EditArticlePage() {
         quote_author: form.quoteAuthor,
         statistics: form.statistics.filter((s) => s.value.trim() && s.label.trim()),
         reading_time_minutes: form.readingTimeOverride ? Number(form.readingTimeOverride) : null,
-        status: statusOverride ?? article?.status,
         translations: form.translations,
       }),
     );
@@ -304,32 +306,49 @@ export default function EditArticlePage() {
     }
   }
 
+  // Saves any in-progress edits first (open to every admin), then calls the separate,
+  // super_admin-gated publish endpoint. If the admin lacks permission, the content save still
+  // succeeds — nothing is lost — but the publish step itself is rejected server-side (Phase
+  // 5F-P0.2), matching the toast copy below ("your previous published version remains
+  // unchanged").
   async function handleConfirmPublish() {
     setPublishing(true);
-    const result = await persist("published");
-    setPublishing(false);
-    if (result?.success) {
-      setDirty(false);
+    const saveResult = await persist();
+    if (!saveResult?.success) {
+      setPublishing(false);
       setConfirmingPublish(false);
+      showToast("Unable to save changes before publishing.", "error");
+      return;
+    }
+    const publishResult = await run(() => adminApi.post(`/admin/articles/${id}/publish`));
+    setPublishing(false);
+    setConfirmingPublish(false);
+    if (publishResult.success) {
+      setDirty(false);
       await reload();
       showToast("Article published.");
     } else {
-      setConfirmingPublish(false);
       showToast("Publishing failed. Your previous published version remains unchanged.", "error");
     }
   }
 
   async function handleConfirmUnpublish() {
     setUnpublishing(true);
-    const result = await persist("draft");
-    setUnpublishing(false);
-    if (result?.success) {
-      setDirty(false);
+    const saveResult = await persist();
+    if (!saveResult?.success) {
+      setUnpublishing(false);
       setConfirmingUnpublish(false);
+      showToast("Unable to save changes before unpublishing.", "error");
+      return;
+    }
+    const unpublishResult = await run(() => adminApi.post(`/admin/articles/${id}/unpublish`));
+    setUnpublishing(false);
+    setConfirmingUnpublish(false);
+    if (unpublishResult.success) {
+      setDirty(false);
       await reload();
       showToast("Article moved back to draft.");
     } else {
-      setConfirmingUnpublish(false);
       showToast("Unable to unpublish. The article remains published.", "error");
     }
   }
