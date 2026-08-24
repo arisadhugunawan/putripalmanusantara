@@ -865,6 +865,24 @@ describe('ArticlesService.unpublish (Phase 5F-P0.2)', () => {
     });
     expect(args[0].data).not.toHaveProperty('publishedAt');
   });
+
+  // P0.4-C1 — an unpublish is also a change to what's publicly visible, so AI knowledge must
+  // resync to drop this article, same as publish()/restoreSnapshot() already do.
+  it('emits CONTENT_PUBLISHED_EVENT with source="news" and the article id, matching the publish() event convention', async () => {
+    const { service, article, events } = buildService();
+    article.findUnique.mockResolvedValue(
+      stubArticleRow({ status: 'published' }),
+    );
+    article.update.mockResolvedValue(stubArticleRow({ status: 'draft' }));
+
+    await service.unpublish('a1');
+
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledWith(CONTENT_PUBLISHED_EVENT, {
+      source: 'news',
+      entityId: 'a1',
+    });
+  });
 });
 
 // The concrete Article scenario `RolesGuard` exists to protect — see roles.guard.spec.ts for

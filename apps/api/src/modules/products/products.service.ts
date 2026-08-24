@@ -240,6 +240,12 @@ export class ProductsService {
       where: { id },
       data: { status: 'draft' },
     });
+    // Same event as publish()/restoreSnapshot() (P0.4-C1) — an unpublish is also a change to
+    // what's publicly visible, so AI knowledge must resync to drop this product too. The
+    // listener always triggers a full rebuild, which naturally stops re-extracting a product
+    // that's no longer published rather than needing a separate "remove" signal.
+    const event: ContentPublishedEvent = { source: 'products', entityId: id };
+    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
     return { unpublished: true };
   }
 

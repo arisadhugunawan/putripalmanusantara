@@ -1,6 +1,7 @@
 import { ContactPageService } from './contact-page.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
+import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.event';
 
 function stubSettingsRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -75,8 +76,58 @@ function buildService() {
     contactLocation,
     contactSocialLink,
     contactPagePublishedSnapshot,
+    events,
   };
 }
+
+// P0.4-C1 — an unpublish is also a change to what's publicly visible, so AI knowledge must
+// resync to drop Contact too, same as publish() already does.
+describe('ContactPageService.unpublish', () => {
+  it('sets is_published=false, same as before', async () => {
+    const { service, contactPagePublishedSnapshot } = buildService();
+    contactPagePublishedSnapshot.findFirst.mockResolvedValue({
+      id: 'snap-1',
+      isPublished: true,
+      publishedAt: new Date('2026-08-21T00:00:00.000Z'),
+    });
+    contactPagePublishedSnapshot.update.mockResolvedValue({
+      isPublished: false,
+      publishedAt: new Date('2026-08-21T00:00:00.000Z'),
+    });
+
+    const result = await service.unpublish();
+
+    expect(result).toEqual({
+      is_published: false,
+      published_at: '2026-08-21T00:00:00.000Z',
+    });
+    const [call] = contactPagePublishedSnapshot.update.mock.calls;
+    expect(call[0]).toEqual({
+      where: { id: 'snap-1' },
+      data: { isPublished: false },
+    });
+  });
+
+  it('emits CONTENT_PUBLISHED_EVENT with source="contact", matching the publish() event convention', async () => {
+    const { service, contactPagePublishedSnapshot, events } = buildService();
+    contactPagePublishedSnapshot.findFirst.mockResolvedValue({
+      id: 'snap-1',
+      isPublished: true,
+      publishedAt: new Date(),
+    });
+    contactPagePublishedSnapshot.update.mockResolvedValue({
+      isPublished: false,
+      publishedAt: new Date(),
+    });
+
+    await service.unpublish();
+
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledWith(CONTENT_PUBLISHED_EVENT, {
+      source: 'contact',
+    });
+  });
+});
 
 // Phase P0.3-B3-B — `updateSettings()` now merges `translations` via `mergeTranslations()`
 // (the same helper every other translation-bearing module's update path uses), instead of

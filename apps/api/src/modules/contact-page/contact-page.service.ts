@@ -348,6 +348,12 @@ export class ContactPageService {
       where: { id: existing.id },
       data: { isPublished: false },
     });
+    // Same event as publish() (P0.4-C1) — an unpublish is also a change to what's publicly
+    // visible, so AI knowledge must resync to drop Contact too. The listener always triggers a
+    // full rebuild, which naturally stops re-extracting Contact once it's no longer published
+    // rather than needing a separate "remove" signal.
+    const event: ContentPublishedEvent = { source: 'contact' };
+    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
     return {
       is_published: false,
       published_at: snapshot.publishedAt?.toISOString() ?? null,

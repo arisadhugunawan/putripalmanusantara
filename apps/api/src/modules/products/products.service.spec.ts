@@ -120,6 +120,39 @@ describe('ProductsService.publish', () => {
   });
 });
 
+describe('ProductsService.unpublish', () => {
+  it('sets status=draft, same as before', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' }); // assertExists
+    product.update.mockResolvedValue({});
+
+    const result = await service.unpublish('p1');
+
+    expect(result).toEqual({ unpublished: true });
+    const [updateArgs] = product.update.mock.calls;
+    expect(updateArgs[0]).toEqual({
+      where: { id: 'p1' },
+      data: { status: 'draft' },
+    });
+  });
+
+  // P0.4-C1 — an unpublish is also a change to what's publicly visible, so AI knowledge must
+  // resync to drop this product, same as publish()/restoreSnapshot() already do.
+  it('emits content.published with source="products" and the product id, matching the publish() event convention', async () => {
+    const { service, product, events } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' });
+    product.update.mockResolvedValue({});
+
+    await service.unpublish('p1');
+
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledWith(CONTENT_PUBLISHED_EVENT, {
+      source: 'products',
+      entityId: 'p1',
+    });
+  });
+});
+
 describe('ProductsService.restoreSnapshot', () => {
   it('creates a NEW snapshot row copying the source data, never mutating the source', async () => {
     const { service, product, productPublishedSnapshot } = buildService();
