@@ -14,6 +14,7 @@ function buildService() {
       .fn<Promise<unknown>, unknown[]>()
       .mockResolvedValue(stubGalleryCategoryRow()),
     update: jest.fn<Promise<unknown>, unknown[]>(),
+    delete: jest.fn<Promise<unknown>, unknown[]>(),
   };
   // P0.4-D2 — assertMediaValid() looks up `prisma.media`; defaults to "exists" so every
   // pre-existing test above (none of which cares about media validation) keeps working
@@ -337,5 +338,80 @@ describe('GalleryService.create/update — media_id validation (P0.4-D2)', () =>
     await service.update('g1', { title: 'New title' });
 
     expect(media.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+// P0.4-D3 — removeCategory() checks itemCount then deletes; an item inserted into the category
+// in the window between those two calls previously produced an unhandled FK-restrict violation
+// (raw 500) instead of the existing CATEGORY_NOT_EMPTY 409 the synchronous check already
+// returns. This wraps the delete to catch that race and re-throw the same existing contract.
+describe('GalleryService.removeCategory — TOCTOU protection (P0.4-D3)', () => {
+  it('an empty category (count=0) deletes successfully, unchanged', async () => {
+    const { service, galleryItem, galleryCategory } = buildService();
+    galleryItem.count.mockResolvedValue(0);
+    galleryCategory.delete.mockResolvedValue({});
+
+    const result = await service.removeCategory('cat-1');
+
+    expect(result).toEqual({ deleted: true });
+    expect(galleryCategory.delete).toHaveBeenCalledWith({
+      where: { id: 'cat-1' },
+    });
+  });
+
+  it('a non-empty category (count>0) still 409s synchronously, unchanged, delete never attempted', async () => {
+    const { service, galleryItem, galleryCategory } = buildService();
+    galleryItem.count.mockResolvedValue(3);
+
+    let thrown: { code?: string; getStatus?: () => number } | undefined;
+    try {
+      await service.removeCategory('cat-1');
+    } catch (err) {
+      thrown = err as { code?: string; getStatus?: () => number };
+    }
+    expect(thrown?.code).toBe('CATEGORY_NOT_EMPTY');
+    expect(thrown?.getStatus?.()).toBe(409);
+    expect(galleryCategory.delete).not.toHaveBeenCalled();
+  });
+
+  it('count=0 but delete rejects with a P2003 shape (item inserted mid-race) → still 409 CATEGORY_NOT_EMPTY', async () => {
+    const { service, galleryItem, galleryCategory } = buildService();
+    galleryItem.count.mockResolvedValue(0);
+    galleryCategory.delete.mockRejectedValue({ code: 'P2003' });
+
+    let thrown: { code?: string; getStatus?: () => number } | undefined;
+    try {
+      await service.removeCategory('cat-1');
+    } catch (err) {
+      thrown = err as { code?: string; getStatus?: () => number };
+    }
+    expect(thrown?.code).toBe('CATEGORY_NOT_EMPTY');
+    expect(thrown?.getStatus?.()).toBe(409);
+  });
+
+  it('count=0 but delete rejects with the P2039/originalCode=23001 driver-adapter shape → still 409 CATEGORY_NOT_EMPTY', async () => {
+    const { service, galleryItem, galleryCategory } = buildService();
+    galleryItem.count.mockResolvedValue(0);
+    galleryCategory.delete.mockRejectedValue({
+      code: 'P2039',
+      meta: { driverAdapterError: { cause: { originalCode: '23001' } } },
+    });
+
+    let thrown: { code?: string } | undefined;
+    try {
+      await service.removeCategory('cat-1');
+    } catch (err) {
+      thrown = err as { code?: string };
+    }
+    expect(thrown?.code).toBe('CATEGORY_NOT_EMPTY');
+  });
+
+  it('an unrelated delete error is re-thrown unchanged, not swallowed into CATEGORY_NOT_EMPTY', async () => {
+    const { service, galleryItem, galleryCategory } = buildService();
+    galleryItem.count.mockResolvedValue(0);
+    const otherError = new Error('connection lost');
+    galleryCategory.delete.mockRejectedValue(otherError);
+
+    await expect(service.removeCategory('cat-1')).rejects.toBe(otherError);
   });
 });

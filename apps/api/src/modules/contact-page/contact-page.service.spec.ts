@@ -253,6 +253,56 @@ describe('ContactPageService.updateSettings — translation merge safety (Phase 
   });
 });
 
+// P0.4-D3 — updateSettings() previously wrote `main_map_location_id` straight into Prisma with
+// no existence check; a stale/deleted id (picked in one tab while removed from Locations in
+// another) fell through to an unhandled FK violation, surfacing as a raw 500 instead of a clean
+// 400. `heroImageId` is deliberately untouched here — it's already Media-registry-protected.
+describe('ContactPageService.updateSettings — main_map_location_id validation (P0.4-D3)', () => {
+  it('throws INVALID_LOCATION (400) for a nonexistent main_map_location_id', async () => {
+    const { service, contactPageSettings, contactLocation } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactLocation.findUnique.mockResolvedValue(null);
+
+    let thrown: { code?: string; getStatus?: () => number } | undefined;
+    try {
+      await service.updateSettings({ main_map_location_id: 'missing-loc' });
+    } catch (err) {
+      thrown = err as { code?: string; getStatus?: () => number };
+    }
+    expect(thrown?.code).toBe('INVALID_LOCATION');
+    expect(thrown?.getStatus?.()).toBe(400);
+    expect(contactPageSettings.update).not.toHaveBeenCalled();
+  });
+
+  it('a valid main_map_location_id saves successfully exactly as before', async () => {
+    const { service, contactPageSettings, contactLocation } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactLocation.findUnique.mockResolvedValue({ id: 'loc-1' });
+    contactPageSettings.update.mockResolvedValue(
+      stubSettingsRow({ mainMapLocationId: 'loc-1' }),
+    );
+
+    const result = await service.updateSettings({
+      main_map_location_id: 'loc-1',
+    });
+
+    expect(result.id).toBe('contact-1');
+    expect(contactLocation.findUnique).toHaveBeenCalledWith({
+      where: { id: 'loc-1' },
+    });
+  });
+
+  it('omitting main_map_location_id from the patch never triggers a location lookup', async () => {
+    const { service, contactPageSettings, contactLocation } = buildService();
+    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.update.mockResolvedValue(stubSettingsRow());
+
+    await service.updateSettings({ email: 'new@ppn.co.id' });
+
+    expect(contactLocation.findUnique).not.toHaveBeenCalled();
+  });
+});
+
 // Phase P0.3-B3-B — the most important regression: proves publishing a draft with a new
 // translation actually carries that translation into the frozen snapshot, and that the public
 // read path resolves it per-locale. This exact scenario is what the audit's snapshot-shape

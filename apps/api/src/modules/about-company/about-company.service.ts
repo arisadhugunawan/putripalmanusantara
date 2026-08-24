@@ -1071,6 +1071,9 @@ export class AboutCompanyService {
   }
 
   async createWhatWeDoItem(dto: CreateWhatWeDoItemDto) {
+    if (dto.product_id) {
+      await this.assertWhatWeDoProductValid(dto.product_id);
+    }
     const count = await this.prisma.whatWeDoItem.count();
     const item = await this.prisma.whatWeDoItem.create({
       data: {
@@ -1096,6 +1099,9 @@ export class AboutCompanyService {
       id,
       'What We Do item',
     );
+    if (dto.product_id) {
+      await this.assertWhatWeDoProductValid(dto.product_id);
+    }
     const item = await this.prisma.whatWeDoItem.update({
       where: { id },
       data: {
@@ -1122,6 +1128,18 @@ export class AboutCompanyService {
     await this.assertExists(this.prisma.whatWeDoItem, id, 'What We Do item');
     await this.prisma.whatWeDoItem.delete({ where: { id } });
     return { deleted: true };
+  }
+
+  /** Body-field validation for `product_id` on `create`/`updateWhatWeDoItem()` (P0.4-D3) —
+   * `WhatWeDoItem.product` is `onDelete: SetNull`, so this never fires from a normal product
+   * delete, only a stale resubmit or a bad id. 400s like every other body-field guard, not the
+   * 404 `assertExists()` throws for a URL-path `:id`. */
+  private async assertWhatWeDoProductValid(productId: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+    if (!product)
+      throw new ApiException('INVALID_PRODUCT', 'Produk tidak valid.', 400);
   }
 
   async duplicateWhatWeDoItem(id: string) {
@@ -1273,6 +1291,9 @@ export class AboutCompanyService {
   }
 
   async createLegalDocument(dto: CreateLegalDocumentDto) {
+    if (dto.category_id) {
+      await this.assertLegalDocumentCategoryValid(dto.category_id);
+    }
     const count = await this.prisma.legalCertificateDocument.count();
     const previewImageId =
       dto.preview_image_id ??
@@ -1311,6 +1332,9 @@ export class AboutCompanyService {
     if (!existing) {
       throw new ApiException('NOT_FOUND', 'Document not found.', 404);
     }
+    if (dto.category_id) {
+      await this.assertLegalDocumentCategoryValid(dto.category_id);
+    }
 
     let previewImageId = dto.preview_image_id;
     if (previewImageId === undefined && !existing.previewImageId) {
@@ -1347,6 +1371,19 @@ export class AboutCompanyService {
       include: LEGAL_DOCUMENT_INCLUDE,
     });
     return toLegalDocument(document);
+  }
+
+  /** Body-field validation for `category_id` on `create`/`updateLegalDocument()` (P0.4-D3) —
+   * `LegalCertificateDocument.category` is `onDelete: SetNull`, so this never fires from a
+   * normal category delete, only a stale resubmit (e.g. a form still showing a category just
+   * deleted in another tab) or a bad id. 400s like every other body-field guard, not the 404
+   * `assertExists()` throws for a URL-path `:id`. */
+  private async assertLegalDocumentCategoryValid(categoryId: string) {
+    const category = await this.prisma.legalDocumentCategory.findUnique({
+      where: { id: categoryId },
+    });
+    if (!category)
+      throw new ApiException('INVALID_CATEGORY', 'Kategori tidak valid.', 400);
   }
 
   async removeLegalDocument(id: string) {

@@ -109,8 +109,39 @@ export class GalleryService {
         409,
       );
     }
-    await this.prisma.galleryCategory.delete({ where: { id } });
+    try {
+      await this.prisma.galleryCategory.delete({ where: { id } });
+    } catch (error) {
+      if (this.isCategoryDeleteRestrictedByItems(error)) {
+        throw new ApiException(
+          'CATEGORY_NOT_EMPTY',
+          'Kategori ini masih memiliki item galeri. Pindahkan atau hapus item tersebut terlebih dahulu.',
+          409,
+        );
+      }
+      throw error;
+    }
     return { deleted: true };
+  }
+
+  /** True only for the FK RESTRICT violation on `GalleryItem.categoryId` — never a false
+   * positive on some other unrelated DB error. Closes the race between the `itemCount` check
+   * above and this delete (an item inserted into the category in that window) by mirroring
+   * `ProductsService.isProductDeleteRestrictedByPublishHistory()`'s proven dual-shape check
+   * (P0.4-D3): `P2003` is Prisma's documented code, but under Prisma 7's driver-adapter
+   * architecture this can surface as the generic unmapped code `P2039`, with the real Postgres
+   * SQLSTATE (`23001` = `restrict_violation`) preserved at
+   * `error.meta.driverAdapterError.cause.originalCode`. */
+  private isCategoryDeleteRestrictedByItems(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: { driverAdapterError?: { cause?: { originalCode?: string } } };
+    };
+    if (err.code === 'P2003') return true;
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23001'
+    );
   }
 
   private async uniqueCategorySlug(base: string) {

@@ -146,7 +146,11 @@ export class AiChatService {
             productId,
           },
         })
-        .catch(() => undefined);
+        .catch((err) =>
+          this.logger.warn(
+            `Failed to log quotation_intent analytics event: ${(err as Error).message}`,
+          ),
+        );
     }
 
     return {
@@ -192,7 +196,11 @@ export class AiChatService {
         .create({
           data: { eventType: 'question_submitted', sessionId, language },
         })
-        .catch(() => undefined);
+        .catch((err) =>
+          this.logger.warn(
+            `Failed to log question_submitted analytics event: ${(err as Error).message}`,
+          ),
+        );
     }
   }
 }

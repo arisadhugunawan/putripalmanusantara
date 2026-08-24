@@ -17,6 +17,7 @@ import { AiSettingsService } from './ai-settings.service';
 import { AiSyncService } from './ai-sync.service';
 import { AdminAiTestRequestDto } from './dto/ai-chat.dto';
 import { UpdateAiSettingsDto } from './dto/ai-settings.dto';
+import { SyncLogsQueryDto } from './dto/ai-sync-logs-query.dto';
 
 @Controller('api/v1/admin/ai')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -49,8 +50,8 @@ export class AdminAiController {
   }
 
   @Get('sync-logs')
-  syncLogs(@Query('limit') limit?: string) {
-    return this.syncService.getLogs(limit ? Number(limit) : undefined);
+  syncLogs(@Query() query: SyncLogsQueryDto) {
+    return this.syncService.getLogs(query.limit);
   }
 
   @Get('sources')

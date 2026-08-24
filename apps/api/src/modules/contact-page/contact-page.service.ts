@@ -59,6 +59,9 @@ export class ContactPageService {
 
   async updateSettings(dto: UpdateContactPageSettingsDto) {
     const existing = await this.getOrCreateSettings();
+    if (dto.main_map_location_id) {
+      await this.assertMainMapLocationValid(dto.main_map_location_id);
+    }
     const updated = await this.prisma.contactPageSettings.update({
       where: { id: existing.id },
       data: {
@@ -186,6 +189,21 @@ export class ContactPageService {
     if (!location)
       throw new ApiException('NOT_FOUND', 'Contact location not found.', 404);
     return location;
+  }
+
+  /** Body-field validation for `updateSettings()`'s `main_map_location_id` — distinct from
+   * `assertLocationExists()` above (which 404s a URL-path `:id` that doesn't exist). A stale id
+   * here (e.g. an admin's form still showing a location just deleted in another tab —
+   * `ContactPageSettings.mainMapLocation` is `onDelete: SetNull`, so this never happens from a
+   * normal delete, only a stale resubmit) is an invalid request body value, so it 400s like
+   * every other body-field guard added in P0.4-D2 (`assertMediaValid`/`assertCategoryValid`),
+   * not a 404 (P0.4-D3). */
+  private async assertMainMapLocationValid(id: string) {
+    const location = await this.prisma.contactLocation.findUnique({
+      where: { id },
+    });
+    if (!location)
+      throw new ApiException('INVALID_LOCATION', 'Lokasi tidak valid.', 400);
   }
 
   // ── Social links (draft, open platform list) ────────────────────────────

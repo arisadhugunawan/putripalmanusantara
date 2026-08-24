@@ -974,3 +974,247 @@ describe('AboutCompanyService — duplicate* preserves the source translations (
     expect(legalCertificateDocument.update).not.toHaveBeenCalled();
   });
 });
+
+// P0.4-D3 — create/updateWhatWeDoItem() previously wrote `product_id` straight into Prisma with
+// no existence check; a stale/deleted id fell through to an unhandled FK violation, surfacing
+// as a raw 500 instead of a clean 400. `media_id` is deliberately untouched — it's already
+// Media-registry-protected.
+describe('AboutCompanyService.create/updateWhatWeDoItem — product_id validation (P0.4-D3)', () => {
+  function buildService() {
+    const whatWeDoItem = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      count: jest.fn<Promise<number>, unknown[]>(),
+      create: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const product = { findUnique: jest.fn<Promise<unknown>, unknown[]>() };
+    const service = new AboutCompanyService(
+      { whatWeDoItem, product } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    return { service, whatWeDoItem, product };
+  }
+
+  it('create: throws INVALID_PRODUCT (400) for a nonexistent product_id', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue(null);
+
+    let thrown: { code?: string; getStatus?: () => number } | undefined;
+    try {
+      await service.createWhatWeDoItem({
+        title: 'Export',
+        product_id: 'missing-product',
+      });
+    } catch (err) {
+      thrown = err as { code?: string; getStatus?: () => number };
+    }
+    expect(thrown?.code).toBe('INVALID_PRODUCT');
+    expect(thrown?.getStatus?.()).toBe(400);
+  });
+
+  it('create: a valid product_id proceeds exactly as before', async () => {
+    const { service, whatWeDoItem, product } = buildService();
+    product.findUnique.mockResolvedValue({ id: 'p1' });
+    whatWeDoItem.count.mockResolvedValue(0);
+    whatWeDoItem.create.mockResolvedValue({ id: 'item-1', title: 'Export' });
+
+    const result = await service.createWhatWeDoItem({
+      title: 'Export',
+      product_id: 'p1',
+    });
+
+    expect(result.id).toBe('item-1');
+  });
+
+  it('create: omitting product_id never triggers a product lookup', async () => {
+    const { service, whatWeDoItem, product } = buildService();
+    whatWeDoItem.count.mockResolvedValue(0);
+    whatWeDoItem.create.mockResolvedValue({ id: 'item-1', title: 'Export' });
+
+    await service.createWhatWeDoItem({ title: 'Export' });
+
+    expect(product.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('update: throws INVALID_PRODUCT (400) for a nonexistent product_id', async () => {
+    const { service, whatWeDoItem, product } = buildService();
+    whatWeDoItem.findUnique.mockResolvedValue({
+      id: 'item-1',
+      translations: null,
+    });
+    product.findUnique.mockResolvedValue(null);
+
+    let thrown: { code?: string } | undefined;
+    try {
+      await service.updateWhatWeDoItem('item-1', {
+        product_id: 'missing-product',
+      });
+    } catch (err) {
+      thrown = err as { code?: string };
+    }
+    expect(thrown?.code).toBe('INVALID_PRODUCT');
+  });
+
+  it('update: a valid product_id proceeds exactly as before', async () => {
+    const { service, whatWeDoItem, product } = buildService();
+    whatWeDoItem.findUnique.mockResolvedValue({
+      id: 'item-1',
+      translations: null,
+    });
+    product.findUnique.mockResolvedValue({ id: 'p2' });
+    whatWeDoItem.update.mockResolvedValue({ id: 'item-1', title: 'Export' });
+
+    const result = await service.updateWhatWeDoItem('item-1', {
+      product_id: 'p2',
+    });
+
+    expect(result.id).toBe('item-1');
+  });
+
+  it('update: omitting product_id never triggers a product lookup', async () => {
+    const { service, whatWeDoItem, product } = buildService();
+    whatWeDoItem.findUnique.mockResolvedValue({
+      id: 'item-1',
+      translations: null,
+    });
+    whatWeDoItem.update.mockResolvedValue({ id: 'item-1' });
+
+    await service.updateWhatWeDoItem('item-1', { title: 'New' });
+
+    expect(product.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+// P0.4-D3 — create/updateLegalDocument() previously wrote `category_id` straight into Prisma
+// with no existence check; a stale/deleted id fell through to an unhandled FK violation,
+// surfacing as a raw 500 instead of a clean 400. `file_id`/`preview_image_id` are deliberately
+// untouched — they're already Media-registry-protected.
+describe('AboutCompanyService.create/updateLegalDocument — category_id validation (P0.4-D3)', () => {
+  function buildService() {
+    const legalCertificateDocument = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+      count: jest.fn<Promise<number>, unknown[]>(),
+      create: jest.fn<Promise<unknown>, unknown[]>(),
+      update: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const legalDocumentCategory = {
+      findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    };
+    const service = new AboutCompanyService(
+      {
+        legalCertificateDocument,
+        legalDocumentCategory,
+      } as unknown as PrismaService,
+      {} as unknown as MediaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+    );
+    return { service, legalCertificateDocument, legalDocumentCategory };
+  }
+
+  it('create: throws INVALID_CATEGORY (400) for a nonexistent category_id', async () => {
+    const { service, legalDocumentCategory } = buildService();
+    legalDocumentCategory.findUnique.mockResolvedValue(null);
+
+    let thrown: { code?: string; getStatus?: () => number } | undefined;
+    try {
+      await service.createLegalDocument({
+        title: 'License',
+        category_id: 'missing-category',
+      });
+    } catch (err) {
+      thrown = err as { code?: string; getStatus?: () => number };
+    }
+    expect(thrown?.code).toBe('INVALID_CATEGORY');
+    expect(thrown?.getStatus?.()).toBe(400);
+  });
+
+  it('create: a valid category_id proceeds exactly as before', async () => {
+    const { service, legalCertificateDocument, legalDocumentCategory } =
+      buildService();
+    legalDocumentCategory.findUnique.mockResolvedValue({ id: 'cat-1' });
+    legalCertificateDocument.count.mockResolvedValue(0);
+    legalCertificateDocument.create.mockResolvedValue({
+      id: 'doc-1',
+      title: 'License',
+    });
+
+    const result = await service.createLegalDocument({
+      title: 'License',
+      category_id: 'cat-1',
+    });
+
+    expect(result.id).toBe('doc-1');
+  });
+
+  it('create: omitting category_id never triggers a category lookup', async () => {
+    const { service, legalCertificateDocument, legalDocumentCategory } =
+      buildService();
+    legalCertificateDocument.count.mockResolvedValue(0);
+    legalCertificateDocument.create.mockResolvedValue({
+      id: 'doc-1',
+      title: 'License',
+    });
+
+    await service.createLegalDocument({ title: 'License' });
+
+    expect(legalDocumentCategory.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('update: throws INVALID_CATEGORY (400) for a nonexistent category_id', async () => {
+    const { service, legalCertificateDocument, legalDocumentCategory } =
+      buildService();
+    legalCertificateDocument.findUnique.mockResolvedValue({
+      id: 'doc-1',
+      previewImageId: 'preview-1',
+      translations: null,
+    });
+    legalDocumentCategory.findUnique.mockResolvedValue(null);
+
+    let thrown: { code?: string } | undefined;
+    try {
+      await service.updateLegalDocument('doc-1', {
+        category_id: 'missing-category',
+      });
+    } catch (err) {
+      thrown = err as { code?: string };
+    }
+    expect(thrown?.code).toBe('INVALID_CATEGORY');
+  });
+
+  it('update: a valid category_id proceeds exactly as before', async () => {
+    const { service, legalCertificateDocument, legalDocumentCategory } =
+      buildService();
+    legalCertificateDocument.findUnique.mockResolvedValue({
+      id: 'doc-1',
+      previewImageId: 'preview-1',
+      translations: null,
+    });
+    legalDocumentCategory.findUnique.mockResolvedValue({ id: 'cat-2' });
+    legalCertificateDocument.update.mockResolvedValue({
+      id: 'doc-1',
+      title: 'License',
+    });
+
+    const result = await service.updateLegalDocument('doc-1', {
+      category_id: 'cat-2',
+    });
+
+    expect(result.id).toBe('doc-1');
+  });
+
+  it('update: omitting category_id never triggers a category lookup', async () => {
+    const { service, legalCertificateDocument, legalDocumentCategory } =
+      buildService();
+    legalCertificateDocument.findUnique.mockResolvedValue({
+      id: 'doc-1',
+      previewImageId: 'preview-1',
+      translations: null,
+    });
+    legalCertificateDocument.update.mockResolvedValue({ id: 'doc-1' });
+
+    await service.updateLegalDocument('doc-1', { title: 'New' });
+
+    expect(legalDocumentCategory.findUnique).not.toHaveBeenCalled();
+  });
+});
