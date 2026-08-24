@@ -45,6 +45,7 @@ function buildService() {
   };
   const exportDestination = {
     findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    create: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepageExportReach = {
@@ -652,6 +653,108 @@ describe('HomepageService — partial-payload merge safety against saved data (P
     expect(call.data.translations.th).toEqual(stubExistingTranslations().th);
     expect(call.data.translations.hi).toEqual(stubExistingTranslations().hi);
     expect(call.data.translations.vi).toEqual(stubExistingTranslations().vi);
+  });
+
+  // P0.4-D2 — createExportDestination()/updateExportDestination() previously let a duplicate
+  // `countryCode` (DB-unique) fall straight through to Prisma with no pre-check and no catch,
+  // producing a deterministic raw 500 on ordinary, single-admin re-use of a country already on
+  // the list. Mirrors ProductsService.isProductDeleteRestrictedByPublishHistory()'s proven
+  // dual-shape (P2002 / P2039+23001... here 23505) pattern.
+  describe('createExportDestination / updateExportDestination — duplicate countryCode (P0.4-D2)', () => {
+    it('create: converts a P2002 unique-constraint violation on countryCode into 409 CONFLICT', async () => {
+      const { service, exportDestination } = buildService();
+      exportDestination.create.mockRejectedValue({
+        code: 'P2002',
+        meta: { target: ['country_code'] },
+      });
+
+      let thrown: { code?: string; getStatus?: () => number } | undefined;
+      try {
+        await service.createExportDestination({ country_code: 'ID' });
+      } catch (err) {
+        thrown = err as { code?: string; getStatus?: () => number };
+      }
+      expect(thrown?.code).toBe('CONFLICT');
+      expect(thrown?.getStatus?.()).toBe(409);
+    });
+
+    it('create: also converts the real Prisma 7 driver-adapter P2039/23505 shape into 409 CONFLICT', async () => {
+      const { service, exportDestination } = buildService();
+      exportDestination.create.mockRejectedValue({
+        code: 'P2039',
+        meta: {
+          driverAdapterError: {
+            cause: { originalCode: '23505', kind: 'postgres', code: '23505' },
+          },
+        },
+      });
+
+      let thrown: { code?: string } | undefined;
+      try {
+        await service.createExportDestination({ country_code: 'ID' });
+      } catch (err) {
+        thrown = err as { code?: string };
+      }
+      expect(thrown?.code).toBe('CONFLICT');
+    });
+
+    it('create: a unique country succeeds exactly as before', async () => {
+      const { service, exportDestination } = buildService();
+      exportDestination.create.mockResolvedValue(stubExportDestinationRow());
+
+      const result = await service.createExportDestination({
+        country_code: 'ID',
+      });
+
+      expect(result.id).toBe('dest-1');
+    });
+
+    it('create: an unrelated error is re-thrown unchanged, not swallowed into CONFLICT', async () => {
+      const { service, exportDestination } = buildService();
+      const otherError = new Error('connection lost');
+      exportDestination.create.mockRejectedValue(otherError);
+
+      await expect(
+        service.createExportDestination({ country_code: 'ID' }),
+      ).rejects.toBe(otherError);
+    });
+
+    it('update: converts a P2002 unique-constraint violation on countryCode into 409 CONFLICT', async () => {
+      const { service, exportDestination } = buildService();
+      exportDestination.findUnique.mockResolvedValue({
+        id: 'dest-1',
+        translations: null,
+      });
+      exportDestination.update.mockRejectedValue({
+        code: 'P2002',
+        meta: { target: ['country_code'] },
+      });
+
+      let thrown: { code?: string } | undefined;
+      try {
+        await service.updateExportDestination('dest-1', {
+          country_code: 'ID',
+        });
+      } catch (err) {
+        thrown = err as { code?: string };
+      }
+      expect(thrown?.code).toBe('CONFLICT');
+    });
+
+    it('update: a unique country still succeeds exactly as before', async () => {
+      const { service, exportDestination } = buildService();
+      exportDestination.findUnique.mockResolvedValue({
+        id: 'dest-1',
+        translations: null,
+      });
+      exportDestination.update.mockResolvedValue(stubExportDestinationRow());
+
+      const result = await service.updateExportDestination('dest-1', {
+        country_code: 'ID',
+      });
+
+      expect(result.id).toBe('dest-1');
+    });
   });
 
   it('updateExportReachSection: a single-locale partial payload against a saved row preserves every other locale', async () => {

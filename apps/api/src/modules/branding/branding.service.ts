@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ApiException } from '../../common/exceptions/api.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { toPublicSiteBranding, toSiteBranding } from './branding.mapper';
 import type { UpdateBrandingDto } from './dto/branding.dto';
@@ -38,6 +39,13 @@ export class BrandingService {
 
   async update(dto: UpdateBrandingDto) {
     const existing = await this.getOrCreate();
+    await this.assertMediaIdsValid([
+      dto.header_logo_id,
+      dto.footer_logo_id,
+      dto.mobile_logo_id,
+      dto.favicon_id,
+      dto.product_header_background_id,
+    ]);
     const updated = await this.prisma.siteBranding.update({
       where: { id: existing.id },
       data: {
@@ -81,5 +89,29 @@ export class BrandingService {
       include: BRANDING_INCLUDE,
     });
     return toSiteBranding(updated);
+  }
+
+  /** Mirrors `GalleryService.assertMediaValid()` (P0.4-D2) — without this, a stale/deleted
+   * media id (e.g. picked in Brand & Logo settings in one tab while permanently deleted from
+   * Media Library in another) falls straight through to Prisma and throws an unhandled FK
+   * violation, surfacing as a raw 500 instead of a clean 400. Batches all five slots into one
+   * query rather than one lookup per field — `null` (explicitly clearing a slot) and
+   * `undefined` (field not present in this update) are both left alone, only a real id is
+   * checked. */
+  private async assertMediaIdsValid(ids: (string | null | undefined)[]) {
+    const provided = [...new Set(ids.filter((id): id is string => !!id))];
+    if (provided.length === 0) return;
+    const found = await this.prisma.media.findMany({
+      where: { id: { in: provided } },
+      select: { id: true },
+    });
+    if (found.length === provided.length) return;
+    const foundIds = new Set(found.map((m) => m.id));
+    const missing = provided.filter((id) => !foundIds.has(id));
+    throw new ApiException(
+      'INVALID_MEDIA',
+      `Media not found: ${missing.join(', ')}`,
+      400,
+    );
   }
 }

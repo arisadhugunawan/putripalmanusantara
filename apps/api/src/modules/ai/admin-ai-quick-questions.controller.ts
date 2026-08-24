@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AiQuickQuestionsService } from './ai-quick-questions.service';
 import {
   CreateAiQuickQuestionDto,
+  ReorderAiQuickQuestionsDto,
   UpdateAiQuickQuestionDto,
 } from './dto/ai-quick-question.dto';
 
@@ -33,8 +34,8 @@ export class AdminAiQuickQuestionsController {
   }
 
   @Put('reorder')
-  reorder(@Body('ordered_ids') orderedIds: string[]) {
-    return this.quickQuestionsService.reorder(orderedIds);
+  reorder(@Body() dto: ReorderAiQuickQuestionsDto) {
+    return this.quickQuestionsService.reorder(dto.ordered_ids);
   }
 
   @Put(':id')

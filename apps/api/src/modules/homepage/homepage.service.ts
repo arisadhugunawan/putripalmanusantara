@@ -775,28 +775,39 @@ export class HomepageService {
 
   async createExportDestination(dto: CreateExportDestinationDto) {
     const countryMeta = this.resolveCountryMeta(dto.country_code);
-    const destination = await this.prisma.exportDestination.create({
-      data: {
-        countryCode: countryMeta.alpha2,
-        countryCodeAlpha3: countryMeta.alpha3,
-        countryName: countryMeta.name,
-        exportStatus: (dto.export_status as never) ?? 'active_destination',
-        region: dto.region,
-        description: dto.description,
-        exportVolume: dto.export_volume,
-        exportFrequency: dto.export_frequency,
-        destinationPort: dto.destination_port,
-        products: dto.product_ids
-          ? { connect: dto.product_ids.map((id) => ({ id })) }
-          : undefined,
-        order: dto.order ?? 0,
-        enabled: dto.enabled ?? true,
-        featured: dto.featured ?? false,
-        translations: dto.translations,
-      },
-      include: EXPORT_DESTINATION_INCLUDE,
-    });
-    return toExportDestination(destination);
+    try {
+      const destination = await this.prisma.exportDestination.create({
+        data: {
+          countryCode: countryMeta.alpha2,
+          countryCodeAlpha3: countryMeta.alpha3,
+          countryName: countryMeta.name,
+          exportStatus: (dto.export_status as never) ?? 'active_destination',
+          region: dto.region,
+          description: dto.description,
+          exportVolume: dto.export_volume,
+          exportFrequency: dto.export_frequency,
+          destinationPort: dto.destination_port,
+          products: dto.product_ids
+            ? { connect: dto.product_ids.map((id) => ({ id })) }
+            : undefined,
+          order: dto.order ?? 0,
+          enabled: dto.enabled ?? true,
+          featured: dto.featured ?? false,
+          translations: dto.translations,
+        },
+        include: EXPORT_DESTINATION_INCLUDE,
+      });
+      return toExportDestination(destination);
+    } catch (error) {
+      if (this.isExportDestinationCountryCodeConflict(error)) {
+        throw new ApiException(
+          'CONFLICT',
+          `"${countryMeta.name}" is already an export destination.`,
+          409,
+        );
+      }
+      throw error;
+    }
   }
 
   async updateExportDestination(id: string, dto: UpdateExportDestinationDto) {
@@ -804,32 +815,67 @@ export class HomepageService {
     const countryMeta = dto.country_code
       ? this.resolveCountryMeta(dto.country_code)
       : undefined;
-    const destination = await this.prisma.exportDestination.update({
-      where: { id },
-      data: {
-        countryCode: countryMeta?.alpha2,
-        countryCodeAlpha3: countryMeta?.alpha3,
-        countryName: countryMeta?.name,
-        exportStatus: dto.export_status as never,
-        region: dto.region,
-        description: dto.description,
-        exportVolume: dto.export_volume,
-        exportFrequency: dto.export_frequency,
-        destinationPort: dto.destination_port,
-        products: dto.product_ids
-          ? { set: dto.product_ids.map((id) => ({ id })) }
-          : undefined,
-        order: dto.order,
-        enabled: dto.enabled,
-        featured: dto.featured,
-        translations: mergeTranslations(
-          existing.translations,
-          dto.translations,
-        ),
-      },
-      include: EXPORT_DESTINATION_INCLUDE,
-    });
-    return toExportDestination(destination);
+    try {
+      const destination = await this.prisma.exportDestination.update({
+        where: { id },
+        data: {
+          countryCode: countryMeta?.alpha2,
+          countryCodeAlpha3: countryMeta?.alpha3,
+          countryName: countryMeta?.name,
+          exportStatus: dto.export_status as never,
+          region: dto.region,
+          description: dto.description,
+          exportVolume: dto.export_volume,
+          exportFrequency: dto.export_frequency,
+          destinationPort: dto.destination_port,
+          products: dto.product_ids
+            ? { set: dto.product_ids.map((id) => ({ id })) }
+            : undefined,
+          order: dto.order,
+          enabled: dto.enabled,
+          featured: dto.featured,
+          translations: mergeTranslations(
+            existing.translations,
+            dto.translations,
+          ),
+        },
+        include: EXPORT_DESTINATION_INCLUDE,
+      });
+      return toExportDestination(destination);
+    } catch (error) {
+      if (this.isExportDestinationCountryCodeConflict(error)) {
+        throw new ApiException(
+          'CONFLICT',
+          `"${countryMeta?.name ?? dto.country_code}" is already an export destination.`,
+          409,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /** True only for the unique-constraint violation on `ExportDestination.countryCode` — never a
+   * false positive on some other unrelated DB error. Checks BOTH shapes, mirroring
+   * `ProductsService.isProductDeleteRestrictedByPublishHistory()`'s proven pattern for the
+   * identical Prisma-7 driver-adapter quirk: `P2002` is Prisma's documented "unique constraint
+   * failed" code, but under Prisma 7's driver-adapter architecture this can instead surface as
+   * the generic unmapped code `P2039`, with the real Postgres SQLSTATE (`23505` =
+   * `unique_violation`) preserved at `error.meta.driverAdapterError.cause.originalCode`. */
+  private isExportDestinationCountryCodeConflict(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: {
+        target?: string[];
+        driverAdapterError?: { cause?: { originalCode?: string } };
+      };
+    };
+    if (err.code === 'P2002') {
+      return !err.meta?.target || err.meta.target.includes('country_code');
+    }
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23505'
+    );
   }
 
   async removeExportDestination(id: string) {

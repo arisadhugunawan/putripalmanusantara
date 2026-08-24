@@ -204,6 +204,9 @@ export class GalleryService {
     const mediaType = dto.media_type ?? 'image';
     assertValidExternalUrl(mediaType, dto.external_url);
     await this.assertCategoryValid(dto.category_id);
+    if (dto.media_id && mediaType !== 'youtube' && mediaType !== 'tiktok') {
+      await this.assertMediaValid(dto.media_id);
+    }
 
     const count = await this.prisma.galleryItem.count();
     const item = await this.prisma.galleryItem.create({
@@ -244,8 +247,11 @@ export class GalleryService {
       );
     }
     if (dto.category_id) await this.assertCategoryValid(dto.category_id);
-
     const isUrlBased = mediaType === 'youtube' || mediaType === 'tiktok';
+    if (dto.media_id && !isUrlBased) {
+      await this.assertMediaValid(dto.media_id);
+    }
+
     const item = await this.prisma.galleryItem.update({
       where: { id },
       data: {
@@ -293,5 +299,17 @@ export class GalleryService {
     });
     if (!category)
       throw new ApiException('INVALID_CATEGORY', 'Kategori tidak valid.', 400);
+  }
+
+  /** Mirrors `assertCategoryValid()` — without this, a stale/deleted `media_id` (e.g. picked in
+   * one browser tab while permanently deleted from Media Library in another) falls straight
+   * through to Prisma and throws an unhandled FK violation, surfacing as a raw 500 instead of a
+   * clean 400 (P0.4-D2). */
+  private async assertMediaValid(mediaId: string) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+    });
+    if (!media)
+      throw new ApiException('INVALID_MEDIA', 'Media tidak valid.', 400);
   }
 }

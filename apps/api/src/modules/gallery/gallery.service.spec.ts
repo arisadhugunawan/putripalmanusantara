@@ -6,17 +6,29 @@ function buildService() {
     findMany: jest.fn<Promise<unknown[]>, unknown[]>(),
     count: jest.fn<Promise<number>, unknown[]>(),
     findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    create: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const galleryCategory = {
-    findUnique: jest.fn<Promise<unknown>, unknown[]>(),
+    findUnique: jest
+      .fn<Promise<unknown>, unknown[]>()
+      .mockResolvedValue(stubGalleryCategoryRow()),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
-  const prisma = { galleryItem, galleryCategory };
+  // P0.4-D2 — assertMediaValid() looks up `prisma.media`; defaults to "exists" so every
+  // pre-existing test above (none of which cares about media validation) keeps working
+  // unchanged, and only the new tests below override it explicitly.
+  const media = {
+    findUnique: jest
+      .fn<Promise<unknown>, unknown[]>()
+      .mockResolvedValue({ id: 'm1' }),
+  };
+  const prisma = { galleryItem, galleryCategory, media };
   return {
     service: new GalleryService(prisma as unknown as PrismaService),
     galleryItem,
     galleryCategory,
+    media,
   };
 }
 
@@ -236,5 +248,94 @@ describe('GalleryService.update (item) — partial-payload merge safety (Phase 5
       { data: { translations: unknown } },
     ];
     expect(call.data.translations).toBeUndefined();
+  });
+});
+
+// P0.4-D2 — create()/update() previously wrote `dto.media_id` straight into the Prisma call
+// with no existence check at all, unlike `category_id`, which is validated via
+// `assertCategoryValid()` in the very same file. A stale/deleted media id (picked in one tab,
+// removed from the Media Library in another) fell through to an unhandled FK violation → raw
+// 500. `assertMediaValid()` mirrors `assertCategoryValid()` exactly.
+describe('GalleryService.create/update — media_id validation (P0.4-D2)', () => {
+  it('create: throws INVALID_MEDIA (400) for a nonexistent media_id', async () => {
+    const { service, media } = buildService();
+    media.findUnique.mockResolvedValue(null);
+
+    let thrown: { code?: string; getStatus?: () => number } | undefined;
+    try {
+      await service.create({
+        category_id: 'cat-1',
+        media_id: 'missing-media',
+      });
+    } catch (err) {
+      thrown = err as { code?: string; getStatus?: () => number };
+    }
+    expect(thrown?.code).toBe('INVALID_MEDIA');
+    expect(thrown?.getStatus?.()).toBe(400);
+  });
+
+  it('create: a valid media_id proceeds exactly as before', async () => {
+    const { service, galleryItem, media } = buildService();
+    media.findUnique.mockResolvedValue({ id: 'm1' });
+    galleryItem.count.mockResolvedValue(0);
+    galleryItem.create.mockResolvedValue(stubGalleryItemRow());
+
+    const result = await service.create({
+      category_id: 'cat-1',
+      media_id: 'm1',
+    });
+
+    expect(result.id).toBe('g1');
+  });
+
+  it('create: youtube/tiktok items skip media validation entirely (no media_id ever written)', async () => {
+    const { service, galleryItem, media } = buildService();
+    galleryItem.count.mockResolvedValue(0);
+    galleryItem.create.mockResolvedValue(
+      stubGalleryItemRow({ mediaType: 'youtube', mediaId: null }),
+    );
+
+    await service.create({
+      category_id: 'cat-1',
+      media_type: 'youtube',
+      external_url: 'https://youtube.com/watch?v=abc',
+    } as never);
+
+    expect(media.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('update: throws INVALID_MEDIA (400) for a nonexistent media_id', async () => {
+    const { service, galleryItem, media } = buildService();
+    galleryItem.findUnique.mockResolvedValue(stubGalleryItemRow());
+    media.findUnique.mockResolvedValue(null);
+
+    let thrown: { code?: string } | undefined;
+    try {
+      await service.update('g1', { media_id: 'missing-media' });
+    } catch (err) {
+      thrown = err as { code?: string };
+    }
+    expect(thrown?.code).toBe('INVALID_MEDIA');
+  });
+
+  it('update: a valid media_id proceeds exactly as before', async () => {
+    const { service, galleryItem, media } = buildService();
+    galleryItem.findUnique.mockResolvedValue(stubGalleryItemRow());
+    media.findUnique.mockResolvedValue({ id: 'm2' });
+    galleryItem.update.mockResolvedValue(stubGalleryItemRow({ mediaId: 'm2' }));
+
+    const result = await service.update('g1', { media_id: 'm2' });
+
+    expect(result.id).toBe('g1');
+  });
+
+  it('update: omitting media_id from the patch never triggers a media lookup', async () => {
+    const { service, galleryItem, media } = buildService();
+    galleryItem.findUnique.mockResolvedValue(stubGalleryItemRow());
+    galleryItem.update.mockResolvedValue(stubGalleryItemRow());
+
+    await service.update('g1', { title: 'New title' });
+
+    expect(media.findUnique).not.toHaveBeenCalled();
   });
 });

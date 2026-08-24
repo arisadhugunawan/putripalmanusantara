@@ -53,3 +53,18 @@ export class AiChatRequestDto {
   @Type(() => AiChatPageContextDto)
   page_context?: AiChatPageContextDto;
 }
+
+/** P0.4-D2 — `AdminAiController.test()` previously took raw `@Body('question')`/
+ * `@Body('language')` with no validation at all, unlike the public `/ai/chat` endpoint's
+ * `AiChatRequestDto` above; a missing/non-string `question` threw an unhandled TypeError
+ * inside `AiChatService.chat()`. Mirrors `message`'s/`language`'s validation exactly. */
+export class AdminAiTestRequestDto {
+  @IsString()
+  @MaxLength(1000)
+  question!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5)
+  language?: string;
+}

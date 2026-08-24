@@ -66,6 +66,24 @@ export class AiQuickQuestionsService {
   }
 
   async reorder(orderedIds: string[]) {
+    // P0.4-D2 — a stale/deleted id (e.g. picked in one tab while removed in another) previously
+    // fell straight through to Prisma and threw an unhandled P2025, surfacing as a raw 500
+    // instead of a clean 404. Batches one existence check for every id rather than validating
+    // inside the loop below, mirroring `assertExists()`'s single-purpose style.
+    const existing = await this.prisma.aiQuickQuestion.findMany({
+      where: { id: { in: orderedIds } },
+      select: { id: true },
+    });
+    if (existing.length !== new Set(orderedIds).size) {
+      const foundIds = new Set(existing.map((q) => q.id));
+      const missing = orderedIds.filter((id) => !foundIds.has(id));
+      throw new ApiException(
+        'NOT_FOUND',
+        `Quick question(s) not found: ${missing.join(', ')}`,
+        404,
+      );
+    }
+
     await this.prisma.$transaction(
       orderedIds.map((id, index) =>
         this.prisma.aiQuickQuestion.update({

@@ -1,4 +1,6 @@
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsBoolean,
   IsInt,
   IsOptional,
@@ -43,4 +45,13 @@ export class UpdateAiQuickQuestionDto {
   @IsOptional()
   @IsInt()
   order?: number;
+}
+
+/** P0.4-D2 — reorder() previously took a raw `@Body('ordered_ids')` with no validation at all;
+ * a missing/malformed body threw an unhandled TypeError before it ever reached the service. */
+export class ReorderAiQuickQuestionsDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  ordered_ids!: string[];
 }

@@ -15,6 +15,7 @@ import { AiAnalyticsService } from './ai-analytics.service';
 import { AiChatService } from './ai-chat.service';
 import { AiSettingsService } from './ai-settings.service';
 import { AiSyncService } from './ai-sync.service';
+import { AdminAiTestRequestDto } from './dto/ai-chat.dto';
 import { UpdateAiSettingsDto } from './dto/ai-settings.dto';
 
 @Controller('api/v1/admin/ai')
@@ -70,14 +71,12 @@ export class AdminAiController {
   // visitor analytics/conversation history in a confusing way (still logged, just clearly
   // tagged, so an admin reviewing conversations can tell test traffic apart).
   @Post('test')
-  async test(
-    @Body('question') question: string,
-    @Body('language') language = 'en',
-  ) {
+  async test(@Body() dto: AdminAiTestRequestDto) {
+    const language = dto.language ?? 'en';
     const [result, status] = await Promise.all([
       this.chatService.chat({
         session_id: `admin-test-${Date.now()}`,
-        message: question,
+        message: dto.question,
         language,
         history: [],
       }),
