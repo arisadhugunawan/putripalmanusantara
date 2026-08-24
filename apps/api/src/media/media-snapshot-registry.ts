@@ -64,8 +64,9 @@ export const SNAPSHOT_REFERENCE_CHECKS: SnapshotReferenceCheck[] = [
     // Reproducing this identical limitation (rather than inventing a URL-based second parser)
     // matches the brief's "do not implement a second parser unless the existing architecture
     // requires it"; the same gap already exists for every other rich-text-with-images field in
-    // this codebase (e.g. About Company's), and About Company/Homepage don't even have a
-    // registry entry yet at all — both out of scope here.
+    // this codebase (e.g. About Company's). Still out of scope — About Company/Homepage/Contact
+    // Page DO have their own registry entries below now (P0.4-C2), just not a fix for this
+    // specific rich-text-embed limitation.
     module: 'Articles — Version History',
     async findReferences(prisma, mediaId) {
       const rows = await prisma.$queryRaw<
@@ -80,6 +81,111 @@ export const SNAPSHOT_REFERENCE_CHECKS: SnapshotReferenceCheck[] = [
       return rows.map((r) => ({
         module: 'Articles — Version History',
         contentLabel: r.title,
+        version: r.version,
+        publishedAt: r.published_at,
+      }));
+    },
+  },
+  {
+    // P0.4-C2. Homepage/About Company/Contact Page are the public site's exclusive read source
+    // for their respective pages (never fall back to draft tables — see each service's
+    // `getPublished*()`), so a media file only referenced inside one of these frozen snapshots
+    // is genuinely live content right now, not just old history — the exact gap this entry
+    // closes. Same blunt full-text substring approach as Products/Articles above, and the same
+    // "scan every retained row, not just the latest" semantics: `HomepagePublishedSnapshot` is
+    // append-only (one new row per publish/restore, old rows never deleted — mirrors
+    // `ProductPublishedSnapshot` exactly, confirmed via `HomepageService.publishHomepage()`/
+    // `restoreSnapshot()`/`listSnapshots()`), so every historical version must stay protected,
+    // consistent with the existing Products/Articles entries.
+    //
+    // Neither `HomepagePublishedSnapshot` nor `AboutCompanyPublishedSnapshot` has a `version`
+    // column (unlike Product/Article's snapshot tables) — `ROW_NUMBER() OVER (ORDER BY
+    // published_at ASC)` computed across every row in the table (not just the matches) assigns
+    // a stable, meaningful publish-order number without adding a schema column.
+    module: 'Homepage — Version History',
+    async findReferences(prisma, mediaId) {
+      const rows = await prisma.$queryRaw<
+        { version: number; published_at: Date }[]
+      >`
+        SELECT ranked.version AS version, ranked.published_at AS published_at
+        FROM (
+          SELECT
+            s.published_at AS published_at,
+            s.data AS data,
+            ROW_NUMBER() OVER (ORDER BY s.published_at ASC)::int AS version
+          FROM homepage_published_snapshot s
+        ) ranked
+        WHERE ranked.data::text LIKE ${'%' + mediaId + '%'}
+        ORDER BY ranked.published_at DESC
+      `;
+      return rows.map((r) => ({
+        module: 'Homepage — Version History',
+        contentLabel: 'Homepage',
+        version: r.version,
+        publishedAt: r.published_at,
+      }));
+    },
+  },
+  {
+    // P0.4-C2. Same rationale/shape as the Homepage entry immediately above — see its comment
+    // for why every retained version must be scanned and why `version` is computed rather than
+    // stored. `AboutCompanyPublishedSnapshot` is append-only, mirroring
+    // `AboutCompanyService.publishAboutCompany()`/`restoreSnapshot()`/`listSnapshots()`.
+    module: 'About Company — Version History',
+    async findReferences(prisma, mediaId) {
+      const rows = await prisma.$queryRaw<
+        { version: number; published_at: Date }[]
+      >`
+        SELECT ranked.version AS version, ranked.published_at AS published_at
+        FROM (
+          SELECT
+            s.published_at AS published_at,
+            s.data AS data,
+            ROW_NUMBER() OVER (ORDER BY s.published_at ASC)::int AS version
+          FROM about_company_published_snapshot s
+        ) ranked
+        WHERE ranked.data::text LIKE ${'%' + mediaId + '%'}
+        ORDER BY ranked.published_at DESC
+      `;
+      return rows.map((r) => ({
+        module: 'About Company — Version History',
+        contentLabel: 'About Company',
+        version: r.version,
+        publishedAt: r.published_at,
+      }));
+    },
+  },
+  {
+    // P0.4-C2. Contact Page's snapshot is architecturally different from the other four — a
+    // SINGLE row updated in place (`ContactPageService.publish()`/`unpublish()` both target the
+    // one existing row via `getOrCreateSnapshot()`; there is no `listSnapshots()`/
+    // `restoreSnapshot()` for Contact — confirmed absent), and `unpublish()` deliberately never
+    // clears `data`, only flips `isPublished`, so the last-published payload stays queryable
+    // (and stays the thing `getPublished()` would immediately show again on a future re-publish
+    // with no other edits). `data`/`published_at` are nullable (`Json?`/`DateTime?` — no row has
+    // ever been published yet) — explicitly excluded rather than relying on `NULL LIKE '%x%'`
+    // evaluating to NULL/false. The same `ROW_NUMBER()` shape as Homepage/About Company above is
+    // reused for consistency even though there is at most one row today.
+    module: 'Contact Page — Version History',
+    async findReferences(prisma, mediaId) {
+      const rows = await prisma.$queryRaw<
+        { version: number; published_at: Date }[]
+      >`
+        SELECT ranked.version AS version, ranked.published_at AS published_at
+        FROM (
+          SELECT
+            s.published_at AS published_at,
+            s.data AS data,
+            ROW_NUMBER() OVER (ORDER BY s.published_at ASC)::int AS version
+          FROM contact_page_published_snapshot s
+          WHERE s.data IS NOT NULL AND s.published_at IS NOT NULL
+        ) ranked
+        WHERE ranked.data::text LIKE ${'%' + mediaId + '%'}
+        ORDER BY ranked.published_at DESC
+      `;
+      return rows.map((r) => ({
+        module: 'Contact Page — Version History',
+        contentLabel: 'Contact Page',
         version: r.version,
         publishedAt: r.published_at,
       }));
