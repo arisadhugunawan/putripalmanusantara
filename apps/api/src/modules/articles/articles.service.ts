@@ -268,23 +268,64 @@ export class ArticlesService {
   }
 
   async findPublishedBySlug(slug: string, locale?: string) {
+    // Fast path — unchanged from before P0.4-C3, indexed on `Article.slug`, covers the
+    // overwhelming majority of requests (no pending unpublished slug edit on this article).
     const article = await this.prisma.article.findFirst({
       where: { slug, status: 'published' },
       select: { id: true },
     });
-    if (!article) {
-      throw new ApiException('NOT_FOUND', 'Article not found.', 404);
+    if (article) {
+      const snapshot = await this.prisma.articlePublishedSnapshot.findFirst({
+        where: { articleId: article.id },
+        orderBy: { version: 'desc' },
+      });
+      // The live row matching `slug` is necessary but not sufficient — an admin can save a NEW
+      // draft slug on an already-published article (live row now matches the new slug) without
+      // publishing, in which case the latest snapshot still carries the OLD slug. Trusting the
+      // live-row match alone here would serve stale content at a URL nothing has actually
+      // published yet (confirmed live during P0.4-C3 verification of the identical Product
+      // case — this exact scenario returned 200 with the old snapshot instead of 404 before
+      // this check was added). Requiring the snapshot's own frozen slug to also equal the
+      // request keeps the fast path fast for the normal case while correctly falling through to
+      // NOT_FOUND for a not-yet-published new slug.
+      const snapshotData = snapshot?.data as { slug?: string } | undefined;
+      if (snapshot && snapshotData?.slug === slug) {
+        return toArticleDetail(reviveDates(snapshot.data as never), locale);
+      }
+      // Either no snapshot exists yet, or the snapshot's slug has since diverged from the live
+      // row's. Falls through to the fallback path below. Same rule (and same reason) as
+      // ProductsService's equivalent.
     }
-    const snapshot = await this.prisma.articlePublishedSnapshot.findFirst({
-      where: { articleId: article.id },
-      orderBy: { version: 'desc' },
-    });
-    if (!snapshot) {
-      // status flipped to 'published' but no snapshot exists yet — never fall back to the live
-      // row. Same rule (and same reason) as ProductsService.findPublishedBySlug().
-      throw new ApiException('NOT_FOUND', 'Article not found.', 404);
+
+    // Fallback (P0.4-C3) — only reached when the live row's CURRENT slug doesn't match the
+    // request. Public identity must follow the PUBLISHED SNAPSHOT, not the live draft row —
+    // same rationale as ProductsService.findPublishedBySlug()'s identical fallback: the OLD
+    // slug must keep resolving to the still-published content until the next Publish.
+    //
+    // The inner query resolves each published article's LATEST snapshot ONLY (`DISTINCT ON` +
+    // `ORDER BY version DESC`) BEFORE any slug filtering — the slug check happens in the outer
+    // query, against that single latest row. Filtering by slug first (checked live during
+    // P0.4-C3 verification of the identical Product case, then corrected) would let a slug from
+    // any OLD, superseded version keep matching forever, even after a newer version was
+    // published under a different slug — exactly the "old-slug should 404 once new-slug is
+    // published" case this must NOT do. Deliberately not indexed — only ever hit in the narrow
+    // post-edit, pre-republish window, never on the normal hot path above.
+    const fallback = await this.prisma.$queryRaw<{ data: unknown }[]>`
+      SELECT latest.data AS data
+      FROM (
+        SELECT DISTINCT ON (s.article_id) s.data AS data
+        FROM article_published_snapshots s
+        JOIN articles a ON a.id = s.article_id
+        WHERE a.status = 'published'
+        ORDER BY s.article_id, s.version DESC
+      ) latest
+      WHERE latest.data->>'slug' = ${slug}
+    `;
+    if (fallback.length > 0) {
+      return toArticleDetail(reviveDates(fallback[0].data as never), locale);
     }
-    return toArticleDetail(reviveDates(snapshot.data as never), locale);
+
+    throw new ApiException('NOT_FOUND', 'Article not found.', 404);
   }
 
   /** Related Insights — matched by category first, since Article has no tag-similarity

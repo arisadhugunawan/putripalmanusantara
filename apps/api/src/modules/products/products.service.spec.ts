@@ -24,9 +24,16 @@ function buildService() {
     findFirst: jest.fn<Promise<unknown>, unknown[]>(),
     findMany: jest.fn<Promise<unknown[]>, unknown[]>(),
   };
+  // Default resolves to no rows — every existing test that never touches the P0.4-C3 slug
+  // fallback path (the vast majority) doesn't need to know this exists; tests exercising the
+  // fallback itself override it explicitly.
+  const queryRaw = jest
+    .fn<Promise<unknown[]>, unknown[]>()
+    .mockResolvedValue([]);
   const prisma = {
     product,
     productPublishedSnapshot,
+    $queryRaw: queryRaw,
     $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
   const events = { emit: jest.fn() };
@@ -37,6 +44,7 @@ function buildService() {
     ),
     product,
     productPublishedSnapshot,
+    queryRaw,
     events,
   };
 }
@@ -232,9 +240,12 @@ describe('ProductsService.restoreSnapshot', () => {
 
 describe('ProductsService — published data boundary', () => {
   it('findPublishedBySlug never falls back to the live row when status=published but no snapshot exists', async () => {
-    const { service, product, productPublishedSnapshot } = buildService();
+    const { service, product, productPublishedSnapshot, queryRaw } =
+      buildService();
     product.findFirst.mockResolvedValue({ id: 'p1' });
     productPublishedSnapshot.findFirst.mockResolvedValue(null);
+    // Falls through to the P0.4-C3 fallback, which also finds nothing for this id.
+    queryRaw.mockResolvedValue([]);
 
     await expect(service.findPublishedBySlug('copra')).rejects.toThrow(
       ApiException,
@@ -250,6 +261,177 @@ describe('ProductsService — published data boundary', () => {
 
     expect(product.update).not.toHaveBeenCalled();
     expect(product.delete).not.toHaveBeenCalled();
+  });
+});
+
+// P0.4-C3 — public identity must follow the PUBLISHED SNAPSHOT, not the live draft row: an
+// admin can save a new slug on a published product without publishing, and the OLD slug must
+// keep resolving to the still-published content until the next Publish. These tests cover the
+// two-path resolution added to findPublishedBySlug(): the unchanged fast path (live row match)
+// and the new fallback (scans published products' latest snapshots for a frozen slug match).
+describe('ProductsService.findPublishedBySlug — slug publish-gate (P0.4-C3)', () => {
+  it('(A) normal fast path: an unchanged published slug resolves via the live row, without ever calling the fallback query', async () => {
+    const { service, product, productPublishedSnapshot, queryRaw } =
+      buildService();
+    product.findFirst.mockResolvedValue({ id: 'p1' });
+    productPublishedSnapshot.findFirst.mockResolvedValue({
+      data: {
+        id: 'p1',
+        slug: 'copra',
+        gallery: [],
+        // ISO strings, not Date instances — matches how Postgres jsonb actually round-trips
+        // snapshot data, and exercises reviveDates() the same way production data does.
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
+
+    const result = await service.findPublishedBySlug('copra', 'en');
+
+    expect(result.slug).toBe('copra');
+    // (D) fallback must not run at all on the fast path.
+    expect(queryRaw).not.toHaveBeenCalled();
+  });
+
+  it("(B) draft slug change: requesting the OLD (still-published) slug resolves via the fallback, returning the snapshot's content and its own frozen slug", async () => {
+    const { service, product, queryRaw } = buildService();
+    // Live row's CURRENT slug is "new-slug" — the fast-path lookup for "old-slug" finds nothing.
+    product.findFirst.mockResolvedValue(null);
+    queryRaw.mockResolvedValue([
+      {
+        data: {
+          id: 'p1',
+          slug: 'old-slug',
+          name: 'Copra',
+          gallery: [],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
+    ]);
+
+    const result = await service.findPublishedBySlug('old-slug', 'id');
+
+    expect(result.slug).toBe('old-slug');
+    // (E) locale is threaded through to the mapper on the fallback path exactly like the fast
+    // path — proven indirectly here via a locale-dependent field would require a full
+    // translations fixture, so this is asserted directly against the mapper call below instead.
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('(E) locale is passed to the mapper on the fallback path', async () => {
+    const { service, product, queryRaw } = buildService();
+    product.findFirst.mockResolvedValue(null);
+    queryRaw.mockResolvedValue([
+      {
+        data: {
+          id: 'p1',
+          slug: 'old-slug',
+          name: 'Copra',
+          translations: { id: { name: 'Kopra' } },
+          gallery: [],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
+    ]);
+
+    const result = await service.findPublishedBySlug('old-slug', 'id');
+
+    expect(result.name).toBe('Kopra');
+  });
+
+  it('(C) a genuinely never-published new slug 404s — the fast path finds nothing live and the fallback finds nothing published either', async () => {
+    const { service, product, queryRaw } = buildService();
+    product.findFirst.mockResolvedValue(null);
+    queryRaw.mockResolvedValue([]);
+
+    await expect(service.findPublishedBySlug('new-slug')).rejects.toThrow(
+      ApiException,
+    );
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  // Caught live during P0.4-C3 verification: the live row can match `slug` + `status:
+  // 'published'` (the fast path's WHERE clause) even when the requested slug was NEVER
+  // actually published — this happens exactly when an admin saves a new draft slug on an
+  // already-published product without republishing. Before this test existed, the fast path
+  // trusted that match and served the OLD snapshot's content at the NEW, not-yet-published URL
+  // instead of correctly 404ing. Requesting the new slug must 404, not resolve to stale content.
+  it('(C2) a live row matching the requested slug does NOT count as published unless the snapshot itself carries that same slug', async () => {
+    const { service, product, productPublishedSnapshot, queryRaw } =
+      buildService();
+    // Live row's slug was just changed to "new-slug" and the product is still status=published
+    // (from an earlier, unrelated publish) — the fast-path WHERE clause matches.
+    product.findFirst.mockResolvedValue({ id: 'p1' });
+    // But the latest snapshot is still frozen at the OLD slug — nothing has published "new-slug".
+    productPublishedSnapshot.findFirst.mockResolvedValue({
+      data: {
+        id: 'p1',
+        slug: 'old-slug',
+        gallery: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
+    // The fallback also correctly finds nothing, since no published snapshot anywhere has
+    // "new-slug" as its own data.slug yet.
+    queryRaw.mockResolvedValue([]);
+
+    await expect(service.findPublishedBySlug('new-slug')).rejects.toThrow(
+      ApiException,
+    );
+    // Falls through to the fallback rather than trusting the mismatched live-row match.
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('(D) the fallback query runs exactly once when the fast path misses', async () => {
+    const { service, product, queryRaw } = buildService();
+    product.findFirst.mockResolvedValue(null);
+    queryRaw.mockResolvedValue([]);
+
+    await expect(service.findPublishedBySlug('old-slug')).rejects.toThrow(
+      ApiException,
+    );
+
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it("(F) the fallback query resolves each product's LATEST snapshot BEFORE filtering by slug, not the other way around", async () => {
+    const { service, product, queryRaw } = buildService();
+    product.findFirst.mockResolvedValue(null);
+    queryRaw.mockResolvedValue([]);
+
+    await expect(service.findPublishedBySlug('old-slug')).rejects.toThrow(
+      ApiException,
+    );
+
+    const [strings] = queryRaw.mock.calls[0] as [TemplateStringsArray];
+    const sql = strings.join('');
+    expect(sql).toContain('DISTINCT ON');
+    expect(sql).toContain('ORDER BY');
+    expect(sql).toContain('version DESC');
+    expect(sql).toContain("status = 'published'");
+    // Caught live during P0.4-C3 verification: filtering by slug BEFORE picking the latest
+    // version per product let a slug from an old, superseded version keep matching forever,
+    // even after a newer version was published under a different slug — old-slug never 404ed
+    // once new-slug went live, contradicting the approved "old-slug → 404 after republish"
+    // behavior. The slug filter must be in the OUTER query, applied only to the already-latest
+    // row from the inner subquery — asserted here by requiring the inner `DISTINCT ON` subquery
+    // (aliased `latest`) to close (`) latest`) BEFORE the slug filter appears in the SQL text.
+    const subqueryCloseIndex = sql.indexOf(') latest');
+    const slugFilterIndex = sql.indexOf("data->>'slug'");
+    expect(subqueryCloseIndex).toBeGreaterThan(-1);
+    expect(slugFilterIndex).toBeGreaterThan(subqueryCloseIndex);
+  });
+
+  it('(G) an unrelated fallback query error is re-thrown unchanged, not swallowed into a generic ApiException', async () => {
+    const { service, product, queryRaw } = buildService();
+    product.findFirst.mockResolvedValue(null);
+    const dbError = new Error('connection lost');
+    queryRaw.mockRejectedValue(dbError);
+
+    await expect(service.findPublishedBySlug('old-slug')).rejects.toBe(dbError);
   });
 });
 
