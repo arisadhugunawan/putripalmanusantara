@@ -1,4 +1,5 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.event';
 import { HomepageService } from './homepage.service';
@@ -67,13 +68,34 @@ function buildService() {
     $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
   const events = { emit: jest.fn() };
+  const translationService = {
+    isConfigured: jest.fn<boolean, unknown[]>().mockReturnValue(false),
+    translateFields: jest.fn<
+      Promise<{
+        available: boolean;
+        translations: Record<string, Record<string, string>>;
+      }>,
+      unknown[]
+    >(),
+    generateAndMerge: jest.fn<
+      Promise<{
+        available: boolean;
+        translatedLocales: string[];
+        generated: Record<string, Record<string, string>>;
+        mergedTranslations: Record<string, Record<string, string>> | undefined;
+      }>,
+      unknown[]
+    >(),
+  };
   return {
     service: new HomepageService(
       prisma as unknown as PrismaService,
       {} as unknown as ProductionStepsService,
       {} as unknown as SupplyNetworkService,
       events as unknown as EventEmitter2,
+      translationService as unknown as AiTranslationService,
     ),
+    translationService,
     homepagePublishedSnapshot,
     heroSlide,
     homepageAboutPreview,

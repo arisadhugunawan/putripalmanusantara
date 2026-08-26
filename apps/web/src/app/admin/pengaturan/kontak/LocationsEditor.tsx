@@ -5,6 +5,7 @@ import type { ContactLocation, ContactLocationType, Locale } from "@ppn/shared-t
 import { FormEvent, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
@@ -245,6 +246,11 @@ export function LocationsEditor({
                 />
               </summary>
               <div className="mt-3">
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/contact-page/locations/${location.id}/translation-status`}
+                  generateUrl={`/admin/contact-page/locations/${location.id}/translations/generate`}
+                  onGenerated={() => void onChange()}
+                />
                 <LocaleTabs>
                   {(locale) =>
                     locale === "en" ? (

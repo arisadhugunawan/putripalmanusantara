@@ -56,6 +56,16 @@ export class AdminArticlesController {
     return this.articlesService.updateCategory(id, dto);
   }
 
+  @Get('categories/:id/translation-status')
+  getCategoryTranslationStatus(@Param('id') id: string) {
+    return this.articlesService.getCategoryTranslationStatus(id);
+  }
+
+  @Post('categories/:id/translations/generate')
+  generateCategoryTranslations(@Param('id') id: string) {
+    return this.articlesService.generateCategoryTranslations(id);
+  }
+
   @Delete('categories/:id')
   removeCategory(@Param('id') id: string) {
     return this.articlesService.removeCategory(id);
@@ -109,6 +119,16 @@ export class AdminArticlesController {
       '/',
     ]);
     return article;
+  }
+
+  @Get(':id/translation-status')
+  getTranslationStatus(@Param('id') id: string) {
+    return this.articlesService.getTranslationStatus(id);
+  }
+
+  @Post(':id/translations/generate')
+  generateTranslations(@Param('id') id: string) {
+    return this.articlesService.generateTranslations(id);
   }
 
   // Publish/unpublish/restore are the only Article actions restricted to super_admin —

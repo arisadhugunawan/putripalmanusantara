@@ -1,5 +1,6 @@
 import { PageHeaderService } from './page-header.service';
 import { Prisma } from '../../../generated/prisma/client';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { MediaService } from '../../media/media.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
@@ -12,6 +13,7 @@ function buildService() {
   const service = new PageHeaderService(
     { pageHeader } as unknown as PrismaService,
     {} as unknown as MediaService,
+    {} as unknown as AiTranslationService,
   );
   return { service, pageHeader };
 }

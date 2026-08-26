@@ -1,24 +1,11 @@
 import type { Media } from "./media";
 import type { Translations } from "./i18n";
+export type { GenerateTranslationsResult } from "./i18n";
+export type {
+  TranslationCoverage as ProductTranslationCoverage,
+  TranslationStatusEntry as ProductTranslationStatusEntry,
+} from "./i18n";
 
-/** GET /admin/products/{id}/translation-status — one entry per non-English `SUPPORTED_LOCALES`
- * member, letting Admin see translation coverage without opening every LocaleTabs tab. */
-export type ProductTranslationCoverage = "translated" | "partial" | "not_translated";
-
-export interface ProductTranslationStatusEntry {
-  locale: string;
-  status: ProductTranslationCoverage;
-  fields_translated: number;
-  fields_total: number;
-}
-
-/** POST /admin/products/{id}/translations/generate — no MT provider is configured in this
- * project, so this always degrades honestly instead of fabricating translations. */
-export interface GenerateTranslationsResult {
-  available: false;
-  reason: "not_configured";
-  message: string;
-}
 
 export const PRODUCT_CATEGORIES = [
   "Semi Husked Coconut",

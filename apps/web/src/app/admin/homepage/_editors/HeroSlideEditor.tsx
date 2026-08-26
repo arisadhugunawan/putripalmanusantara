@@ -7,6 +7,7 @@ import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { HeroSlidePreviewModal } from "@/components/admin/HeroSlidePreviewModal";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -161,6 +162,7 @@ export function HeroSlideEditor() {
             index={index}
             slideCount={slides.length}
             onUpdate={(patch) => handleUpdate(slide.id, patch)}
+            onReload={() => void load()}
             onToggleActive={() => void handleToggleActive(slide)}
             onDelete={() => setDeleteTargetId(slide.id)}
             onDuplicate={() => void handleDuplicate(slide.id)}
@@ -208,6 +210,7 @@ export function HeroSlideCard({
   index,
   slideCount,
   onUpdate,
+  onReload,
   onToggleActive,
   onDelete,
   onDuplicate,
@@ -218,6 +221,7 @@ export function HeroSlideCard({
   index: number;
   slideCount: number;
   onUpdate: (patch: Record<string, unknown>) => void;
+  onReload: () => void;
   onToggleActive: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -533,6 +537,11 @@ export function HeroSlideCard({
           <TranslationStatusBadges translations={slide.translations} base={heroSlideTranslationBase(slide)} />
         </summary>
         <div className="mt-3">
+          <GenerateTranslationsPanel
+            statusUrl={`/admin/homepage/hero-slides/${slide.id}/translation-status`}
+            generateUrl={`/admin/homepage/hero-slides/${slide.id}/translations/generate`}
+            onGenerated={onReload}
+          />
           <LocaleTabs>
             {(locale) =>
               locale === "en" ? (

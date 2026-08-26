@@ -8,6 +8,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -196,6 +197,11 @@ export function SupplyNetworkCountriesEditor() {
                   />
                 </summary>
                 <div className="mt-2">
+                  <GenerateTranslationsPanel
+                    statusUrl={`/admin/supply-network/countries/${country.id}/translation-status`}
+                    generateUrl={`/admin/supply-network/countries/${country.id}/translations/generate`}
+                    onGenerated={() => void reload()}
+                  />
                   <LocaleTabs>
                     {(locale) =>
                       locale === "en" ? (

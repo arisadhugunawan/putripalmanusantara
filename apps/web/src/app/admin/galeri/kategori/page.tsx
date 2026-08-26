@@ -8,6 +8,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
@@ -160,6 +161,11 @@ export default function AdminGalleryCategoriesPage() {
                     onBlur={(e) => void handleUpdate(category.id, { name: e.target.value }, "Nama")}
                   />
                   <p className="mt-1 text-small text-neutral-500">Slug: {category.slug}</p>
+                  <GenerateTranslationsPanel
+                    statusUrl={`/admin/gallery/categories/${category.id}/translation-status`}
+                    generateUrl={`/admin/gallery/categories/${category.id}/translations/generate`}
+                    onGenerated={() => void reload()}
+                  />
                   <RowTranslationsDisclosure
                     key={`${category.id}-${JSON.stringify(category.translations ?? {})}`}
                     translations={category.translations}

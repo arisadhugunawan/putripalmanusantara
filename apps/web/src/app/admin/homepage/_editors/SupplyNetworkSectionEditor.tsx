@@ -4,6 +4,7 @@ import { Card, Input, Label, Textarea } from "@ppn/ui-components";
 import type { HomepageSupplyNetworkSection, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
@@ -114,6 +115,11 @@ export function SupplyNetworkSectionEditor() {
         </summary>
         <p className="mt-1 text-small text-neutral-600">Judul header, deskripsi, dan node pusat.</p>
         <div className="mt-3">
+          <GenerateTranslationsPanel
+            statusUrl="/admin/supply-network/section/translation-status"
+            generateUrl="/admin/supply-network/section/translations/generate"
+            onGenerated={() => void load()}
+          />
           <LocaleTabs>
             {(locale) =>
               locale === "en" ? (

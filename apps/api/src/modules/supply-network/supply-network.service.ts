@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -23,9 +28,32 @@ import type {
 } from './dto/supply-network-item.dto';
 import type { UpdateHomepageSupplyNetworkSectionDto } from './dto/supply-network-section.dto';
 
+const ITEM_TRANSLATABLE_FIELDS = [
+  'label',
+  'title',
+  'shortTitle',
+  'description',
+] as const;
+const COUNTRY_TRANSLATABLE_FIELDS = ['name', 'status'] as const;
+const SECTION_TRANSLATABLE_FIELDS = [
+  'eyebrow',
+  'heading',
+  'description',
+  'centerLabel',
+  'centerTitle',
+  'centerDescription',
+  'finalHeading',
+  'finalDescription',
+  'primaryCtaLabel',
+  'secondaryCtaLabel',
+] as const;
+
 @Injectable()
 export class SupplyNetworkService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly translationService: AiTranslationService,
+  ) {}
 
   // ── Items ─────────────────────────────────────────────────────────────
 
@@ -86,6 +114,40 @@ export class SupplyNetworkService {
       include: { illustration: true },
     });
     return toSupplyNetworkItem(item);
+  }
+
+  async getTranslationStatus(id: string) {
+    const item = await this.assertExists(id);
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of ITEM_TRANSLATABLE_FIELDS)
+      sourceFields[field] = item[field];
+    return computeTranslationStatus(sourceFields, item.translations);
+  }
+
+  async generateTranslations(id: string) {
+    const item = await this.assertExists(id);
+    const sourceFields: Record<string, string> = {};
+    for (const field of ITEM_TRANSLATABLE_FIELDS) {
+      const value = item[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.supplyNetworkItem.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async remove(id: string) {
@@ -253,6 +315,40 @@ export class SupplyNetworkService {
     return toSupplyNetworkCountry(country);
   }
 
+  async getCountryTranslationStatus(id: string) {
+    const country = await this.assertCountryExists(id);
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of COUNTRY_TRANSLATABLE_FIELDS)
+      sourceFields[field] = country[field];
+    return computeTranslationStatus(sourceFields, country.translations);
+  }
+
+  async generateCountryTranslations(id: string) {
+    const country = await this.assertCountryExists(id);
+    const sourceFields: Record<string, string> = {};
+    for (const field of COUNTRY_TRANSLATABLE_FIELDS) {
+      const value = country[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        country.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.supplyNetworkCountry.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeCountry(id: string) {
     await this.assertCountryExists(id);
     await this.prisma.supplyNetworkCountry.delete({ where: { id } });
@@ -322,5 +418,39 @@ export class SupplyNetworkService {
       },
     });
     return toHomepageSupplyNetworkSection(updated);
+  }
+
+  async getSectionTranslationStatus() {
+    const entry = await this.getOrCreateSection();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of SECTION_TRANSLATABLE_FIELDS)
+      sourceFields[field] = entry[field];
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateSectionTranslations() {
+    const entry = await this.getOrCreateSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of SECTION_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepageSupplyNetworkSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 }

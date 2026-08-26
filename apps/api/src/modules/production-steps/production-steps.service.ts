@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { mergeTranslations } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -13,9 +18,23 @@ import type {
 } from './dto/production-step.dto';
 import type { UpdateHomepageProcessSectionDto } from './dto/production-section.dto';
 
+const STEP_TRANSLATABLE_FIELDS = ['label', 'title', 'description'] as const;
+const SECTION_TRANSLATABLE_FIELDS = [
+  'eyebrow',
+  'heading',
+  'description',
+  'finalHeading',
+  'finalDescription',
+  'primaryCtaLabel',
+  'secondaryCtaLabel',
+] as const;
+
 @Injectable()
 export class ProductionStepsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly translationService: AiTranslationService,
+  ) {}
 
   // ── Stages ────────────────────────────────────────────────────────────
 
@@ -72,6 +91,40 @@ export class ProductionStepsService {
       include: { illustration: true },
     });
     return toProductionStep(step);
+  }
+
+  async getTranslationStatus(id: string) {
+    const step = await this.assertExists(id);
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of STEP_TRANSLATABLE_FIELDS)
+      sourceFields[field] = step[field];
+    return computeTranslationStatus(sourceFields, step.translations);
+  }
+
+  async generateTranslations(id: string) {
+    const step = await this.assertExists(id);
+    const sourceFields: Record<string, string> = {};
+    for (const field of STEP_TRANSLATABLE_FIELDS) {
+      const value = step[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        step.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.productionStep.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async remove(id: string) {
@@ -165,5 +218,39 @@ export class ProductionStepsService {
       },
     });
     return toHomepageProcessSection(updated);
+  }
+
+  async getSectionTranslationStatus() {
+    const entry = await this.getOrCreateSection();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of SECTION_TRANSLATABLE_FIELDS)
+      sourceFields[field] = entry[field];
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateSectionTranslations() {
+    const entry = await this.getOrCreateSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of SECTION_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepageProcessSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 }

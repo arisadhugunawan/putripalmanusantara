@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import {
   CONTENT_PUBLISHED_EVENT,
@@ -91,6 +95,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly translationService: AiTranslationService,
   ) {}
 
   // ── Public — reads the latest PUBLISHED SNAPSHOT, never the live draft row ──────────────
@@ -516,56 +521,62 @@ export class ProductsService {
     });
     if (!product)
       throw new ApiException('NOT_FOUND', 'Product not found.', 404);
-    const translations = (product.translations ?? {}) as Record<
-      string,
-      Record<string, unknown> | undefined
-    >;
-    // Only fields the English master itself actually has content for are "expected" to be
-    // translated — an unset optional field like metaTitle shouldn't count as a missing
-    // translation, or every product would be permanently stuck at "partial".
-    const expectedFields = ProductsService.TRANSLATABLE_PRODUCT_FIELDS.filter(
-      (field) => {
-        const value = product[field];
-        return typeof value === 'string' && value.trim() !== '';
-      },
-    );
 
-    return SUPPORTED_LOCALES.filter((locale) => locale !== DEFAULT_LOCALE).map(
-      (locale) => {
-        const block = translations[locale] ?? {};
-        const translatedCount = expectedFields.filter(
-          (field) =>
-            typeof block[field] === 'string' && block[field].trim() !== '',
-        ).length;
-        const status =
-          expectedFields.length === 0 ||
-          translatedCount === expectedFields.length
-            ? 'translated'
-            : translatedCount === 0
-              ? 'not_translated'
-              : 'partial';
-        return {
-          locale,
-          status,
-          fields_translated: translatedCount,
-          fields_total: expectedFields.length,
-        };
-      },
-    );
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of ProductsService.TRANSLATABLE_PRODUCT_FIELDS) {
+      sourceFields[field] = product[field];
+    }
+    return computeTranslationStatus(sourceFields, product.translations);
   }
 
-  /** "Generate Translations" (brief §3/§14) — no machine-translation provider is configured
-   * anywhere in this project (see README "Internationalization"), so this cannot fabricate
-   * translations. It degrades honestly instead of pretending to succeed, same pattern as the
-   * Instagram oEmbed import when no access token is set.
-   */
-  generateTranslations() {
-    return {
-      available: false as const,
-      reason: 'not_configured' as const,
-      message:
-        'Automatic translation is not configured for this project. Enter translations manually using the language tabs above.',
-    };
+  /** "Generate Translations" (brief §3/§14) — reads the product's own current English master
+   * fields and asks `AiTranslationService.generateAndMerge()` to translate them into every
+   * other locale and merge the result into the SAVED `translations` column (never a destructive
+   * replace of sibling locales/fields — see `mergeTranslations()`). Degrades honestly to the
+   * same `available:false` shape as before if no AI provider is configured (see README
+   * "Internationalization") — this cannot fabricate translations out of nothing, same pattern
+   * as the Instagram oEmbed import when no access token is set. */
+  async generateTranslations(id: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        category: true,
+        shortDescription: true,
+        fullDescription: true,
+        metaTitle: true,
+        metaDescription: true,
+        translations: true,
+      },
+    });
+    if (!product)
+      throw new ApiException('NOT_FOUND', 'Product not found.', 404);
+
+    const sourceFields: Record<string, string> = {};
+    for (const field of ProductsService.TRANSLATABLE_PRODUCT_FIELDS) {
+      const value = product[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        product.translations,
+      );
+
+    if (mergedTranslations !== undefined) {
+      await this.prisma.product.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async create(dto: CreateProductDto) {

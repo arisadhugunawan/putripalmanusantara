@@ -5,6 +5,7 @@ import type { HomepageHighlight, HomepageHighlightIcon, Locale } from "@ppn/shar
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
@@ -139,6 +140,11 @@ export function HighlightEditor() {
                 />
               </summary>
               <div className="mt-2">
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/homepage/highlights/${highlight.id}/translation-status`}
+                  generateUrl={`/admin/homepage/highlights/${highlight.id}/translations/generate`}
+                  onGenerated={() => void load()}
+                />
                 <LocaleTabs>
                   {(locale) =>
                     locale === "en" ? (

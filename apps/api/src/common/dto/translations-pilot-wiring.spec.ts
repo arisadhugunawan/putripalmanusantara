@@ -21,6 +21,7 @@ import {
 import { GalleryService } from '../../modules/gallery/gallery.service';
 import { ContactPageService } from '../../modules/contact-page/contact-page.service';
 import { ProductsService } from '../../modules/products/products.service';
+import type { AiTranslationService } from '../../modules/ai/ai-translation.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -221,7 +222,10 @@ describe('Phase P0.3-E pilot — full DTO → service → Prisma chain', () => {
         .mockResolvedValue({ id: 'cat-1' }),
     };
     const prisma = { galleryCategory } as unknown as PrismaService;
-    const service = new GalleryService(prisma);
+    const service = new GalleryService(
+      prisma,
+      {} as unknown as AiTranslationService,
+    );
 
     await service.updateCategory('cat-1', dto);
 
@@ -280,7 +284,11 @@ describe('Phase P0.3-E pilot — full DTO → service → Prisma chain', () => {
     };
     const prisma = { contactPageSettings } as unknown as PrismaService;
     const events = { emit: jest.fn() } as unknown as EventEmitter2;
-    const service = new ContactPageService(prisma, events);
+    const service = new ContactPageService(
+      prisma,
+      events,
+      {} as unknown as AiTranslationService,
+    );
 
     await service.updateSettings(dto);
 
@@ -315,7 +323,11 @@ describe('Phase P0.3-E pilot — full DTO → service → Prisma chain', () => {
     };
     const prisma = { productShape, product } as unknown as PrismaService;
     const events = { emit: jest.fn() } as unknown as EventEmitter2;
-    const service = new ProductsService(prisma, events);
+    const service = new ProductsService(
+      prisma,
+      events,
+      {} as unknown as AiTranslationService,
+    );
 
     await service.updateShape('p1', 'shape-1', dto);
 

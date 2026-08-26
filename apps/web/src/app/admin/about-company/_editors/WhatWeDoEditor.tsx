@@ -11,6 +11,7 @@ import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin/ListToolbar";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
@@ -325,6 +326,11 @@ export function WhatWeDoEditor() {
                   <TranslationStatusBadges translations={item.translations} base={{ title: item.title }} />
                 </summary>
                 <div className="mt-3">
+                  <GenerateTranslationsPanel
+                    statusUrl={`/admin/about-company/what-we-do-items/${item.id}/translation-status`}
+                    generateUrl={`/admin/about-company/what-we-do-items/${item.id}/translations/generate`}
+                    onGenerated={() => void reload()}
+                  />
                   <LocaleTabs>
                     {(locale) =>
                       locale === "en" ? (

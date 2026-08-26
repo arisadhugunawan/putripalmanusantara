@@ -9,6 +9,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
@@ -164,6 +165,11 @@ export function ShipmentCommitmentEditor() {
                   <Label className="text-small">Description (opsional)</Label>
                   <Textarea rows={2} defaultValue={item.description} onBlur={(e) => void handleUpdate(item.id, { description: e.target.value })} />
                 </div>
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/shipment-commitment-items/${item.id}/translation-status`}
+                  generateUrl={`/admin/about-company/shipment-commitment-items/${item.id}/translations/generate`}
+                  onGenerated={() => void reload()}
+                />
                 <RowTranslationsDisclosure
                   key={`${item.id}-${JSON.stringify(item.translations ?? {})}`}
                   translations={item.translations}

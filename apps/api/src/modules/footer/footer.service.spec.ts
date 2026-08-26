@@ -1,4 +1,5 @@
 import { FooterService } from './footer.service';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { MediaService } from '../../media/media.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
@@ -10,6 +11,7 @@ function buildService() {
   const service = new FooterService(
     { footerSettings } as unknown as PrismaService,
     {} as unknown as MediaService,
+    {} as unknown as AiTranslationService,
   );
   return { service, footerSettings };
 }

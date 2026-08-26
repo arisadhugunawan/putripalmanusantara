@@ -9,12 +9,14 @@ import {
   type Locale,
   type Media,
   type PageHeaderPosition,
+  type Translations,
 } from "@ppn/shared-types";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { BackgroundImageUpload } from "@/components/admin/BackgroundImageUpload";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { useToast } from "@/components/admin/Toast";
 import { useSaveState } from "@/hooks/useSaveState";
@@ -92,6 +94,13 @@ export default function FooterManagementPage() {
         translations: { ...current, [locale]: { ...current[locale], [field]: value } },
       };
     });
+  }
+
+  // Server already deep-merged and persisted `generated` into the DB (see
+  // FooterService.generateTranslations()) — this just reflects it into the open editor
+  // session, same shallow-merge-per-locale contract as the Products pilot.
+  function mergeGeneratedTranslations(generated: Translations) {
+    setRow((prev) => (prev ? { ...prev, translations: { ...prev.translations, ...generated } } : prev));
   }
 
   async function handleSave() {
@@ -192,6 +201,11 @@ export default function FooterManagementPage() {
                 fill in only the languages you want to differ.
               </p>
               <div className="mt-3">
+                <GenerateTranslationsPanel
+                  statusUrl="/admin/footer/translation-status"
+                  generateUrl="/admin/footer/translations/generate"
+                  onGenerated={mergeGeneratedTranslations}
+                />
                 <LocaleTabs>
                   {(locale) => {
                     const isEn = locale === "en";

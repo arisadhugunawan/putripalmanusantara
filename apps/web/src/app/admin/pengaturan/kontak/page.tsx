@@ -1,13 +1,14 @@
 "use client";
 
 import { Button, Card, Input, Label } from "@ppn/ui-components";
-import type { ContactLocation, ContactPageSettings, ContactPagePublishStatus, Locale } from "@ppn/shared-types";
+import type { ContactLocation, ContactPageSettings, ContactPagePublishStatus, Locale, Translations } from "@ppn/shared-types";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { useSaveState } from "@/hooks/useSaveState";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { PublishContactPageButton } from "@/components/admin/PublishContactPageButton";
@@ -83,6 +84,13 @@ export default function AdminContactPage() {
         translations: { ...current, [locale]: { ...current[locale], [field]: value } },
       };
     });
+  }
+
+  // Server already deep-merged and persisted `generated` into the DB (see
+  // ContactPageService.generateSettingsTranslations()) — this just reflects it into the open
+  // editor session, same shallow-merge-per-locale contract as the Products pilot.
+  function mergeGeneratedTranslations(generated: Translations) {
+    setForm((prev) => (prev ? { ...prev, translations: { ...prev.translations, ...generated } } : prev));
   }
 
   async function handleSaveDraft() {
@@ -315,6 +323,11 @@ export default function AdminContactPage() {
           any locale without its own translation below — fill in only the languages you want to differ.
         </p>
         <div className="mt-4">
+          <GenerateTranslationsPanel
+            statusUrl="/admin/contact-page/settings/translation-status"
+            generateUrl="/admin/contact-page/settings/translations/generate"
+            onGenerated={mergeGeneratedTranslations}
+          />
           <LocaleTabs>
             {(locale) => {
               const isEn = locale === "en";

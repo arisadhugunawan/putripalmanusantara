@@ -8,6 +8,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
@@ -162,6 +163,11 @@ export function ShipmentLoadingLocationsEditor() {
                   />
                   <p className="mt-1 text-small text-neutral-500">Kosong = chip tidak dapat diklik di halaman publik.</p>
                 </div>
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/shipment-loading-locations/${location.id}/translation-status`}
+                  generateUrl={`/admin/about-company/shipment-loading-locations/${location.id}/translations/generate`}
+                  onGenerated={() => void reload()}
+                />
                 <RowTranslationsDisclosure
                   key={`${location.id}-${JSON.stringify(location.translations ?? {})}`}
                   translations={location.translations}

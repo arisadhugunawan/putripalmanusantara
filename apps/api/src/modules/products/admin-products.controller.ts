@@ -121,8 +121,8 @@ export class AdminProductsController {
   }
 
   @Post(':id/translations/generate')
-  generateTranslations() {
-    return this.productsService.generateTranslations();
+  generateTranslations(@Param('id') id: string) {
+    return this.productsService.generateTranslations(id);
   }
 
   @Post()

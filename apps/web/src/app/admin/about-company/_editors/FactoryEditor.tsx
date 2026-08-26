@@ -11,6 +11,7 @@ import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DocumentUploadField } from "@/components/admin/DocumentUploadField";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
@@ -293,6 +294,11 @@ export function FactoryEditor() {
             />
           </summary>
           <div className="mt-3">
+            <GenerateTranslationsPanel
+              statusUrl="/admin/about-company/factory/translation-status"
+              generateUrl="/admin/about-company/factory/translations/generate"
+              onGenerated={() => void reload()}
+            />
             <LocaleTabs>
               {(locale) =>
                 locale === "en" ? (

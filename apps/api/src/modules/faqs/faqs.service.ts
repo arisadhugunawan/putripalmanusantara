@@ -1,13 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE, type Faq } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { mergeTranslations, translate } from '../../common/utils/i18n.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateFaqDto, UpdateFaqDto } from './dto/faq.dto';
 
+const FAQ_TRANSLATABLE_FIELDS = ['question', 'answer'] as const;
+
 @Injectable()
 export class FaqsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly translationService: AiTranslationService,
+  ) {}
 
   async findPublished(locale: string = DEFAULT_LOCALE): Promise<Faq[]> {
     const faqs = await this.prisma.faq.findMany({
@@ -61,6 +71,40 @@ export class FaqsService {
         ),
       },
     });
+  }
+
+  async getTranslationStatus(id: string) {
+    const faq = await this.assertExists(id);
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of FAQ_TRANSLATABLE_FIELDS)
+      sourceFields[field] = faq[field];
+    return computeTranslationStatus(sourceFields, faq.translations);
+  }
+
+  async generateTranslations(id: string) {
+    const faq = await this.assertExists(id);
+    const sourceFields: Record<string, string> = {};
+    for (const field of FAQ_TRANSLATABLE_FIELDS) {
+      const value = faq[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        faq.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.faq.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async remove(id: string) {

@@ -40,6 +40,16 @@ export class AdminFaqsController {
     return faq;
   }
 
+  @Get(':id/translation-status')
+  getTranslationStatus(@Param('id') id: string) {
+    return this.faqsService.getTranslationStatus(id);
+  }
+
+  @Post(':id/translations/generate')
+  generateTranslations(@Param('id') id: string) {
+    return this.faqsService.generateTranslations(id);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string) {
     const result = await this.faqsService.remove(id);

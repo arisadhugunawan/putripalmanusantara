@@ -5,6 +5,7 @@ import type { Faq, Locale } from "@ppn/shared-types";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
@@ -118,6 +119,11 @@ export function FaqEditor() {
                 />
               </summary>
               <div className="mt-3">
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/faqs/${faq.id}/translation-status`}
+                  generateUrl={`/admin/faqs/${faq.id}/translations/generate`}
+                  onGenerated={() => void load()}
+                />
                 <LocaleTabs>
                   {(locale) =>
                     locale === "en" ? (

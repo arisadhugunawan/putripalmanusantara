@@ -1,4 +1,5 @@
 import { ContactPageService } from './contact-page.service';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.event';
@@ -68,6 +69,7 @@ function buildService() {
       contactPagePublishedSnapshot,
     } as unknown as PrismaService,
     events as unknown as EventEmitter2,
+    {} as unknown as AiTranslationService,
   );
   return {
     service,

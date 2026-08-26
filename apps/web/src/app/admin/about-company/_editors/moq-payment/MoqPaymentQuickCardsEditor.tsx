@@ -9,6 +9,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
@@ -175,6 +176,11 @@ export function MoqPaymentQuickCardsEditor() {
                     </select>
                   </div>
                 </div>
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/moq-payment-quick-cards/${card.id}/translation-status`}
+                  generateUrl={`/admin/about-company/moq-payment-quick-cards/${card.id}/translations/generate`}
+                  onGenerated={() => void reload()}
+                />
                 <RowTranslationsDisclosure
                   key={`${card.id}-${JSON.stringify(card.translations ?? {})}`}
                   translations={card.translations}

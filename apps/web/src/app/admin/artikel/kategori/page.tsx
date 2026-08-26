@@ -9,6 +9,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonCard } from "@/components/admin/Skeleton";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -190,6 +191,11 @@ export default function ArticleCategoriesPage() {
                       <TranslationStatusBadges translations={category.translations} base={{ name: category.name }} />
                     </summary>
                     <div className="mt-2 max-w-xs">
+                      <GenerateTranslationsPanel
+                        statusUrl={`/admin/articles/categories/${category.id}/translation-status`}
+                        generateUrl={`/admin/articles/categories/${category.id}/translations/generate`}
+                        onGenerated={() => void reload()}
+                      />
                       <LocaleTabs>
                         {(locale) =>
                           locale === "en" ? (

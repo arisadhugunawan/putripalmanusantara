@@ -11,6 +11,7 @@ import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { useRegisterDraftBuffer } from "@/components/admin/AboutCompanyDraftBuffer";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { SkeletonCard } from "@/components/admin/Skeleton";
@@ -193,6 +194,12 @@ export function CompanyProfileEditor() {
           berubah setelah <strong>Publish</strong>.
         </p>
       </div>
+
+      <GenerateTranslationsPanel
+        statusUrl="/admin/about-company/profile/translation-status"
+        generateUrl="/admin/about-company/profile/translations/generate"
+        onGenerated={() => void reload()}
+      />
 
       <IntroductionEditor profile={profile} onUpdate={(patch) => void handleUpdate(patch)} />
       <SocialLinksEditor />

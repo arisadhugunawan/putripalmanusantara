@@ -113,6 +113,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateProfile(dto);
   }
 
+  @Get('profile/translation-status')
+  getProfileTranslationStatus() {
+    return this.aboutCompanyService.getProfileTranslationStatus();
+  }
+
+  @Post('profile/translations/generate')
+  generateProfileTranslations() {
+    return this.aboutCompanyService.generateProfileTranslations();
+  }
+
   @Post('profile/gallery')
   addGalleryItem(@Body() dto: AddAboutCompanyGalleryItemDto) {
     return this.aboutCompanyService.addGalleryItem(dto);
@@ -146,6 +156,16 @@ export class AdminAboutCompanyController {
   @Put('facts/:id')
   updateFact(@Param('id') id: string, @Body() dto: UpdateAboutCompanyFactDto) {
     return this.aboutCompanyService.updateFact(id, dto);
+  }
+
+  @Get('facts/:id/translation-status')
+  getFactTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getFactTranslationStatus(id);
+  }
+
+  @Post('facts/:id/translations/generate')
+  generateFactTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateFactTranslations(id);
   }
 
   @Delete('facts/:id')
@@ -208,6 +228,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateTeamSection(dto);
   }
 
+  @Get('team-section/translation-status')
+  getTeamSectionTranslationStatus() {
+    return this.aboutCompanyService.getTeamSectionTranslationStatus();
+  }
+
+  @Post('team-section/translations/generate')
+  generateTeamSectionTranslations() {
+    return this.aboutCompanyService.generateTeamSectionTranslations();
+  }
+
   @Get('team-members')
   findTeamMembers() {
     return this.aboutCompanyService.findTeamMembers();
@@ -221,6 +251,16 @@ export class AdminAboutCompanyController {
   @Put('team-members/:id')
   updateTeamMember(@Param('id') id: string, @Body() dto: UpdateTeamMemberDto) {
     return this.aboutCompanyService.updateTeamMember(id, dto);
+  }
+
+  @Get('team-members/:id/translation-status')
+  getTeamMemberTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getTeamMemberTranslationStatus(id);
+  }
+
+  @Post('team-members/:id/translations/generate')
+  generateTeamMemberTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateTeamMemberTranslations(id);
   }
 
   @Delete('team-members/:id')
@@ -253,6 +293,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateWhatWeDoItem(id, dto);
   }
 
+  @Get('what-we-do-items/:id/translation-status')
+  getWhatWeDoItemTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getWhatWeDoItemTranslationStatus(id);
+  }
+
+  @Post('what-we-do-items/:id/translations/generate')
+  generateWhatWeDoItemTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateWhatWeDoItemTranslations(id);
+  }
+
   @Delete('what-we-do-items/:id')
   removeWhatWeDoItem(@Param('id') id: string) {
     return this.aboutCompanyService.removeWhatWeDoItem(id);
@@ -273,6 +323,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateWhatWeDoSection(dto);
   }
 
+  @Get('what-we-do-section/translation-status')
+  getWhatWeDoSectionTranslationStatus() {
+    return this.aboutCompanyService.getWhatWeDoSectionTranslationStatus();
+  }
+
+  @Post('what-we-do-section/translations/generate')
+  generateWhatWeDoSectionTranslations() {
+    return this.aboutCompanyService.generateWhatWeDoSectionTranslations();
+  }
+
   @Get('who-we-supply-items')
   findWhoWeSupplyItems() {
     return this.aboutCompanyService.findWhoWeSupplyItems();
@@ -289,6 +349,16 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateWhoWeSupplyItemDto,
   ) {
     return this.aboutCompanyService.updateWhoWeSupplyItem(id, dto);
+  }
+
+  @Get('who-we-supply-items/:id/translation-status')
+  getWhoWeSupplyItemTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getWhoWeSupplyItemTranslationStatus(id);
+  }
+
+  @Post('who-we-supply-items/:id/translations/generate')
+  generateWhoWeSupplyItemTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateWhoWeSupplyItemTranslations(id);
   }
 
   @Delete('who-we-supply-items/:id')
@@ -308,6 +378,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateLegalSection(dto);
   }
 
+  @Get('legal-section/translation-status')
+  getLegalSectionTranslationStatus() {
+    return this.aboutCompanyService.getLegalSectionTranslationStatus();
+  }
+
+  @Post('legal-section/translations/generate')
+  generateLegalSectionTranslations() {
+    return this.aboutCompanyService.generateLegalSectionTranslations();
+  }
+
   @Get('legal-categories')
   findLegalCategories() {
     return this.aboutCompanyService.findLegalCategories();
@@ -324,6 +404,16 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateLegalDocumentCategoryDto,
   ) {
     return this.aboutCompanyService.updateLegalCategory(id, dto);
+  }
+
+  @Get('legal-categories/:id/translation-status')
+  getLegalCategoryTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getLegalCategoryTranslationStatus(id);
+  }
+
+  @Post('legal-categories/:id/translations/generate')
+  generateLegalCategoryTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateLegalCategoryTranslations(id);
   }
 
   @Delete('legal-categories/:id')
@@ -349,6 +439,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateLegalDocument(id, dto);
   }
 
+  @Get('legal-documents/:id/translation-status')
+  getLegalDocumentTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getLegalDocumentTranslationStatus(id);
+  }
+
+  @Post('legal-documents/:id/translations/generate')
+  generateLegalDocumentTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateLegalDocumentTranslations(id);
+  }
+
   @Delete('legal-documents/:id')
   removeLegalDocument(@Param('id') id: string) {
     return this.aboutCompanyService.removeLegalDocument(id);
@@ -369,6 +469,16 @@ export class AdminAboutCompanyController {
   @Put('factory')
   updateFactory(@Body() dto: UpdateFactoryProfileDto) {
     return this.aboutCompanyService.updateFactory(dto);
+  }
+
+  @Get('factory/translation-status')
+  getFactoryTranslationStatus() {
+    return this.aboutCompanyService.getFactoryTranslationStatus();
+  }
+
+  @Post('factory/translations/generate')
+  generateFactoryTranslations() {
+    return this.aboutCompanyService.generateFactoryTranslations();
   }
 
   @Post('factory/gallery')
@@ -437,6 +547,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateFacilitiesSection(dto);
   }
 
+  @Get('facilities-section/translation-status')
+  getFacilitiesSectionTranslationStatus() {
+    return this.aboutCompanyService.getFacilitiesSectionTranslationStatus();
+  }
+
+  @Post('facilities-section/translations/generate')
+  generateFacilitiesSectionTranslations() {
+    return this.aboutCompanyService.generateFacilitiesSectionTranslations();
+  }
+
   // Facility rows are a fixed 10-item master list (see README "Facilities master list") —
   // no create/delete/duplicate routes. Admin only manages each facility's photos below, plus
   // `cover_image_id` ("Set Main") via `updateFacility`.
@@ -448,6 +568,16 @@ export class AdminAboutCompanyController {
   @Put('facilities/:id')
   updateFacility(@Param('id') id: string, @Body() dto: UpdateFacilityDto) {
     return this.aboutCompanyService.updateFacility(id, dto);
+  }
+
+  @Get('facilities/:id/translation-status')
+  getFacilityTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getFacilityTranslationStatus(id);
+  }
+
+  @Post('facilities/:id/translations/generate')
+  generateFacilityTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateFacilityTranslations(id);
   }
 
   @Post('facilities/:id/gallery')
@@ -483,6 +613,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateMoqPaymentSection(dto);
   }
 
+  @Get('moq-payment-section/translation-status')
+  getMoqPaymentSectionTranslationStatus() {
+    return this.aboutCompanyService.getMoqPaymentSectionTranslationStatus();
+  }
+
+  @Post('moq-payment-section/translations/generate')
+  generateMoqPaymentSectionTranslations() {
+    return this.aboutCompanyService.generateMoqPaymentSectionTranslations();
+  }
+
   @Get('moq-payment-quick-cards')
   findMoqPaymentQuickCards() {
     return this.aboutCompanyService.findMoqPaymentQuickCards();
@@ -499,6 +639,16 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateMoqPaymentQuickCardDto,
   ) {
     return this.aboutCompanyService.updateMoqPaymentQuickCard(id, dto);
+  }
+
+  @Get('moq-payment-quick-cards/:id/translation-status')
+  getMoqPaymentQuickCardTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getMoqPaymentQuickCardTranslationStatus(id);
+  }
+
+  @Post('moq-payment-quick-cards/:id/translations/generate')
+  generateMoqPaymentQuickCardTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateMoqPaymentQuickCardTranslations(id);
   }
 
   @Delete('moq-payment-quick-cards/:id')
@@ -524,6 +674,20 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateMoqPaymentBusinessTerm(id, dto);
   }
 
+  @Get('moq-payment-business-terms/:id/translation-status')
+  getMoqPaymentBusinessTermTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getMoqPaymentBusinessTermTranslationStatus(
+      id,
+    );
+  }
+
+  @Post('moq-payment-business-terms/:id/translations/generate')
+  generateMoqPaymentBusinessTermTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateMoqPaymentBusinessTermTranslations(
+      id,
+    );
+  }
+
   @Delete('moq-payment-business-terms/:id')
   removeMoqPaymentBusinessTerm(@Param('id') id: string) {
     return this.aboutCompanyService.removeMoqPaymentBusinessTerm(id);
@@ -543,6 +707,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateShipmentTermsSection(dto);
   }
 
+  @Get('shipment-terms-section/translation-status')
+  getShipmentTermsSectionTranslationStatus() {
+    return this.aboutCompanyService.getShipmentTermsSectionTranslationStatus();
+  }
+
+  @Post('shipment-terms-section/translations/generate')
+  generateShipmentTermsSectionTranslations() {
+    return this.aboutCompanyService.generateShipmentTermsSectionTranslations();
+  }
+
   @Get('shipping-arrangement-items')
   findShippingArrangementItems() {
     return this.aboutCompanyService.findShippingArrangementItems();
@@ -559,6 +733,20 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateShippingArrangementItemDto,
   ) {
     return this.aboutCompanyService.updateShippingArrangementItem(id, dto);
+  }
+
+  @Get('shipping-arrangement-items/:id/translation-status')
+  getShippingArrangementItemTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getShippingArrangementItemTranslationStatus(
+      id,
+    );
+  }
+
+  @Post('shipping-arrangement-items/:id/translations/generate')
+  generateShippingArrangementItemTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateShippingArrangementItemTranslations(
+      id,
+    );
   }
 
   @Delete('shipping-arrangement-items/:id')
@@ -584,6 +772,20 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateShipmentLoadingLocation(id, dto);
   }
 
+  @Get('shipment-loading-locations/:id/translation-status')
+  getShipmentLoadingLocationTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getShipmentLoadingLocationTranslationStatus(
+      id,
+    );
+  }
+
+  @Post('shipment-loading-locations/:id/translations/generate')
+  generateShipmentLoadingLocationTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateShipmentLoadingLocationTranslations(
+      id,
+    );
+  }
+
   @Delete('shipment-loading-locations/:id')
   removeShipmentLoadingLocation(@Param('id') id: string) {
     return this.aboutCompanyService.removeShipmentLoadingLocation(id);
@@ -605,6 +807,20 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateShipmentContainerTypeDto,
   ) {
     return this.aboutCompanyService.updateShipmentContainerType(id, dto);
+  }
+
+  @Get('shipment-container-types/:id/translation-status')
+  getShipmentContainerTypeTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getShipmentContainerTypeTranslationStatus(
+      id,
+    );
+  }
+
+  @Post('shipment-container-types/:id/translations/generate')
+  generateShipmentContainerTypeTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateShipmentContainerTypeTranslations(
+      id,
+    );
   }
 
   @Delete('shipment-container-types/:id')
@@ -630,6 +846,20 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateShipmentScheduleStep(id, dto);
   }
 
+  @Get('shipment-schedule-steps/:id/translation-status')
+  getShipmentScheduleStepTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getShipmentScheduleStepTranslationStatus(
+      id,
+    );
+  }
+
+  @Post('shipment-schedule-steps/:id/translations/generate')
+  generateShipmentScheduleStepTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateShipmentScheduleStepTranslations(
+      id,
+    );
+  }
+
   @Delete('shipment-schedule-steps/:id')
   removeShipmentScheduleStep(@Param('id') id: string) {
     return this.aboutCompanyService.removeShipmentScheduleStep(id);
@@ -651,6 +881,16 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateShipmentDocumentDto,
   ) {
     return this.aboutCompanyService.updateShipmentDocument(id, dto);
+  }
+
+  @Get('shipment-documents/:id/translation-status')
+  getShipmentDocumentTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getShipmentDocumentTranslationStatus(id);
+  }
+
+  @Post('shipment-documents/:id/translations/generate')
+  generateShipmentDocumentTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateShipmentDocumentTranslations(id);
   }
 
   @Delete('shipment-documents/:id')
@@ -676,6 +916,20 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateShipmentCommitmentItem(id, dto);
   }
 
+  @Get('shipment-commitment-items/:id/translation-status')
+  getShipmentCommitmentItemTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getShipmentCommitmentItemTranslationStatus(
+      id,
+    );
+  }
+
+  @Post('shipment-commitment-items/:id/translations/generate')
+  generateShipmentCommitmentItemTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateShipmentCommitmentItemTranslations(
+      id,
+    );
+  }
+
   @Delete('shipment-commitment-items/:id')
   removeShipmentCommitmentItem(@Param('id') id: string) {
     return this.aboutCompanyService.removeShipmentCommitmentItem(id);
@@ -695,6 +949,16 @@ export class AdminAboutCompanyController {
     return this.aboutCompanyService.updateFacilitiesFaqSection(dto);
   }
 
+  @Get('facilities-faq-section/translation-status')
+  getFacilitiesFaqSectionTranslationStatus() {
+    return this.aboutCompanyService.getFacilitiesFaqSectionTranslationStatus();
+  }
+
+  @Post('facilities-faq-section/translations/generate')
+  generateFacilitiesFaqSectionTranslations() {
+    return this.aboutCompanyService.generateFacilitiesFaqSectionTranslations();
+  }
+
   @Get('facilities-faq-items')
   findFacilitiesFaqItems() {
     return this.aboutCompanyService.findFacilitiesFaqItems();
@@ -711,6 +975,16 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateFacilitiesFaqItemDto,
   ) {
     return this.aboutCompanyService.updateFacilitiesFaqItem(id, dto);
+  }
+
+  @Get('facilities-faq-items/:id/translation-status')
+  getFacilitiesFaqItemTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getFacilitiesFaqItemTranslationStatus(id);
+  }
+
+  @Post('facilities-faq-items/:id/translations/generate')
+  generateFacilitiesFaqItemTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateFacilitiesFaqItemTranslations(id);
   }
 
   @Delete('facilities-faq-items/:id')
@@ -734,6 +1008,16 @@ export class AdminAboutCompanyController {
     @Body() dto: UpdateFacilitiesFaqProductTagDto,
   ) {
     return this.aboutCompanyService.updateFacilitiesFaqTag(id, dto);
+  }
+
+  @Get('facilities-faq-tags/:id/translation-status')
+  getFacilitiesFaqTagTranslationStatus(@Param('id') id: string) {
+    return this.aboutCompanyService.getFacilitiesFaqTagTranslationStatus(id);
+  }
+
+  @Post('facilities-faq-tags/:id/translations/generate')
+  generateFacilitiesFaqTagTranslations(@Param('id') id: string) {
+    return this.aboutCompanyService.generateFacilitiesFaqTagTranslations(id);
   }
 
   @Delete('facilities-faq-tags/:id')

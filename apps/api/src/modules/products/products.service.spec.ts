@@ -1,6 +1,7 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.event';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import { ProductsService } from './products.service';
 import { toProductDetail } from './product.mapper';
 import type { PrismaService } from '../../prisma/prisma.service';
@@ -38,15 +39,36 @@ function buildService() {
     $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
   const events = { emit: jest.fn() };
+  const translationService = {
+    isConfigured: jest.fn<boolean, unknown[]>().mockReturnValue(false),
+    translateFields: jest.fn<
+      Promise<{
+        available: boolean;
+        translations: Record<string, Record<string, string>>;
+      }>,
+      unknown[]
+    >(),
+    generateAndMerge: jest.fn<
+      Promise<{
+        available: boolean;
+        translatedLocales: string[];
+        generated: Record<string, Record<string, string>>;
+        mergedTranslations: Record<string, Record<string, string>> | undefined;
+      }>,
+      unknown[]
+    >(),
+  };
   return {
     service: new ProductsService(
       prisma as unknown as PrismaService,
       events as unknown as EventEmitter2,
+      translationService as unknown as AiTranslationService,
     ),
     product,
     productPublishedSnapshot,
     queryRaw,
     events,
+    translationService,
   };
 }
 
@@ -1386,5 +1408,170 @@ describe('ProductsService — snapshot-version race retry (P2-3)', () => {
     );
 
     expect(productPublishedSnapshot.create).toHaveBeenCalledTimes(3);
+  });
+});
+
+// P0.4 — "Generate Translations" now does real AI-assisted translation via AiTranslationService
+// (see ai-translation.service.spec.ts for the parsing/prompt-shape unit tests themselves) —
+// this file only tests ProductsService's own wiring: reading the right source fields, honoring
+// the "not configured" degradation, and merging the result into the saved translations column
+// without clobbering sibling locales/fields.
+describe('ProductsService.generateTranslations', () => {
+  it('throws NOT_FOUND for a nonexistent product', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValue(null);
+
+    await expect(service.generateTranslations('missing')).rejects.toMatchObject(
+      { code: 'NOT_FOUND' },
+    );
+  });
+
+  it('degrades honestly to available:false when generateAndMerge reports unavailable, and never writes', async () => {
+    const { service, product, translationService } = buildService();
+    product.findUnique.mockResolvedValue({
+      name: 'Semi Husked Coconut',
+      category: 'Semi Husked Coconut',
+      shortDescription: 'Fresh.',
+      fullDescription: 'Fresh, sourced locally.',
+      metaTitle: null,
+      metaDescription: null,
+      translations: null,
+    });
+    translationService.generateAndMerge.mockResolvedValue({
+      available: false,
+      translatedLocales: [],
+      generated: {},
+      mergedTranslations: undefined,
+    });
+
+    const result = await service.generateTranslations('p1');
+
+    expect(result).toEqual({
+      available: false,
+      reason: 'not_configured',
+      message:
+        'Automatic translation is not configured for this project. Enter translations manually using the language tabs above.',
+    });
+    expect(product.update).not.toHaveBeenCalled();
+  });
+
+  it('passes only the non-empty English master fields and the existing translations column to generateAndMerge', async () => {
+    const { service, product, translationService } = buildService();
+    const existingTranslations = { zh: { name: 'Existing Chinese name' } };
+    product.findUnique.mockResolvedValue({
+      name: 'Semi Husked Coconut',
+      category: 'Semi Husked Coconut',
+      shortDescription: 'Fresh.',
+      fullDescription: 'Fresh, sourced locally.',
+      metaTitle: null,
+      metaDescription: '',
+      translations: existingTranslations,
+    });
+    translationService.generateAndMerge.mockResolvedValue({
+      available: true,
+      translatedLocales: ['id'],
+      generated: { id: { name: 'Kelapa Semi Kupas' } },
+      mergedTranslations: {
+        ...existingTranslations,
+        id: { name: 'Kelapa Semi Kupas' },
+      },
+    });
+    product.update.mockResolvedValue({});
+
+    await service.generateTranslations('p1');
+
+    const [args] = translationService.generateAndMerge.mock.calls;
+    expect(args[0]).toEqual({
+      name: 'Semi Husked Coconut',
+      category: 'Semi Husked Coconut',
+      shortDescription: 'Fresh.',
+      fullDescription: 'Fresh, sourced locally.',
+    });
+    expect(args[1]).toBe(existingTranslations);
+  });
+
+  it("saves generateAndMerge's mergedTranslations verbatim and returns only the freshly generated fields in the response", async () => {
+    const { service, product, translationService } = buildService();
+    product.findUnique.mockResolvedValue({
+      name: 'Semi Husked Coconut',
+      category: 'Semi Husked Coconut',
+      shortDescription: 'Fresh.',
+      fullDescription: 'Fresh, sourced locally.',
+      metaTitle: null,
+      metaDescription: null,
+      translations: {
+        id: { fullDescription: 'Manually written Indonesian description.' },
+        zh: { name: 'Existing Chinese name' },
+      },
+    });
+    translationService.generateAndMerge.mockResolvedValue({
+      available: true,
+      translatedLocales: ['id', 'th'],
+      generated: {
+        id: { name: 'Kelapa Semi Kupas' },
+        th: { name: 'มะพร้าวปอกเปลือกครึ่งลูก' },
+      },
+      mergedTranslations: {
+        id: {
+          fullDescription: 'Manually written Indonesian description.',
+          name: 'Kelapa Semi Kupas',
+        },
+        zh: { name: 'Existing Chinese name' },
+        th: { name: 'มะพร้าวปอกเปลือกครึ่งลูก' },
+      },
+    });
+    product.update.mockResolvedValue({});
+
+    const result = await service.generateTranslations('p1');
+
+    expect(result.available).toBe(true);
+    if (!result.available) throw new Error('expected available:true');
+    expect(result.translated_locales.sort()).toEqual(['id', 'th']);
+    // Response carries only what was just generated, not the pre-existing sibling fields.
+    expect(result.translations).toEqual({
+      id: { name: 'Kelapa Semi Kupas' },
+      th: { name: 'มะพร้าวปอกเปลือกครึ่งลูก' },
+    });
+
+    const [updateArgs] = product.update.mock.calls;
+    const savedTranslations = (
+      updateArgs[0] as unknown as {
+        data: { translations: Record<string, Record<string, string>> };
+      }
+    ).data.translations;
+    expect(savedTranslations.id).toEqual({
+      fullDescription: 'Manually written Indonesian description.',
+      name: 'Kelapa Semi Kupas',
+    });
+    expect(savedTranslations.zh).toEqual({ name: 'Existing Chinese name' });
+  });
+
+  it('does not write to the database at all when nothing was generated', async () => {
+    const { service, product, translationService } = buildService();
+    product.findUnique.mockResolvedValue({
+      name: 'Semi Husked Coconut',
+      category: 'Semi Husked Coconut',
+      shortDescription: 'Fresh.',
+      fullDescription: 'Fresh, sourced locally.',
+      metaTitle: null,
+      metaDescription: null,
+      translations: null,
+    });
+    translationService.generateAndMerge.mockResolvedValue({
+      available: true,
+      translatedLocales: [],
+      generated: {},
+      mergedTranslations: undefined,
+    });
+
+    const result = await service.generateTranslations('p1');
+
+    expect(result.available).toBe(true);
+    if (!result.available) throw new Error('expected available:true');
+    expect(result.translated_locales).toEqual([]);
+    expect(result.message).toBe(
+      'No translations were generated — please try again or fill in manually.',
+    );
+    expect(product.update).not.toHaveBeenCalled();
   });
 });

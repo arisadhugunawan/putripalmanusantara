@@ -8,6 +8,7 @@ import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -219,6 +220,7 @@ export default function AdminGalleryMediaPage() {
                   isFirst={index === 0}
                   isLast={index === items.length - 1}
                   onUpdate={(patch) => void handleUpdate(item.id, patch)}
+                  onReload={() => void reload()}
                   onMove={(direction) => void handleMove(index, direction)}
                   onDelete={() => setDeleteTargetId(item.id)}
                 />
@@ -501,6 +503,7 @@ function GalleryItemRow({
   isFirst,
   isLast,
   onUpdate,
+  onReload,
   onMove,
   onDelete,
 }: {
@@ -510,6 +513,7 @@ function GalleryItemRow({
   isFirst: boolean;
   isLast: boolean;
   onUpdate: (patch: Record<string, unknown>) => void;
+  onReload: () => void;
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
 }) {
@@ -617,6 +621,11 @@ function GalleryItemRow({
           />
         </summary>
         <div className="mt-3">
+          <GenerateTranslationsPanel
+            statusUrl={`/admin/gallery/${item.id}/translation-status`}
+            generateUrl={`/admin/gallery/${item.id}/translations/generate`}
+            onGenerated={onReload}
+          />
           <LocaleTabs>
             {(locale) =>
               locale === "en" ? (

@@ -10,6 +10,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
@@ -143,6 +144,11 @@ function FacilityCard({
           />
         </summary>
         <div className="mt-3">
+          <GenerateTranslationsPanel
+            statusUrl={`/admin/about-company/facilities/${facility.id}/translation-status`}
+            generateUrl={`/admin/about-company/facilities/${facility.id}/translations/generate`}
+            onGenerated={() => void onReload()}
+          />
           <LocaleTabs>
             {(locale) =>
               locale === "en" ? (

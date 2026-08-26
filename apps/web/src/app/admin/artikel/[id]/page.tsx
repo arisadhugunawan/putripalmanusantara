@@ -21,6 +21,7 @@ import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DocumentPreviewModal } from "@/components/admin/DocumentPreviewModal";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { InstagramPreviewPanel } from "@/components/admin/InstagramPreviewPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
@@ -228,6 +229,13 @@ export default function EditArticlePage() {
       return { ...prev, translations: { ...current, [locale]: { ...current[locale], [field]: value } } };
     });
     setDirty(true);
+  }
+
+  // Server already deep-merged and persisted `generated` into the DB (see
+  // ArticlesService.generateTranslations()) — this just reflects it into the open editor
+  // session, same shallow-merge-per-locale contract as the Products pilot.
+  function mergeGeneratedTranslations(generated: Translations) {
+    setForm((prev) => (prev ? { ...prev, translations: { ...prev.translations, ...generated } } : prev));
   }
 
   function updateStatistic(index: number, patch: Partial<ArticleStatistic>) {
@@ -555,6 +563,12 @@ export default function EditArticlePage() {
             Featured
           </label>
         </div>
+
+        <GenerateTranslationsPanel
+          statusUrl={`/admin/articles/${id}/translation-status`}
+          generateUrl={`/admin/articles/${id}/translations/generate`}
+          onGenerated={mergeGeneratedTranslations}
+        />
 
         <ArticleTranslationsBlock
           translations={form.translations}

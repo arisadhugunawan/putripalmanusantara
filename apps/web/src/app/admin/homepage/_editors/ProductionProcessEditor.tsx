@@ -6,6 +6,7 @@ import { PRODUCTION_STEP_ICON_LABELS, PRODUCTION_STEP_ICON_KEYS } from "@ppn/sha
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -264,6 +265,11 @@ export function ProductionProcessEditor() {
                   />
                 </summary>
                 <div className="mt-3">
+                  <GenerateTranslationsPanel
+                    statusUrl={`/admin/production-steps/${step.id}/translation-status`}
+                    generateUrl={`/admin/production-steps/${step.id}/translations/generate`}
+                    onGenerated={() => void load()}
+                  />
                   <LocaleTabs>
                     {(locale) =>
                       locale === "en" ? (

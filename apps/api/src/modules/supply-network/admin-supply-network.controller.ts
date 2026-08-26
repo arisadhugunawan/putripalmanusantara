@@ -46,6 +46,16 @@ export class AdminSupplyNetworkController {
     return this.supplyNetworkService.updateSection(dto);
   }
 
+  @Get('section/translation-status')
+  getSectionTranslationStatus() {
+    return this.supplyNetworkService.getSectionTranslationStatus();
+  }
+
+  @Post('section/translations/generate')
+  generateSectionTranslations() {
+    return this.supplyNetworkService.generateSectionTranslations();
+  }
+
   @Get('connections')
   findAllConnections() {
     return this.supplyNetworkService.findAllConnections();
@@ -87,6 +97,16 @@ export class AdminSupplyNetworkController {
     return this.supplyNetworkService.updateCountry(id, dto);
   }
 
+  @Get('countries/:id/translation-status')
+  getCountryTranslationStatus(@Param('id') id: string) {
+    return this.supplyNetworkService.getCountryTranslationStatus(id);
+  }
+
+  @Post('countries/:id/translations/generate')
+  generateCountryTranslations(@Param('id') id: string) {
+    return this.supplyNetworkService.generateCountryTranslations(id);
+  }
+
   @Delete('countries/:id')
   removeCountry(@Param('id') id: string) {
     return this.supplyNetworkService.removeCountry(id);
@@ -105,6 +125,16 @@ export class AdminSupplyNetworkController {
   @Put(':id')
   update(@Param('id') id: string, @Body() dto: UpdateSupplyNetworkItemDto) {
     return this.supplyNetworkService.update(id, dto);
+  }
+
+  @Get(':id/translation-status')
+  getTranslationStatus(@Param('id') id: string) {
+    return this.supplyNetworkService.getTranslationStatus(id);
+  }
+
+  @Post(':id/translations/generate')
+  generateTranslations(@Param('id') id: string) {
+    return this.supplyNetworkService.generateTranslations(id);
   }
 
   @Delete(':id')

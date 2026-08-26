@@ -10,6 +10,7 @@ import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin/ListToolbar";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
@@ -213,6 +214,11 @@ export function ShippingArrangementEditor() {
                     onBlur={(e) => void handleUpdate(item.id, { description: e.target.value })}
                   />
                 </div>
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/shipping-arrangement-items/${item.id}/translation-status`}
+                  generateUrl={`/admin/about-company/shipping-arrangement-items/${item.id}/translations/generate`}
+                  onGenerated={() => void reload()}
+                />
                 <RowTranslationsDisclosure
                   key={`${item.id}-${JSON.stringify(item.translations ?? {})}`}
                   translations={item.translations}

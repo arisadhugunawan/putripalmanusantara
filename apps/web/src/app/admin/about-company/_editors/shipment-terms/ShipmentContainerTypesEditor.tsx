@@ -8,6 +8,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
@@ -140,6 +141,11 @@ export function ShipmentContainerTypesEditor() {
               <div className="min-w-0 flex-1">
                 <Label className="text-small">Label *</Label>
                 <Input defaultValue={type.label} onBlur={(e) => void handleUpdate(type.id, { label: e.target.value }, "Label")} />
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/shipment-container-types/${type.id}/translation-status`}
+                  generateUrl={`/admin/about-company/shipment-container-types/${type.id}/translations/generate`}
+                  onGenerated={() => void reload()}
+                />
                 <RowTranslationsDisclosure
                   key={`${type.id}-${JSON.stringify(type.translations ?? {})}`}
                   translations={type.translations}

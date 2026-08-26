@@ -14,6 +14,7 @@ import {
   type PageHeaderOverlayType,
   type PageHeaderPosition,
   type ResolvedPageHeader,
+  type Translations,
 } from "@ppn/shared-types";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -23,6 +24,7 @@ import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ColorPickerField } from "@/components/admin/ColorPickerField";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { BackgroundImageUpload } from "@/components/admin/BackgroundImageUpload";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { useToast } from "@/components/admin/Toast";
 import { useSaveState } from "@/hooks/useSaveState";
@@ -111,6 +113,13 @@ export default function PageHeaderEditorPage() {
         translations: { ...current, [locale]: { ...current[locale], [field]: value } },
       };
     });
+  }
+
+  // Server already deep-merged and persisted `generated` into the DB (see
+  // PageHeaderService.generateTranslations()) — this just reflects it into the open editor
+  // session, same shallow-merge-per-locale contract as the Products pilot.
+  function mergeGeneratedTranslations(generated: Translations) {
+    setRow((prev) => (prev ? { ...prev, translations: { ...prev.translations, ...generated } } : prev));
   }
 
   async function handleSave() {
@@ -237,6 +246,11 @@ export default function PageHeaderEditorPage() {
                 fill in only the languages you want to differ.
               </p>
               <div className="mt-3">
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/page-headers/${pageKey}/translation-status`}
+                  generateUrl={`/admin/page-headers/${pageKey}/translations/generate`}
+                  onGenerated={mergeGeneratedTranslations}
+                />
                 <LocaleTabs>
                   {(locale) => {
                     const isEn = locale === "en";

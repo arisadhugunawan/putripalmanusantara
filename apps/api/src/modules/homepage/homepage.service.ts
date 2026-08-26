@@ -6,6 +6,11 @@ import {
   WORLD_COUNTRIES,
   type HomepageStatistic,
 } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import {
   CONTENT_PUBLISHED_EVENT,
@@ -83,6 +88,46 @@ const EXPORT_DESTINATION_INCLUDE = {
   products: { select: { id: true, slug: true, name: true } },
 } as const;
 
+// Master-content fields each resource's own mapper actually resolves via `translate()` (see
+// e.g. hero-slide.mapper.ts's `translate()` call) — ground truth for what "translated" means
+// per resource, mirrors `ProductsService.TRANSLATABLE_PRODUCT_FIELDS`.
+const HERO_SLIDE_TRANSLATABLE_FIELDS = [
+  'eyebrowText',
+  'heading',
+  'subheading',
+  'description',
+  'button1Text',
+  'button2Text',
+] as const;
+const PARTNER_LOGO_TRANSLATABLE_FIELDS = [
+  'partnerName',
+  'description',
+] as const;
+const SHIPPING_PARTNER_TRANSLATABLE_FIELDS = [
+  'partnerName',
+  'description',
+] as const;
+const ABOUT_PREVIEW_TRANSLATABLE_FIELDS = [
+  'label',
+  'heading',
+  'paragraph1',
+  'paragraph2',
+  'paragraph3',
+  'ctaText',
+] as const;
+const HIGHLIGHT_TRANSLATABLE_FIELDS = ['title', 'description'] as const;
+const PARTNERS_SECTION_TRANSLATABLE_FIELDS = ['title', 'subtitle'] as const;
+const SHIPPING_SECTION_TRANSLATABLE_FIELDS = ['title', 'subtitle'] as const;
+const WHY_CHOOSE_US_TRANSLATABLE_FIELDS = ['title'] as const;
+// `countryName` is derived entirely from `country_code` via `resolveCountryMeta()` below —
+// never admin-entered free text — so it's excluded here even though the mapper's own
+// `translate()` call also resolves it (an admin can still hand-fill that tab manually).
+const EXPORT_DESTINATION_TRANSLATABLE_FIELDS = ['description'] as const;
+const EXPORT_REACH_SECTION_TRANSLATABLE_FIELDS = [
+  'heading',
+  'subtitle',
+] as const;
+
 @Injectable()
 export class HomepageService {
   constructor(
@@ -90,7 +135,40 @@ export class HomepageService {
     private readonly productionSteps: ProductionStepsService,
     private readonly supplyNetwork: SupplyNetworkService,
     private readonly events: EventEmitter2,
+    private readonly translationService: AiTranslationService,
   ) {}
+
+  /** Shared by every getXTranslationStatus() below — keeps `null`s as-is, matching
+   * `computeTranslationStatus()`'s expected shape. Mirrors
+   * `ProductsService.getTranslationStatus()`'s inline loop, generalized once for Homepage's many
+   * resources instead of repeated per resource. */
+  private static toStatusSourceFields(
+    row: Record<string, unknown>,
+    fields: readonly string[],
+  ): Record<string, string | null> {
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of fields) {
+      sourceFields[field] = (row[field] as string | null | undefined) ?? null;
+    }
+    return sourceFields;
+  }
+
+  /** Shared by every generateXTranslations() below — drops empty/non-string values, matching
+   * `AiTranslationService.generateAndMerge()`'s expected shape. Mirrors
+   * `ProductsService.generateTranslations()`'s inline loop, generalized once for Homepage's many
+   * resources instead of repeated per resource. */
+  private static toGenerateSourceFields(
+    row: Record<string, unknown>,
+    fields: readonly string[],
+  ): Record<string, string> {
+    const sourceFields: Record<string, string> = {};
+    for (const field of fields) {
+      const value = row[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    return sourceFields;
+  }
 
   async findStatistics(
     locale: string = DEFAULT_LOCALE,
@@ -221,6 +299,66 @@ export class HomepageService {
     return toHeroSlide(slide);
   }
 
+  async getHeroSlideTranslationStatus(id: string) {
+    const slide = await this.prisma.heroSlide.findUnique({
+      where: { id },
+      select: {
+        translations: true,
+        eyebrowText: true,
+        heading: true,
+        subheading: true,
+        description: true,
+        button1Text: true,
+        button2Text: true,
+      },
+    });
+    if (!slide)
+      throw new ApiException('NOT_FOUND', 'Hero slide not found.', 404);
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        slide,
+        HERO_SLIDE_TRANSLATABLE_FIELDS,
+      ),
+      slide.translations,
+    );
+  }
+
+  async generateHeroSlideTranslations(id: string) {
+    const slide = await this.prisma.heroSlide.findUnique({
+      where: { id },
+      select: {
+        translations: true,
+        eyebrowText: true,
+        heading: true,
+        subheading: true,
+        description: true,
+        button1Text: true,
+        button2Text: true,
+      },
+    });
+    if (!slide)
+      throw new ApiException('NOT_FOUND', 'Hero slide not found.', 404);
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          slide,
+          HERO_SLIDE_TRANSLATABLE_FIELDS,
+        ),
+        slide.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.heroSlide.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeHeroSlide(id: string) {
     await this.assertHeroSlideExists(id);
     await this.prisma.heroSlide.delete({ where: { id } });
@@ -329,6 +467,50 @@ export class HomepageService {
     return toPartnerLogo(logo);
   }
 
+  async getPartnerLogoTranslationStatus(id: string) {
+    const logo = await this.prisma.partnerLogo.findUnique({
+      where: { id },
+      select: { translations: true, partnerName: true, description: true },
+    });
+    if (!logo)
+      throw new ApiException('NOT_FOUND', 'Partner logo not found.', 404);
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        logo,
+        PARTNER_LOGO_TRANSLATABLE_FIELDS,
+      ),
+      logo.translations,
+    );
+  }
+
+  async generatePartnerLogoTranslations(id: string) {
+    const logo = await this.prisma.partnerLogo.findUnique({
+      where: { id },
+      select: { translations: true, partnerName: true, description: true },
+    });
+    if (!logo)
+      throw new ApiException('NOT_FOUND', 'Partner logo not found.', 404);
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          logo,
+          PARTNER_LOGO_TRANSLATABLE_FIELDS,
+        ),
+        logo.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.partnerLogo.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removePartnerLogo(id: string) {
     await this.assertPartnerLogoExists(id);
     await this.prisma.partnerLogo.delete({ where: { id } });
@@ -425,6 +607,50 @@ export class HomepageService {
       include: SHIPPING_PARTNER_INCLUDE,
     });
     return toShippingPartner(partner);
+  }
+
+  async getShippingPartnerTranslationStatus(id: string) {
+    const partner = await this.prisma.shippingPartner.findUnique({
+      where: { id },
+      select: { translations: true, partnerName: true, description: true },
+    });
+    if (!partner)
+      throw new ApiException('NOT_FOUND', 'Shipping partner not found.', 404);
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        partner,
+        SHIPPING_PARTNER_TRANSLATABLE_FIELDS,
+      ),
+      partner.translations,
+    );
+  }
+
+  async generateShippingPartnerTranslations(id: string) {
+    const partner = await this.prisma.shippingPartner.findUnique({
+      where: { id },
+      select: { translations: true, partnerName: true, description: true },
+    });
+    if (!partner)
+      throw new ApiException('NOT_FOUND', 'Shipping partner not found.', 404);
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          partner,
+          SHIPPING_PARTNER_TRANSLATABLE_FIELDS,
+        ),
+        partner.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.shippingPartner.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeShippingPartner(id: string) {
@@ -576,6 +802,40 @@ export class HomepageService {
     return toAboutPreview(updated);
   }
 
+  async getAboutPreviewTranslationStatus() {
+    const entry = await this.getOrCreateAboutPreview();
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        entry,
+        ABOUT_PREVIEW_TRANSLATABLE_FIELDS,
+      ),
+      entry.translations,
+    );
+  }
+
+  async generateAboutPreviewTranslations() {
+    const entry = await this.getOrCreateAboutPreview();
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          entry,
+          ABOUT_PREVIEW_TRANSLATABLE_FIELDS,
+        ),
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepageAboutPreview.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── Highlights (Post-Launch) ────────────────────────────────────────────
 
   async findHighlights(locale?: string, publicOnly = false) {
@@ -617,6 +877,50 @@ export class HomepageService {
       },
     });
     return toHighlight(highlight);
+  }
+
+  async getHighlightTranslationStatus(id: string) {
+    const highlight = await this.prisma.homepageHighlight.findUnique({
+      where: { id },
+      select: { translations: true, title: true, description: true },
+    });
+    if (!highlight)
+      throw new ApiException('NOT_FOUND', 'Highlight not found.', 404);
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        highlight,
+        HIGHLIGHT_TRANSLATABLE_FIELDS,
+      ),
+      highlight.translations,
+    );
+  }
+
+  async generateHighlightTranslations(id: string) {
+    const highlight = await this.prisma.homepageHighlight.findUnique({
+      where: { id },
+      select: { translations: true, title: true, description: true },
+    });
+    if (!highlight)
+      throw new ApiException('NOT_FOUND', 'Highlight not found.', 404);
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          highlight,
+          HIGHLIGHT_TRANSLATABLE_FIELDS,
+        ),
+        highlight.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepageHighlight.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeHighlight(id: string) {
@@ -668,6 +972,40 @@ export class HomepageService {
     return toPartnersSection(updated);
   }
 
+  async getPartnersSectionTranslationStatus() {
+    const entry = await this.getOrCreatePartnersSection();
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        entry,
+        PARTNERS_SECTION_TRANSLATABLE_FIELDS,
+      ),
+      entry.translations,
+    );
+  }
+
+  async generatePartnersSectionTranslations() {
+    const entry = await this.getOrCreatePartnersSection();
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          entry,
+          PARTNERS_SECTION_TRANSLATABLE_FIELDS,
+        ),
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepagePartnersSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── Shipping Section (Post-Launch, singleton) ──────────────────────────
 
   // P1-6 — see getOrCreateAboutPreview()'s comment above for why this is now an upsert.
@@ -702,6 +1040,40 @@ export class HomepageService {
       },
     });
     return toShippingSection(updated);
+  }
+
+  async getShippingSectionTranslationStatus() {
+    const entry = await this.getOrCreateShippingSection();
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        entry,
+        SHIPPING_SECTION_TRANSLATABLE_FIELDS,
+      ),
+      entry.translations,
+    );
+  }
+
+  async generateShippingSectionTranslations() {
+    const entry = await this.getOrCreateShippingSection();
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          entry,
+          SHIPPING_SECTION_TRANSLATABLE_FIELDS,
+        ),
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepageShippingSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   // ── Why Choose Us (Post-Launch) ─────────────────────────────────────────
@@ -747,6 +1119,50 @@ export class HomepageService {
       },
     });
     return toWhyChooseUs(item);
+  }
+
+  async getWhyChooseUsTranslationStatus(id: string) {
+    const item = await this.prisma.homepageWhyChooseUs.findUnique({
+      where: { id },
+      select: { translations: true, title: true },
+    });
+    if (!item)
+      throw new ApiException('NOT_FOUND', 'Why Choose Us item not found.', 404);
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        item,
+        WHY_CHOOSE_US_TRANSLATABLE_FIELDS,
+      ),
+      item.translations,
+    );
+  }
+
+  async generateWhyChooseUsTranslations(id: string) {
+    const item = await this.prisma.homepageWhyChooseUs.findUnique({
+      where: { id },
+      select: { translations: true, title: true },
+    });
+    if (!item)
+      throw new ApiException('NOT_FOUND', 'Why Choose Us item not found.', 404);
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          item,
+          WHY_CHOOSE_US_TRANSLATABLE_FIELDS,
+        ),
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepageWhyChooseUs.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeWhyChooseUs(id: string) {
@@ -885,6 +1301,40 @@ export class HomepageService {
     );
   }
 
+  async getExportDestinationTranslationStatus(id: string) {
+    const destination = await this.assertExportDestinationExists(id);
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        destination,
+        EXPORT_DESTINATION_TRANSLATABLE_FIELDS,
+      ),
+      destination.translations,
+    );
+  }
+
+  async generateExportDestinationTranslations(id: string) {
+    const destination = await this.assertExportDestinationExists(id);
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          destination,
+          EXPORT_DESTINATION_TRANSLATABLE_FIELDS,
+        ),
+        destination.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.exportDestination.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeExportDestination(id: string) {
     await this.assertExportDestinationExists(id);
     await this.prisma.exportDestination.delete({ where: { id } });
@@ -936,6 +1386,40 @@ export class HomepageService {
       },
     });
     return toExportReachSection(updated);
+  }
+
+  async getExportReachSectionTranslationStatus() {
+    const entry = await this.getOrCreateExportReachSection();
+    return computeTranslationStatus(
+      HomepageService.toStatusSourceFields(
+        entry,
+        EXPORT_REACH_SECTION_TRANSLATABLE_FIELDS,
+      ),
+      entry.translations,
+    );
+  }
+
+  async generateExportReachSectionTranslations() {
+    const entry = await this.getOrCreateExportReachSection();
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        HomepageService.toGenerateSourceFields(
+          entry,
+          EXPORT_REACH_SECTION_TRANSLATABLE_FIELDS,
+        ),
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.homepageExportReach.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   // ── Homepage Manager: Draft/Publish (Post-Launch) ──────────────────────

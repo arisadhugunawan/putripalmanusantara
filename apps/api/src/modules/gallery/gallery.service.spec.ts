@@ -1,4 +1,5 @@
 import { GalleryService } from './gallery.service';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
 function buildService() {
@@ -28,7 +29,10 @@ function buildService() {
   };
   const prisma = { galleryItem, galleryCategory, media };
   return {
-    service: new GalleryService(prisma as unknown as PrismaService),
+    service: new GalleryService(
+      prisma as unknown as PrismaService,
+      {} as unknown as AiTranslationService,
+    ),
     galleryItem,
     galleryCategory,
     media,

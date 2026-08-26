@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonCard } from "@/components/admin/Skeleton";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -147,6 +148,11 @@ export function TeamSectionCopyEditor() {
             />
           </summary>
           <div className="mt-3">
+            <GenerateTranslationsPanel
+              statusUrl="/admin/about-company/team-section/translation-status"
+              generateUrl="/admin/about-company/team-section/translations/generate"
+              onGenerated={() => void reload()}
+            />
             <LocaleTabs>
               {(locale) =>
                 locale === "en" ? (

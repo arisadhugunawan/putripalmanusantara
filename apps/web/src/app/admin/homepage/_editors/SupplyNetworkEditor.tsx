@@ -12,6 +12,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -327,6 +328,11 @@ export function SupplyNetworkEditor() {
                   />
                 </summary>
                 <div className="mt-3">
+                  <GenerateTranslationsPanel
+                    statusUrl={`/admin/supply-network/${item.id}/translation-status`}
+                    generateUrl={`/admin/supply-network/${item.id}/translations/generate`}
+                    onGenerated={() => void load()}
+                  />
                   <LocaleTabs>
                     {(locale) =>
                       locale === "en" ? (

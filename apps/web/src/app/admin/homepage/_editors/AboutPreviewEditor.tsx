@@ -4,6 +4,7 @@ import { Card, Input, Label, Textarea } from "@ppn/ui-components";
 import type { HomepageAboutPreview, HomepageVideoSource, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -175,6 +176,11 @@ export function AboutPreviewEditor() {
           />
         </summary>
         <div className="mt-3">
+          <GenerateTranslationsPanel
+            statusUrl="/admin/homepage/about-preview/translation-status"
+            generateUrl="/admin/homepage/about-preview/translations/generate"
+            onGenerated={() => void load()}
+          />
           <LocaleTabs>
             {(locale) =>
               locale === "en" ? (

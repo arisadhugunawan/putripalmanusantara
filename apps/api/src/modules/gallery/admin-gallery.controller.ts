@@ -55,6 +55,16 @@ export class AdminGalleryController {
     return category;
   }
 
+  @Get('categories/:id/translation-status')
+  getCategoryTranslationStatus(@Param('id') id: string) {
+    return this.galleryService.getCategoryTranslationStatus(id);
+  }
+
+  @Post('categories/:id/translations/generate')
+  generateCategoryTranslations(@Param('id') id: string) {
+    return this.galleryService.generateCategoryTranslations(id);
+  }
+
   @Delete('categories/:id')
   async removeCategory(@Param('id') id: string) {
     const result = await this.galleryService.removeCategory(id);
@@ -85,6 +95,16 @@ export class AdminGalleryController {
     const item = await this.galleryService.update(id, dto);
     await this.revalidation.revalidate(['/gallery']);
     return item;
+  }
+
+  @Get(':id/translation-status')
+  getTranslationStatus(@Param('id') id: string) {
+    return this.galleryService.getTranslationStatus(id);
+  }
+
+  @Post(':id/translations/generate')
+  generateTranslations(@Param('id') id: string) {
+    return this.galleryService.generateTranslations(id);
   }
 
   @Delete(':id')

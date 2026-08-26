@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { imageSize } from 'image-size';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { mergeTranslations } from '../../common/utils/i18n.util';
 import { MediaService } from '../../media/media.service';
@@ -39,11 +44,16 @@ const INCLUDE = {
   mobileBackgroundImage: true,
 } as const;
 
+/** The fields `update()` actually merges into `translations` — ground truth for what
+ * "Generate Translations" reads from English and writes back for every other locale. */
+const TRANSLATABLE_PAGE_HEADER_FIELDS = ['customTitle', 'subtitle'] as const;
+
 @Injectable()
 export class PageHeaderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
+    private readonly translationService: AiTranslationService,
   ) {}
 
   private async findRow(
@@ -115,6 +125,47 @@ export class PageHeaderService {
       include: INCLUDE,
     });
     return toPageHeader(updated);
+  }
+
+  /** Keyed singleton — one row per `pageKey`, mirrors `update()`'s own `getOrCreateRow()`
+   * lookup. Coexists with `reset()` (which clears `translations` to null) without any special
+   * handling — an empty/absent `translations` just reports every locale as not_translated. */
+  async getTranslationStatus(pageKey: string) {
+    const row = await this.getOrCreateRow(pageKey);
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of TRANSLATABLE_PAGE_HEADER_FIELDS) {
+      sourceFields[field] = row[field];
+    }
+    return computeTranslationStatus(sourceFields, row.translations);
+  }
+
+  async generateTranslations(pageKey: string) {
+    const row = await this.getOrCreateRow(pageKey);
+    const sourceFields: Record<string, string> = {};
+    for (const field of TRANSLATABLE_PAGE_HEADER_FIELDS) {
+      const value = row[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        row.translations,
+      );
+
+    if (mergedTranslations !== undefined) {
+      await this.prisma.pageHeader.update({
+        where: { pageKey },
+        data: { translations: mergedTranslations },
+      });
+    }
+
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   /** "Reset" — clears every design field on this page's row back to null (inherit from Global

@@ -40,6 +40,16 @@ export class AdminFooterController {
     return result;
   }
 
+  @Get('translation-status')
+  getTranslationStatus() {
+    return this.footerService.getTranslationStatus();
+  }
+
+  @Post('translations/generate')
+  generateTranslations() {
+    return this.footerService.generateTranslations();
+  }
+
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }),

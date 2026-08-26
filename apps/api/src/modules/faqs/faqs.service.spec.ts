@@ -1,5 +1,6 @@
 import { ApiException } from '../../common/exceptions/api.exception';
 import { FaqsService } from './faqs.service';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
 function buildService() {
@@ -12,7 +13,10 @@ function buildService() {
   };
   const prisma = { faq };
   return {
-    service: new FaqsService(prisma as unknown as PrismaService),
+    service: new FaqsService(
+      prisma as unknown as PrismaService,
+      {} as unknown as AiTranslationService,
+    ),
     faq,
   };
 }

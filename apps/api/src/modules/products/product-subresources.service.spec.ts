@@ -1,4 +1,5 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import { ProductsService } from './products.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
@@ -40,6 +41,7 @@ function buildService() {
   const service = new ProductsService(
     prisma as unknown as PrismaService,
     events as unknown as EventEmitter2,
+    {} as unknown as AiTranslationService,
   );
   return {
     service,

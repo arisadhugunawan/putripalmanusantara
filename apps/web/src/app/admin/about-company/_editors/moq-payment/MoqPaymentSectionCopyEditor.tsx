@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { SkeletonCard } from "@/components/admin/Skeleton";
 import { useToast } from "@/components/admin/Toast";
@@ -75,6 +76,11 @@ export function MoqPaymentSectionCopyEditor() {
       </p>
 
       <div className="mt-4">
+        <GenerateTranslationsPanel
+          statusUrl="/admin/about-company/moq-payment-section/translation-status"
+          generateUrl="/admin/about-company/moq-payment-section/translations/generate"
+          onGenerated={() => void reload()}
+        />
         <LocaleTabs>
           {(locale) =>
             locale === "en" ? (

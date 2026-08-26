@@ -1,5 +1,6 @@
 import { ApiException } from '../../common/exceptions/api.exception';
 import { ProductionStepsService } from './production-steps.service';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
 function buildService() {
@@ -13,7 +14,10 @@ function buildService() {
   };
   const prisma = { productionStep, homepageProcessSection };
   return {
-    service: new ProductionStepsService(prisma as unknown as PrismaService),
+    service: new ProductionStepsService(
+      prisma as unknown as PrismaService,
+      {} as unknown as AiTranslationService,
+    ),
     productionStep,
     homepageProcessSection,
   };

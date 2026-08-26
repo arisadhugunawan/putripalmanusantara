@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { AboutCompanyModule } from '../about-company/about-company.module';
 import { ArticlesModule } from '../articles/articles.module';
 import { ContactPageModule } from '../contact-page/contact-page.module';
@@ -18,12 +18,12 @@ import { AiRetrievalService } from './ai-retrieval.service';
 import { AiSettingsService } from './ai-settings.service';
 import { AiSyncService } from './ai-sync.service';
 import { AiWhatsappService } from './ai-whatsapp.service';
-import { AI_PROVIDER } from './provider/ai-provider.interface';
-import { AnthropicProvider } from './provider/anthropic.provider';
+import { AiProviderModule } from './provider/ai-provider.module';
 
 @Module({
   imports: [
     ConfigModule,
+    AiProviderModule,
     HomepageModule,
     AboutCompanyModule,
     ProductsModule,
@@ -46,22 +46,6 @@ import { AnthropicProvider } from './provider/anthropic.provider';
     AiQuickQuestionsService,
     AiAnalyticsService,
     AiWhatsappService,
-    {
-      // Provider abstraction (brief §AR) — only this one factory line knows the current
-      // provider is Anthropic; everything else depends on the `AiProvider` interface.
-      provide: AI_PROVIDER,
-      inject: [ConfigService, AnthropicProvider],
-      useFactory: (config: ConfigService, anthropic: AnthropicProvider) => {
-        const selected = config.get<string>('AI_PROVIDER', 'anthropic');
-        if (selected !== 'anthropic') {
-          throw new Error(
-            `Unknown AI_PROVIDER "${selected}" — only "anthropic" is implemented.`,
-          );
-        }
-        return anthropic;
-      },
-    },
-    AnthropicProvider,
   ],
 })
 export class AiModule {}

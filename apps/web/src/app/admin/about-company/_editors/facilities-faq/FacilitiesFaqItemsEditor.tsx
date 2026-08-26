@@ -8,6 +8,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin/ListToolbar";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
@@ -228,6 +229,11 @@ export function FacilitiesFaqItemsEditor() {
                     <p className="mt-1 text-small text-neutral-500">Kosong = tidak ditampilkan.</p>
                   </div>
                 </div>
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/facilities-faq-items/${item.id}/translation-status`}
+                  generateUrl={`/admin/about-company/facilities-faq-items/${item.id}/translations/generate`}
+                  onGenerated={() => void reload()}
+                />
                 <RowTranslationsDisclosure
                   key={`${item.id}-${JSON.stringify(item.translations ?? {})}`}
                   translations={item.translations}
@@ -388,30 +394,42 @@ function FaqItemProductTagsSection({
       </p>
       <div className="mt-2 flex flex-col gap-2">
         {item.tags.map((tag, index) => (
-          <div key={tag.id} className="flex flex-wrap items-center gap-2">
-            <Input
-              defaultValue={tag.name}
-              onBlur={(e) => void handleUpdateTag(tag.id, { name: e.target.value })}
-              className="max-w-xs"
-            />
-            <label className="flex items-center gap-1 text-small text-neutral-600">
-              <input type="checkbox" checked={tag.active} onChange={(e) => void handleUpdateTag(tag.id, { active: e.target.checked })} className="h-4 w-4" />
-              Aktif
-            </label>
-            <button type="button" onClick={() => void handleReorderTag(index, index - 1)} disabled={index === 0} className="text-small text-neutral-600 underline disabled:opacity-30">
-              Naik
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleReorderTag(index, index + 1)}
-              disabled={index === item.tags.length - 1}
-              className="text-small text-neutral-600 underline disabled:opacity-30"
-            >
-              Turun
-            </button>
-            <button type="button" onClick={() => setDeleteTagId(tag.id)} className="text-small text-red-600 underline">
-              Hapus
-            </button>
+          <div key={tag.id} className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                defaultValue={tag.name}
+                onBlur={(e) => void handleUpdateTag(tag.id, { name: e.target.value })}
+                className="max-w-xs"
+              />
+              <label className="flex items-center gap-1 text-small text-neutral-600">
+                <input type="checkbox" checked={tag.active} onChange={(e) => void handleUpdateTag(tag.id, { active: e.target.checked })} className="h-4 w-4" />
+                Aktif
+              </label>
+              <button type="button" onClick={() => void handleReorderTag(index, index - 1)} disabled={index === 0} className="text-small text-neutral-600 underline disabled:opacity-30">
+                Naik
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleReorderTag(index, index + 1)}
+                disabled={index === item.tags.length - 1}
+                className="text-small text-neutral-600 underline disabled:opacity-30"
+              >
+                Turun
+              </button>
+              <button type="button" onClick={() => setDeleteTagId(tag.id)} className="text-small text-red-600 underline">
+                Hapus
+              </button>
+            </div>
+            <details>
+              <summary className="cursor-pointer text-small font-medium text-neutral-700">🌐 Translations</summary>
+              <div className="mt-2 max-w-xs">
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/facilities-faq-tags/${tag.id}/translation-status`}
+                  generateUrl={`/admin/about-company/facilities-faq-tags/${tag.id}/translations/generate`}
+                  onGenerated={() => void onReload()}
+                />
+              </div>
+            </details>
           </div>
         ))}
       </div>

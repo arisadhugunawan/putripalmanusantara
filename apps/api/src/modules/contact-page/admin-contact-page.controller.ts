@@ -41,6 +41,16 @@ export class AdminContactPageController {
     return this.contactPageService.updateSettings(dto);
   }
 
+  @Get('settings/translation-status')
+  getSettingsTranslationStatus() {
+    return this.contactPageService.getSettingsTranslationStatus();
+  }
+
+  @Post('settings/translations/generate')
+  generateSettingsTranslations() {
+    return this.contactPageService.generateSettingsTranslations();
+  }
+
   @Get('locations')
   findLocations() {
     return this.contactPageService.findLocations();
@@ -57,6 +67,16 @@ export class AdminContactPageController {
     @Body() dto: UpdateContactLocationDto,
   ) {
     return this.contactPageService.updateLocation(id, dto);
+  }
+
+  @Get('locations/:id/translation-status')
+  getLocationTranslationStatus(@Param('id') id: string) {
+    return this.contactPageService.getLocationTranslationStatus(id);
+  }
+
+  @Post('locations/:id/translations/generate')
+  generateLocationTranslations(@Param('id') id: string) {
+    return this.contactPageService.generateLocationTranslations(id);
   }
 
   @Delete('locations/:id')

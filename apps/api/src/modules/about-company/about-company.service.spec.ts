@@ -3,6 +3,7 @@ import { resolveAboutCompanySectionStatus } from '@ppn/shared-types';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.event';
 import { AboutCompanyService } from './about-company.service';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { MediaService } from '../../media/media.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
@@ -33,6 +34,7 @@ describe('AboutCompanyService.getPublishedAboutCompany', () => {
         prisma as unknown as PrismaService,
         {} as unknown as MediaService,
         { emit: jest.fn() } as unknown as EventEmitter2,
+        {} as unknown as AiTranslationService,
       ),
       draftDelegates,
     };
@@ -97,6 +99,7 @@ describe('AboutCompanyService.restoreSnapshot', () => {
         prisma as unknown as PrismaService,
         {} as unknown as MediaService,
         events as unknown as EventEmitter2,
+        {} as unknown as AiTranslationService,
       ),
       aboutCompanyPublishedSnapshot,
       events,
@@ -205,6 +208,7 @@ describe('AboutCompanyService.updateProfile — translation preservation (Phase 
         prisma as unknown as PrismaService,
         {} as unknown as MediaService,
         { emit: jest.fn() } as unknown as EventEmitter2,
+        {} as unknown as AiTranslationService,
       ),
       aboutCompanyProfile,
     };
@@ -301,6 +305,7 @@ describe('AboutCompanyService.updateFact — translation preservation (Phase 5E-
         prisma as unknown as PrismaService,
         {} as unknown as MediaService,
         { emit: jest.fn() } as unknown as EventEmitter2,
+        {} as unknown as AiTranslationService,
       ),
       aboutCompanyFact,
     };
@@ -413,6 +418,7 @@ describe('AboutCompanyService.updateProfile — stored-XSS hardening (Phase 5F-P
         prisma as unknown as PrismaService,
         {} as unknown as MediaService,
         { emit: jest.fn() } as unknown as EventEmitter2,
+        {} as unknown as AiTranslationService,
       ),
       aboutCompanyProfile,
     };
@@ -560,6 +566,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       { aboutCompanyProfile } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     aboutCompanyProfile.upsert.mockResolvedValue(
       stubProfileRow({ translations: stubExistingTranslations() }),
@@ -592,6 +599,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       { aboutCompanyFact } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     aboutCompanyFact.findUnique.mockResolvedValue({
       id: 'fact-1',
@@ -631,6 +639,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       { facility } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     facility.findUnique.mockResolvedValue({
       id: 'facility-1',
@@ -675,6 +684,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       { aboutCompanyTeamSection } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     aboutCompanyTeamSection.upsert.mockResolvedValue({
       id: 'section-1',
@@ -712,6 +722,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       { moqPaymentQuickCard } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     moqPaymentQuickCard.findUnique.mockResolvedValue({
       id: 'card-1',
@@ -751,6 +762,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       { aboutCompanyFacilitiesFaqSection } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     aboutCompanyFacilitiesFaqSection.upsert.mockResolvedValue({
       id: 'faq-section-1',
@@ -815,6 +827,7 @@ describe('AboutCompanyService — duplicate* preserves the source translations (
       { teamMember } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     const source = {
       id: 'member-1',
@@ -869,6 +882,7 @@ describe('AboutCompanyService — duplicate* preserves the source translations (
       { whatWeDoItem } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     const source = {
       id: 'item-1',
@@ -918,6 +932,7 @@ describe('AboutCompanyService — duplicate* preserves the source translations (
       { legalCertificateDocument } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     const source = {
       id: 'doc-1',
@@ -991,6 +1006,7 @@ describe('AboutCompanyService.create/updateWhatWeDoItem — product_id validatio
       { whatWeDoItem, product } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     return { service, whatWeDoItem, product };
   }
@@ -1107,6 +1123,7 @@ describe('AboutCompanyService.create/updateLegalDocument — category_id validat
       } as unknown as PrismaService,
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
+      {} as unknown as AiTranslationService,
     );
     return { service, legalCertificateDocument, legalDocumentCategory };
   }

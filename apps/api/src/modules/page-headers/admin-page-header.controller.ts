@@ -75,6 +75,16 @@ export class AdminPageHeaderController {
     return result;
   }
 
+  @Get(':pageKey/translation-status')
+  getTranslationStatus(@Param('pageKey') pageKey: string) {
+    return this.pageHeaderService.getTranslationStatus(pageKey);
+  }
+
+  @Post(':pageKey/translations/generate')
+  generateTranslations(@Param('pageKey') pageKey: string) {
+    return this.pageHeaderService.generateTranslations(pageKey);
+  }
+
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }),

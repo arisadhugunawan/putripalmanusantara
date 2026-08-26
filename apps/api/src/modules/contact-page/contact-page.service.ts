@@ -6,6 +6,11 @@ import {
   type ContactPageSettings as SharedContactPageSettings,
   type ContactSocialLink as SharedContactSocialLink,
 } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import {
   CONTENT_PUBLISHED_EVENT,
@@ -37,6 +42,7 @@ export class ContactPageService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly translationService: AiTranslationService,
   ) {}
 
   // ── Settings (singleton, draft) ────────────────────────────────────────
@@ -102,6 +108,51 @@ export class ContactPageService {
     return toContactPageSettings(updated);
   }
 
+  private static readonly SETTINGS_TRANSLATABLE_FIELDS = [
+    'heroEyebrow',
+    'heroHeading',
+    'heroDescription',
+    'whatsappMessageGreeting',
+    'whatsappMessageIntro',
+    'whatsappMessageProductListLabel',
+    'whatsappMessageClosing',
+  ] as const;
+
+  async getSettingsTranslationStatus() {
+    const entry = await this.getOrCreateSettings();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of ContactPageService.SETTINGS_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = entry[field];
+    }
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateSettingsTranslations() {
+    const entry = await this.getOrCreateSettings();
+    const sourceFields: Record<string, string> = {};
+    for (const field of ContactPageService.SETTINGS_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.contactPageSettings.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── Locations (draft) ────────────────────────────────────────────────────
 
   async findLocations() {
@@ -156,6 +207,36 @@ export class ContactPageService {
       },
     });
     return toContactLocation(location);
+  }
+
+  async getLocationTranslationStatus(id: string) {
+    const location = await this.assertLocationExists(id);
+    return computeTranslationStatus(
+      { label: location.label },
+      location.translations,
+    );
+  }
+
+  async generateLocationTranslations(id: string) {
+    const location = await this.assertLocationExists(id);
+    const sourceFields: Record<string, string> = {};
+    if (location.label?.trim()) sourceFields.label = location.label;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        location.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.contactLocation.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   /** Only one location may be Head Office at a time — setting a new one automatically demotes

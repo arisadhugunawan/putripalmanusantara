@@ -8,6 +8,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { ListToolbar, type ActiveFilter, type SortKey } from "@/components/admin/ListToolbar";
 import { RowTranslationsDisclosure } from "@/components/admin/RowTranslationsDisclosure";
 import { SkeletonListRows } from "@/components/admin/Skeleton";
@@ -203,6 +204,11 @@ export function MoqPaymentBusinessTermsEditor() {
                     <Input defaultValue={term.value} onBlur={(e) => void handleUpdate(term.id, { value: e.target.value }, "Term Value")} />
                   </div>
                 </div>
+                <GenerateTranslationsPanel
+                  statusUrl={`/admin/about-company/moq-payment-business-terms/${term.id}/translation-status`}
+                  generateUrl={`/admin/about-company/moq-payment-business-terms/${term.id}/translations/generate`}
+                  onGenerated={() => void reload()}
+                />
                 <RowTranslationsDisclosure
                   key={`${term.id}-${JSON.stringify(term.translations ?? {})}`}
                   translations={term.translations}

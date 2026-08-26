@@ -7,6 +7,7 @@ import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { ShippingPartnerPreviewModal } from "@/components/admin/ShippingPartnerPreviewModal";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
@@ -366,6 +367,11 @@ export function ShippingPartnerEditor() {
                   />
                 </summary>
                 <div className="mt-3">
+                  <GenerateTranslationsPanel
+                    statusUrl={`/admin/homepage/shipping-partners/${partner.id}/translation-status`}
+                    generateUrl={`/admin/homepage/shipping-partners/${partner.id}/translations/generate`}
+                    onGenerated={() => void load()}
+                  />
                   <LocaleTabs>
                     {(locale) =>
                       locale === "en" ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
+import { Badge, Button, Card, Input, Label, Textarea } from "@ppn/ui-components";
 import {
   LOCALE_LABELS,
   PRODUCT_CATEGORIES,
@@ -8,19 +8,17 @@ import {
   PRODUCT_MEDIA_SECTIONS,
 } from "@ppn/shared-types";
 import type {
-  GenerateTranslationsResult,
   Locale,
   Media,
   ProductDetail,
-  ProductTranslationStatusEntry,
   Translations,
 } from "@ppn/shared-types";
-import { Fragment, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, FormEvent, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { adminApi, ApiRequestError } from "@/lib/admin/client";
-import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
 import { ProductsPublishHistoryCard } from "@/components/admin/ProductsPublishHistoryCard";
@@ -28,7 +26,6 @@ import { PublishProductsButton } from "@/components/admin/PublishProductsButton"
 import { SaveStateIndicator } from "@/components/admin/SaveStateIndicator";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
-import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove } from "@/hooks/useDragReorder";
 import { useSaveState } from "@/hooks/useSaveState";
 
@@ -235,7 +232,13 @@ export default function EditProductPage() {
             </p>
           </div>
 
-          <TranslationStatusPanel productId={product.id} />
+          <GenerateTranslationsPanel
+            statusUrl={`/admin/products/${product.id}/translation-status`}
+            generateUrl={`/admin/products/${product.id}/translations/generate`}
+            onGenerated={(generated) =>
+              setTranslations((prev) => ({ ...prev, ...generated }))
+            }
+          />
 
           {/* docs README "Internationalization" — English tab binds to the real product
               columns (submitted via FormData, unchanged behavior); the other 5 tabs bind
@@ -468,90 +471,6 @@ export default function EditProductPage() {
           }}
           onCancel={() => setConfirmingDelete(false)}
         />
-      )}
-    </div>
-  );
-}
-
-const TRANSLATION_STATUS_LABELS: Record<ProductTranslationStatusEntry["status"], string> = {
-  translated: "Diterjemahkan",
-  partial: "Sebagian",
-  not_translated: "Belum Diterjemahkan",
-};
-
-const TRANSLATION_STATUS_STYLES: Record<ProductTranslationStatusEntry["status"], string> = {
-  translated: "bg-primary-100 text-primary-700",
-  partial: "bg-secondary-500/20 text-neutral-900",
-  not_translated: "bg-neutral-100 text-neutral-600",
-};
-
-/** Translation coverage at a glance (brief §14 "Translation Status") — computed live from
- * whether the `translations` JSON actually has real text per locale, not a stored flag that
- * could drift out of sync. "Generate Translations" is real plumbing to a real endpoint, but
- * this project has no machine-translation provider configured anywhere, so it degrades
- * honestly (see products.service.ts `generateTranslations()`) instead of faking a result. */
-function TranslationStatusPanel({ productId }: { productId: string }) {
-  const fetchStatus = useCallback(
-    () => adminApi.get<ProductTranslationStatusEntry[]>(`/admin/products/${productId}/translation-status`),
-    [productId],
-  );
-  const { data: entries, status: loadStatus, reload, retry } = useAdminResource(fetchStatus);
-  const [generating, setGenerating] = useState(false);
-  const [generateMessage, setGenerateMessage] = useState<string | null>(null);
-
-  async function handleGenerate() {
-    setGenerating(true);
-    setGenerateMessage(null);
-    try {
-      const result = await adminApi.post<GenerateTranslationsResult>(
-        `/admin/products/${productId}/translations/generate`,
-      );
-      setGenerateMessage(result.message);
-      await reload();
-    } catch (err) {
-      setGenerateMessage(err instanceof ApiRequestError ? err.message : "Gagal memeriksa status terjemahan.");
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  return (
-    <div className="rounded-field border border-neutral-200 bg-neutral-50 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-body font-medium text-neutral-900">Status Terjemahan</h3>
-          <p className="text-small text-neutral-600">
-            Bahasa tanpa terjemahan otomatis menampilkan teks Inggris sebagai cadangan — isi tab bahasa di
-            bawah untuk mengubahnya.
-          </p>
-        </div>
-        <Button type="button" variant="secondary" disabled={generating} onClick={() => void handleGenerate()}>
-          {generating ? "Memeriksa..." : "Generate Translations"}
-        </Button>
-      </div>
-
-      {generateMessage && (
-        <p className="mt-3 rounded-field bg-white p-3 text-small text-neutral-700">{generateMessage}</p>
-      )}
-
-      {loadStatus === "error" && <AdminLoadError message="Gagal memuat status terjemahan." onRetry={() => void retry()} />}
-      {loadStatus === "loading" && <p className="mt-3 text-small text-neutral-500">Memuat...</p>}
-      {loadStatus === "ready" && entries && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {entries.map((entry) => (
-            <span
-              key={entry.locale}
-              className={cn(
-                "rounded-full px-3 py-1 text-small font-medium",
-                TRANSLATION_STATUS_STYLES[entry.status],
-              )}
-            >
-              {LOCALE_LABELS[entry.locale as keyof typeof LOCALE_LABELS]?.name ?? entry.locale.toUpperCase()} ·{" "}
-              {TRANSLATION_STATUS_LABELS[entry.status]}
-              {entry.status === "partial" && ` (${entry.fields_translated}/${entry.fields_total})`}
-            </span>
-          ))}
-        </div>
       )}
     </div>
   );

@@ -9,6 +9,11 @@ import type {
   AboutCompanySearchItem,
   PublishedAboutCompanyPayload,
 } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { ApiException } from '../../common/exceptions/api.exception';
 import {
   CONTENT_PUBLISHED_EVENT,
@@ -660,6 +665,7 @@ export class AboutCompanyService {
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
     private readonly events: EventEmitter2,
+    private readonly translationService: AiTranslationService,
   ) {}
 
   // ── Section 01: Company Profile (singleton) ─────────────────────────────
@@ -754,6 +760,80 @@ export class AboutCompanyService {
     return toAboutCompanyProfile(updated);
   }
 
+  private static readonly PROFILE_TRANSLATABLE_FIELDS = [
+    'headline',
+    'shortDescription',
+    'mainDescription',
+    'vision',
+    'mission',
+    'companyOverview',
+    'eyebrow',
+    'subheading',
+    'socialLabel',
+    'storyLabel',
+    'storyHeading',
+    'storyDescription',
+    'storySecondaryDescription',
+    'scopeLabel',
+    'scopeHeading',
+    'scopeDescription',
+    'factsLabel',
+    'factsHeading',
+    'exportLabel',
+    'exportHeading',
+    'exportDescription',
+    'legalLabel',
+    'legalHeading',
+    'businessType',
+    'registeredAddress',
+    'closingLabel',
+    'closingHeading',
+    'closingDescription',
+  ] as const;
+
+  async getProfileTranslationStatus() {
+    const entry = await this.getOrCreateProfile();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.PROFILE_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = entry[field];
+    }
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  /** Mirrors `updateProfile()`'s rich-text handling — `mainDescription`/`companyOverview` are
+   * rich HTML, so freshly generated translations for them go through the same
+   * `sanitizeTranslationsRichText()` pass as manually-typed ones before persisting. */
+  async generateProfileTranslations() {
+    const entry = await this.getOrCreateProfile();
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.PROFILE_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyProfile.update({
+        where: { id: entry.id },
+        data: {
+          translations: sanitizeTranslationsRichText(mergedTranslations, [
+            'mainDescription',
+            'companyOverview',
+          ]) as never,
+        },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── Company Facts ─────────────────────────────────────────────────────────
 
   async findFacts() {
@@ -799,6 +879,45 @@ export class AboutCompanyService {
       },
     });
     return toAboutCompanyFact(fact);
+  }
+
+  async getFactTranslationStatus(id: string) {
+    const fact = await this.assertExists(
+      this.prisma.aboutCompanyFact,
+      id,
+      'Company fact',
+    );
+    return computeTranslationStatus(
+      { label: fact.label, value: fact.value },
+      fact.translations,
+    );
+  }
+
+  async generateFactTranslations(id: string) {
+    const fact = await this.assertExists(
+      this.prisma.aboutCompanyFact,
+      id,
+      'Company fact',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (fact.label?.trim()) sourceFields.label = fact.label;
+    if (fact.value?.trim()) sourceFields.value = fact.value;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        fact.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyFact.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeFact(id: string) {
@@ -995,6 +1114,57 @@ export class AboutCompanyService {
     return toTeamMember(member);
   }
 
+  private static readonly TEAM_MEMBER_TRANSLATABLE_FIELDS = [
+    'name',
+    'position',
+    'biography',
+    'responsibilities',
+    'department',
+  ] as const;
+
+  async getTeamMemberTranslationStatus(id: string) {
+    const member = await this.assertExists(
+      this.prisma.teamMember,
+      id,
+      'Team member',
+    );
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.TEAM_MEMBER_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = member[field];
+    }
+    return computeTranslationStatus(sourceFields, member.translations);
+  }
+
+  async generateTeamMemberTranslations(id: string) {
+    const member = await this.assertExists(
+      this.prisma.teamMember,
+      id,
+      'Team member',
+    );
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.TEAM_MEMBER_TRANSLATABLE_FIELDS) {
+      const value = member[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        member.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.teamMember.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeTeamMember(id: string) {
     await this.assertExists(this.prisma.teamMember, id, 'Team member');
     await this.prisma.teamMember.delete({ where: { id } });
@@ -1063,6 +1233,44 @@ export class AboutCompanyService {
     return toAboutCompanyTeamSection(updated);
   }
 
+  async getTeamSectionTranslationStatus() {
+    const entry = await this.getOrCreateTeamSection();
+    return computeTranslationStatus(
+      {
+        eyebrow: entry.eyebrow,
+        heading: entry.heading,
+        description: entry.description,
+      },
+      entry.translations,
+    );
+  }
+
+  async generateTeamSectionTranslations() {
+    const entry = await this.getOrCreateTeamSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of ['eyebrow', 'heading', 'description'] as const) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyTeamSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── Section 03: What We Do ───────────────────────────────────────────────
 
   async findWhatWeDoItems(publicOnly = false) {
@@ -1126,6 +1334,55 @@ export class AboutCompanyService {
       include: WHAT_WE_DO_INCLUDE,
     });
     return toWhatWeDoItem(item);
+  }
+
+  private static readonly WHAT_WE_DO_ITEM_TRANSLATABLE_FIELDS = [
+    'title',
+    'shortDescription',
+    'detailedDescription',
+  ] as const;
+
+  async getWhatWeDoItemTranslationStatus(id: string) {
+    const item = await this.assertExists(
+      this.prisma.whatWeDoItem,
+      id,
+      'What We Do item',
+    );
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.WHAT_WE_DO_ITEM_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = item[field];
+    }
+    return computeTranslationStatus(sourceFields, item.translations);
+  }
+
+  async generateWhatWeDoItemTranslations(id: string) {
+    const item = await this.assertExists(
+      this.prisma.whatWeDoItem,
+      id,
+      'What We Do item',
+    );
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.WHAT_WE_DO_ITEM_TRANSLATABLE_FIELDS) {
+      const value = item[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.whatWeDoItem.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeWhatWeDoItem(id: string) {
@@ -1212,6 +1469,55 @@ export class AboutCompanyService {
     return toAboutCompanyWhatWeDoSection(updated);
   }
 
+  private static readonly WHAT_WE_DO_SECTION_TRANSLATABLE_FIELDS = [
+    'eyebrow',
+    'heading',
+    'description',
+    'whoHeading',
+    'whoDescription',
+    'buyerCtaHeading',
+    'buyerCtaDescription',
+    'buyerCtaButtonText',
+    'supplierCtaHeading',
+    'supplierCtaDescription',
+    'supplierCtaButtonText',
+  ] as const;
+
+  async getWhatWeDoSectionTranslationStatus() {
+    const entry = await this.getOrCreateWhatWeDoSection();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.WHAT_WE_DO_SECTION_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = entry[field];
+    }
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateWhatWeDoSectionTranslations() {
+    const entry = await this.getOrCreateWhatWeDoSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.WHAT_WE_DO_SECTION_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyWhatWeDoSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── "Who We Supply" audience segments ────────────────────────────────────
 
   async findWhoWeSupplyItems() {
@@ -1257,6 +1563,45 @@ export class AboutCompanyService {
       },
     });
     return toWhoWeSupplyItem(item);
+  }
+
+  async getWhoWeSupplyItemTranslationStatus(id: string) {
+    const item = await this.assertExists(
+      this.prisma.whoWeSupplyItem,
+      id,
+      'Who We Supply item',
+    );
+    return computeTranslationStatus(
+      { title: item.title, description: item.description },
+      item.translations,
+    );
+  }
+
+  async generateWhoWeSupplyItemTranslations(id: string) {
+    const item = await this.assertExists(
+      this.prisma.whoWeSupplyItem,
+      id,
+      'Who We Supply item',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (item.title?.trim()) sourceFields.title = item.title;
+    if (item.description?.trim()) sourceFields.description = item.description;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.whoWeSupplyItem.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeWhoWeSupplyItem(id: string) {
@@ -1380,6 +1725,46 @@ export class AboutCompanyService {
     return toLegalDocument(document);
   }
 
+  async getLegalDocumentTranslationStatus(id: string) {
+    const document = await this.assertExists(
+      this.prisma.legalCertificateDocument,
+      id,
+      'Document',
+    );
+    return computeTranslationStatus(
+      { title: document.title, description: document.description },
+      document.translations,
+    );
+  }
+
+  async generateLegalDocumentTranslations(id: string) {
+    const document = await this.assertExists(
+      this.prisma.legalCertificateDocument,
+      id,
+      'Document',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (document.title?.trim()) sourceFields.title = document.title;
+    if (document.description?.trim())
+      sourceFields.description = document.description;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        document.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.legalCertificateDocument.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   /** Body-field validation for `category_id` on `create`/`updateLegalDocument()` (P0.4-D3) —
    * `LegalCertificateDocument.category` is `onDelete: SetNull`, so this never fires from a
    * normal category delete, only a stale resubmit (e.g. a form still showing a category just
@@ -1500,6 +1885,46 @@ export class AboutCompanyService {
     return toLegalDocumentCategory(category);
   }
 
+  async getLegalCategoryTranslationStatus(id: string) {
+    const category = await this.assertExists(
+      this.prisma.legalDocumentCategory,
+      id,
+      'Category',
+    );
+    return computeTranslationStatus(
+      { name: category.name, description: category.description },
+      category.translations,
+    );
+  }
+
+  async generateLegalCategoryTranslations(id: string) {
+    const category = await this.assertExists(
+      this.prisma.legalDocumentCategory,
+      id,
+      'Category',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (category.name?.trim()) sourceFields.name = category.name;
+    if (category.description?.trim())
+      sourceFields.description = category.description;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        category.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.legalDocumentCategory.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   /** Deleting a category must not delete the documents filed under it — the FK is
    * `onDelete: SetNull`, so they become uncategorised and stay editable. */
   async removeLegalCategory(id: string) {
@@ -1553,6 +1978,44 @@ export class AboutCompanyService {
     return toAboutCompanyLegalSection(updated);
   }
 
+  async getLegalSectionTranslationStatus() {
+    const entry = await this.getOrCreateLegalSection();
+    return computeTranslationStatus(
+      {
+        eyebrow: entry.eyebrow,
+        heading: entry.heading,
+        description: entry.description,
+      },
+      entry.translations,
+    );
+  }
+
+  async generateLegalSectionTranslations() {
+    const entry = await this.getOrCreateLegalSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of ['eyebrow', 'heading', 'description'] as const) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyLegalSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── Section 05: Factory (singleton profile + gallery + documents) ───────
 
   // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
@@ -1591,6 +2054,52 @@ export class AboutCompanyService {
       include: FACTORY_INCLUDE,
     });
     return toFactoryProfile(updated);
+  }
+
+  private static readonly FACTORY_TRANSLATABLE_FIELDS = [
+    'eyebrow',
+    'name',
+    'shortDescription',
+    'detailedDescription',
+    'location',
+    'operationalInfo',
+    'capacity',
+    'additionalNotes',
+  ] as const;
+
+  async getFactoryTranslationStatus() {
+    const entry = await this.getOrCreateFactory();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.FACTORY_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = entry[field];
+    }
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateFactoryTranslations() {
+    const entry = await this.getOrCreateFactory();
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.FACTORY_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.factoryProfile.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async addFactoryGalleryItem(dto: AddFactoryGalleryItemDto) {
@@ -1680,6 +2189,57 @@ export class AboutCompanyService {
       include: FACILITY_INCLUDE,
     });
     return toFacility(facility);
+  }
+
+  private static readonly FACILITY_TRANSLATABLE_FIELDS = [
+    'name',
+    'description',
+    'facilityType',
+    'location',
+    'status',
+  ] as const;
+
+  async getFacilityTranslationStatus(id: string) {
+    const facility = await this.assertExists(
+      this.prisma.facility,
+      id,
+      'Facility',
+    );
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.FACILITY_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = facility[field];
+    }
+    return computeTranslationStatus(sourceFields, facility.translations);
+  }
+
+  async generateFacilityTranslations(id: string) {
+    const facility = await this.assertExists(
+      this.prisma.facility,
+      id,
+      'Facility',
+    );
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.FACILITY_TRANSLATABLE_FIELDS) {
+      const value = facility[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        facility.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.facility.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async addFacilityGalleryItem(
@@ -1785,6 +2345,44 @@ export class AboutCompanyService {
     return toAboutCompanyFacilitiesSection(updated);
   }
 
+  async getFacilitiesSectionTranslationStatus() {
+    const entry = await this.getOrCreateFacilitiesSection();
+    return computeTranslationStatus(
+      {
+        eyebrow: entry.eyebrow,
+        heading: entry.heading,
+        description: entry.description,
+      },
+      entry.translations,
+    );
+  }
+
+  async generateFacilitiesSectionTranslations() {
+    const entry = await this.getOrCreateFacilitiesSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of ['eyebrow', 'heading', 'description'] as const) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyFacilitiesSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   // ── "Facilities → MOQ & Payment Terms" ──────────────────────────────────
 
   // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
@@ -1826,6 +2424,54 @@ export class AboutCompanyService {
       },
     });
     return toAboutCompanyMoqPaymentSection(updated);
+  }
+
+  private static readonly MOQ_PAYMENT_SECTION_TRANSLATABLE_FIELDS = [
+    'eyebrow',
+    'heading',
+    'introduction',
+    'supplyCapacityTitle',
+    'supplyCapacityDescription',
+    'commitmentTitle',
+    'commitmentDescription',
+    'ctaTitle',
+    'ctaDescription',
+    'ctaButtonLabel',
+  ] as const;
+
+  async getMoqPaymentSectionTranslationStatus() {
+    const entry = await this.getOrCreateMoqPaymentSection();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.MOQ_PAYMENT_SECTION_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = entry[field];
+    }
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateMoqPaymentSectionTranslations() {
+    const entry = await this.getOrCreateMoqPaymentSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.MOQ_PAYMENT_SECTION_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyMoqPaymentSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async findMoqPaymentQuickCards(publicOnly = false) {
@@ -1875,6 +2521,45 @@ export class AboutCompanyService {
       },
     });
     return toMoqPaymentQuickCard(card);
+  }
+
+  async getMoqPaymentQuickCardTranslationStatus(id: string) {
+    const card = await this.assertExists(
+      this.prisma.moqPaymentQuickCard,
+      id,
+      'Quick card',
+    );
+    return computeTranslationStatus(
+      { label: card.label, value: card.value },
+      card.translations,
+    );
+  }
+
+  async generateMoqPaymentQuickCardTranslations(id: string) {
+    const card = await this.assertExists(
+      this.prisma.moqPaymentQuickCard,
+      id,
+      'Quick card',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (card.label?.trim()) sourceFields.label = card.label;
+    if (card.value?.trim()) sourceFields.value = card.value;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        card.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.moqPaymentQuickCard.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeMoqPaymentQuickCard(id: string) {
@@ -1930,6 +2615,45 @@ export class AboutCompanyService {
     return toMoqPaymentBusinessTerm(term);
   }
 
+  async getMoqPaymentBusinessTermTranslationStatus(id: string) {
+    const term = await this.assertExists(
+      this.prisma.moqPaymentBusinessTerm,
+      id,
+      'Business term',
+    );
+    return computeTranslationStatus(
+      { label: term.label, value: term.value },
+      term.translations,
+    );
+  }
+
+  async generateMoqPaymentBusinessTermTranslations(id: string) {
+    const term = await this.assertExists(
+      this.prisma.moqPaymentBusinessTerm,
+      id,
+      'Business term',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (term.label?.trim()) sourceFields.label = term.label;
+    if (term.value?.trim()) sourceFields.value = term.value;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        term.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.moqPaymentBusinessTerm.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeMoqPaymentBusinessTerm(id: string) {
     await this.assertExists(
       this.prisma.moqPaymentBusinessTerm,
@@ -1982,6 +2706,50 @@ export class AboutCompanyService {
     return toAboutCompanyShipmentTermsSection(updated);
   }
 
+  private static readonly SHIPMENT_TERMS_SECTION_TRANSLATABLE_FIELDS = [
+    'eyebrow',
+    'heading',
+    'introduction',
+    'commitmentTitle',
+    'commitmentDescription',
+    'ctaLabel',
+  ] as const;
+
+  async getShipmentTermsSectionTranslationStatus() {
+    const entry = await this.getOrCreateShipmentTermsSection();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.SHIPMENT_TERMS_SECTION_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = entry[field];
+    }
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateShipmentTermsSectionTranslations() {
+    const entry = await this.getOrCreateShipmentTermsSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.SHIPMENT_TERMS_SECTION_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyShipmentTermsSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async findShippingArrangementItems(publicOnly = false) {
     const items = await this.prisma.shippingArrangementItem.findMany({
       where: publicOnly ? { active: true } : undefined,
@@ -2031,6 +2799,48 @@ export class AboutCompanyService {
       },
     });
     return toShippingArrangementItem(item);
+  }
+
+  async getShippingArrangementItemTranslationStatus(id: string) {
+    const item = await this.assertExists(
+      this.prisma.shippingArrangementItem,
+      id,
+      'Shipping arrangement item',
+    );
+    return computeTranslationStatus(
+      { title: item.title, value: item.value, description: item.description },
+      item.translations,
+    );
+  }
+
+  async generateShippingArrangementItemTranslations(id: string) {
+    const item = await this.assertExists(
+      this.prisma.shippingArrangementItem,
+      id,
+      'Shipping arrangement item',
+    );
+    const sourceFields: Record<string, string> = {};
+    for (const field of ['title', 'value', 'description'] as const) {
+      const value = item[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.shippingArrangementItem.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeShippingArrangementItem(id: string) {
@@ -2094,6 +2904,52 @@ export class AboutCompanyService {
     return toShipmentLoadingLocation(location);
   }
 
+  async getShipmentLoadingLocationTranslationStatus(id: string) {
+    const location = await this.assertExists(
+      this.prisma.shipmentLoadingLocation,
+      id,
+      'Loading location',
+    );
+    return computeTranslationStatus(
+      {
+        name: location.name,
+        region: location.region,
+        country: location.country,
+      },
+      location.translations,
+    );
+  }
+
+  async generateShipmentLoadingLocationTranslations(id: string) {
+    const location = await this.assertExists(
+      this.prisma.shipmentLoadingLocation,
+      id,
+      'Loading location',
+    );
+    const sourceFields: Record<string, string> = {};
+    for (const field of ['name', 'region', 'country'] as const) {
+      const value = location[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        location.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.shipmentLoadingLocation.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeShipmentLoadingLocation(id: string) {
     await this.assertExists(
       this.prisma.shipmentLoadingLocation,
@@ -2147,6 +3003,41 @@ export class AboutCompanyService {
       },
     });
     return toShipmentContainerType(type);
+  }
+
+  async getShipmentContainerTypeTranslationStatus(id: string) {
+    const type = await this.assertExists(
+      this.prisma.shipmentContainerType,
+      id,
+      'Container type',
+    );
+    return computeTranslationStatus({ label: type.label }, type.translations);
+  }
+
+  async generateShipmentContainerTypeTranslations(id: string) {
+    const type = await this.assertExists(
+      this.prisma.shipmentContainerType,
+      id,
+      'Container type',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (type.label?.trim()) sourceFields.label = type.label;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        type.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.shipmentContainerType.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeShipmentContainerType(id: string) {
@@ -2208,6 +3099,45 @@ export class AboutCompanyService {
     return toShipmentScheduleStep(step);
   }
 
+  async getShipmentScheduleStepTranslationStatus(id: string) {
+    const step = await this.assertExists(
+      this.prisma.shipmentScheduleStep,
+      id,
+      'Schedule step',
+    );
+    return computeTranslationStatus(
+      { name: step.name, description: step.description },
+      step.translations,
+    );
+  }
+
+  async generateShipmentScheduleStepTranslations(id: string) {
+    const step = await this.assertExists(
+      this.prisma.shipmentScheduleStep,
+      id,
+      'Schedule step',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (step.name?.trim()) sourceFields.name = step.name;
+    if (step.description?.trim()) sourceFields.description = step.description;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        step.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.shipmentScheduleStep.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeShipmentScheduleStep(id: string) {
     await this.assertExists(
       this.prisma.shipmentScheduleStep,
@@ -2262,6 +3192,46 @@ export class AboutCompanyService {
       },
     });
     return toShipmentDocument(document);
+  }
+
+  async getShipmentDocumentTranslationStatus(id: string) {
+    const document = await this.assertExists(
+      this.prisma.shipmentDocument,
+      id,
+      'Document',
+    );
+    return computeTranslationStatus(
+      { name: document.name, description: document.description },
+      document.translations,
+    );
+  }
+
+  async generateShipmentDocumentTranslations(id: string) {
+    const document = await this.assertExists(
+      this.prisma.shipmentDocument,
+      id,
+      'Document',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (document.name?.trim()) sourceFields.name = document.name;
+    if (document.description?.trim())
+      sourceFields.description = document.description;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        document.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.shipmentDocument.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeShipmentDocument(id: string) {
@@ -2319,6 +3289,45 @@ export class AboutCompanyService {
     return toShipmentCommitmentItem(item);
   }
 
+  async getShipmentCommitmentItemTranslationStatus(id: string) {
+    const item = await this.assertExists(
+      this.prisma.shipmentCommitmentItem,
+      id,
+      'Commitment item',
+    );
+    return computeTranslationStatus(
+      { title: item.title, description: item.description },
+      item.translations,
+    );
+  }
+
+  async generateShipmentCommitmentItemTranslations(id: string) {
+    const item = await this.assertExists(
+      this.prisma.shipmentCommitmentItem,
+      id,
+      'Commitment item',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (item.title?.trim()) sourceFields.title = item.title;
+    if (item.description?.trim()) sourceFields.description = item.description;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.shipmentCommitmentItem.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
+  }
+
   async removeShipmentCommitmentItem(id: string) {
     await this.assertExists(
       this.prisma.shipmentCommitmentItem,
@@ -2371,6 +3380,51 @@ export class AboutCompanyService {
       },
     });
     return toAboutCompanyFacilitiesFaqSection(updated);
+  }
+
+  private static readonly FACILITIES_FAQ_SECTION_TRANSLATABLE_FIELDS = [
+    'eyebrow',
+    'heading',
+    'description',
+    'ctaTitle',
+    'ctaDescription',
+    'ctaPrimaryLabel',
+    'ctaSecondaryLabel',
+  ] as const;
+
+  async getFacilitiesFaqSectionTranslationStatus() {
+    const entry = await this.getOrCreateFacilitiesFaqSection();
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of AboutCompanyService.FACILITIES_FAQ_SECTION_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = entry[field];
+    }
+    return computeTranslationStatus(sourceFields, entry.translations);
+  }
+
+  async generateFacilitiesFaqSectionTranslations() {
+    const entry = await this.getOrCreateFacilitiesFaqSection();
+    const sourceFields: Record<string, string> = {};
+    for (const field of AboutCompanyService.FACILITIES_FAQ_SECTION_TRANSLATABLE_FIELDS) {
+      const value = entry[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        entry.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.aboutCompanyFacilitiesFaqSection.update({
+        where: { id: entry.id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async findFacilitiesFaqItems(publicOnly = false) {
@@ -2426,6 +3480,52 @@ export class AboutCompanyService {
       include: { tags: true },
     });
     return toFacilitiesFaqItem(item);
+  }
+
+  async getFacilitiesFaqItemTranslationStatus(id: string) {
+    const item = await this.assertExists(
+      this.prisma.facilitiesFaqItem,
+      id,
+      'FAQ item',
+    );
+    return computeTranslationStatus(
+      {
+        question: item.question,
+        answer: item.answer,
+        highlightText: item.highlightText,
+      },
+      item.translations,
+    );
+  }
+
+  async generateFacilitiesFaqItemTranslations(id: string) {
+    const item = await this.assertExists(
+      this.prisma.facilitiesFaqItem,
+      id,
+      'FAQ item',
+    );
+    const sourceFields: Record<string, string> = {};
+    for (const field of ['question', 'answer', 'highlightText'] as const) {
+      const value = item[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.facilitiesFaqItem.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeFacilitiesFaqItem(id: string) {
@@ -2485,6 +3585,41 @@ export class AboutCompanyService {
       },
     });
     return toFacilitiesFaqProductTag(tag);
+  }
+
+  async getFacilitiesFaqTagTranslationStatus(id: string) {
+    const tag = await this.assertExists(
+      this.prisma.facilitiesFaqProductTag,
+      id,
+      'Product tag',
+    );
+    return computeTranslationStatus({ name: tag.name }, tag.translations);
+  }
+
+  async generateFacilitiesFaqTagTranslations(id: string) {
+    const tag = await this.assertExists(
+      this.prisma.facilitiesFaqProductTag,
+      id,
+      'Product tag',
+    );
+    const sourceFields: Record<string, string> = {};
+    if (tag.name?.trim()) sourceFields.name = tag.name;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        tag.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.facilitiesFaqProductTag.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeFacilitiesFaqTag(id: string) {

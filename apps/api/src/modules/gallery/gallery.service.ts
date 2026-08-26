@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_LOCALE } from '@ppn/shared-types';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { buildPaginationMeta } from '../../common/dto/pagination-query.dto';
 import { ApiException } from '../../common/exceptions/api.exception';
 import { mergeTranslations } from '../../common/utils/i18n.util';
@@ -54,7 +59,10 @@ function assertValidExternalUrl(
 
 @Injectable()
 export class GalleryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly translationService: AiTranslationService,
+  ) {}
 
   // ── Categories ────────────────────────────────────────────────────────
 
@@ -117,6 +125,36 @@ export class GalleryService {
       },
     });
     return toGalleryCategory(category);
+  }
+
+  async getCategoryTranslationStatus(id: string) {
+    const category = await this.assertCategoryExists(id);
+    return computeTranslationStatus(
+      { name: category.name },
+      category.translations,
+    );
+  }
+
+  async generateCategoryTranslations(id: string) {
+    const category = await this.assertCategoryExists(id);
+    const sourceFields: Record<string, string> = {};
+    if (category.name?.trim()) sourceFields.name = category.name;
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        category.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.galleryCategory.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async removeCategory(id: string) {
@@ -361,6 +399,47 @@ export class GalleryService {
       include: ITEM_INCLUDE,
     });
     return toGalleryItem(item);
+  }
+
+  private static readonly ITEM_TRANSLATABLE_FIELDS = [
+    'title',
+    'caption',
+    'shortDescription',
+  ] as const;
+
+  async getTranslationStatus(id: string) {
+    const item = await this.findItemOrThrow(id);
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of GalleryService.ITEM_TRANSLATABLE_FIELDS) {
+      sourceFields[field] = item[field];
+    }
+    return computeTranslationStatus(sourceFields, item.translations);
+  }
+
+  async generateTranslations(id: string) {
+    const item = await this.findItemOrThrow(id);
+    const sourceFields: Record<string, string> = {};
+    for (const field of GalleryService.ITEM_TRANSLATABLE_FIELDS) {
+      const value = item[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        item.translations,
+      );
+    if (mergedTranslations !== undefined) {
+      await this.prisma.galleryItem.update({
+        where: { id },
+        data: { translations: mergedTranslations },
+      });
+    }
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   async remove(id: string) {

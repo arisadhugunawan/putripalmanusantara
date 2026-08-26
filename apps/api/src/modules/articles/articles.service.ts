@@ -15,6 +15,11 @@ import {
   sanitizeTranslationsRichText,
 } from '../../common/utils/sanitize-rich-text.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  AiTranslationService,
+  buildGenerateTranslationsResponse,
+  computeTranslationStatus,
+} from '../ai/ai-translation.service';
 import { toArticleCategory } from './article-category.mapper';
 import { toArticleDetail, toArticleSummary } from './article.mapper';
 import type {
@@ -155,7 +160,24 @@ export class ArticlesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly translationService: AiTranslationService,
   ) {}
+
+  /** The article's own master-content fields `translate()` resolves (see article.mapper.ts) —
+   * mirrors `ProductsService.TRANSLATABLE_PRODUCT_FIELDS` exactly, just for Article's field set. */
+  private static readonly TRANSLATABLE_ARTICLE_FIELDS = [
+    'title',
+    'excerpt',
+    'content',
+    'metaTitle',
+    'metaDescription',
+    'quoteText',
+  ] as const;
+
+  private static readonly TRANSLATABLE_CATEGORY_FIELDS = [
+    'name',
+    'description',
+  ] as const;
 
   // ── Public — reads the latest PUBLISHED SNAPSHOT, never the live draft row ──────────────
   //
@@ -653,6 +675,84 @@ export class ArticlesService {
         throw error;
       }
     }
+  }
+
+  /** Per-locale coverage of the article's own master-content fields — mirrors
+   * `ProductsService.getTranslationStatus()`. */
+  async getTranslationStatus(id: string) {
+    const article = await this.prisma.article.findUnique({
+      where: { id },
+      select: {
+        translations: true,
+        title: true,
+        excerpt: true,
+        content: true,
+        metaTitle: true,
+        metaDescription: true,
+        quoteText: true,
+      },
+    });
+    if (!article)
+      throw new ApiException('NOT_FOUND', 'Article not found.', 404);
+
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of ArticlesService.TRANSLATABLE_ARTICLE_FIELDS) {
+      sourceFields[field] = article[field];
+    }
+    return computeTranslationStatus(sourceFields, article.translations);
+  }
+
+  /** "Generate Translations" for Article — mirrors `ProductsService.generateTranslations()`
+   * exactly, with one addition: `content` is rich HTML, so the freshly generated translation for
+   * it must go through the same `sanitizeTranslationsRichText()` pass `update()` above already
+   * applies to manually-typed translations, before the merged blob is persisted. The AI prompt
+   * itself treats `content` as plain text (see `AiTranslationService.translateFields()`), so its
+   * output can contain HTML the sanitizer needs to clean up exactly like any other source. */
+  async generateTranslations(id: string) {
+    const article = await this.prisma.article.findUnique({
+      where: { id },
+      select: {
+        title: true,
+        excerpt: true,
+        content: true,
+        metaTitle: true,
+        metaDescription: true,
+        quoteText: true,
+        translations: true,
+      },
+    });
+    if (!article)
+      throw new ApiException('NOT_FOUND', 'Article not found.', 404);
+
+    const sourceFields: Record<string, string> = {};
+    for (const field of ArticlesService.TRANSLATABLE_ARTICLE_FIELDS) {
+      const value = article[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        article.translations,
+      );
+
+    if (mergedTranslations !== undefined) {
+      await this.prisma.article.update({
+        where: { id },
+        data: {
+          translations: sanitizeTranslationsRichText(mergedTranslations, [
+            'content',
+          ]) as never,
+        },
+      });
+    }
+
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   // ── Publish / Version History / Restore (Phase 5F-P0.2b-C) ─────────────────────────────
@@ -1222,6 +1322,60 @@ export class ArticlesService {
       },
     });
     return toArticleCategory(category);
+  }
+
+  /** Per-locale coverage of the category's own name/description — mirrors
+   * `getTranslationStatus()` above, just for the category's smaller field set. */
+  async getCategoryTranslationStatus(id: string) {
+    const category = await this.prisma.articleCategory.findUnique({
+      where: { id },
+      select: { translations: true, name: true, description: true },
+    });
+    if (!category)
+      throw new ApiException('NOT_FOUND', 'Category not found.', 404);
+
+    const sourceFields: Record<string, string | null> = {};
+    for (const field of ArticlesService.TRANSLATABLE_CATEGORY_FIELDS) {
+      sourceFields[field] = category[field];
+    }
+    return computeTranslationStatus(sourceFields, category.translations);
+  }
+
+  /** "Generate Translations" for an article category — mirrors `generateTranslations()` above.
+   * Neither `name` nor `description` is rich text, so no sanitizer pass is needed here. */
+  async generateCategoryTranslations(id: string) {
+    const category = await this.prisma.articleCategory.findUnique({
+      where: { id },
+      select: { name: true, description: true, translations: true },
+    });
+    if (!category)
+      throw new ApiException('NOT_FOUND', 'Category not found.', 404);
+
+    const sourceFields: Record<string, string> = {};
+    for (const field of ArticlesService.TRANSLATABLE_CATEGORY_FIELDS) {
+      const value = category[field];
+      if (typeof value === 'string' && value.trim())
+        sourceFields[field] = value;
+    }
+
+    const { available, translatedLocales, generated, mergedTranslations } =
+      await this.translationService.generateAndMerge(
+        sourceFields,
+        category.translations,
+      );
+
+    if (mergedTranslations !== undefined) {
+      await this.prisma.articleCategory.update({
+        where: { id },
+        data: { translations: mergedTranslations as never },
+      });
+    }
+
+    return buildGenerateTranslationsResponse(
+      available,
+      translatedLocales,
+      generated,
+    );
   }
 
   /** Deleting a category must not delete the articles filed under it — the FK is

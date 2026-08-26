@@ -39,6 +39,16 @@ export class AdminProductionStepsController {
     return this.productionStepsService.updateSection(dto);
   }
 
+  @Get('section/translation-status')
+  getSectionTranslationStatus() {
+    return this.productionStepsService.getSectionTranslationStatus();
+  }
+
+  @Post('section/translations/generate')
+  generateSectionTranslations() {
+    return this.productionStepsService.generateSectionTranslations();
+  }
+
   @Get()
   findAll() {
     return this.productionStepsService.findAll();
@@ -47,6 +57,16 @@ export class AdminProductionStepsController {
   @Post()
   create(@Body() dto: CreateProductionStepDto) {
     return this.productionStepsService.create(dto);
+  }
+
+  @Get(':id/translation-status')
+  getTranslationStatus(@Param('id') id: string) {
+    return this.productionStepsService.getTranslationStatus(id);
+  }
+
+  @Post(':id/translations/generate')
+  generateTranslations(@Param('id') id: string) {
+    return this.productionStepsService.generateTranslations(id);
   }
 
   @Put(':id')

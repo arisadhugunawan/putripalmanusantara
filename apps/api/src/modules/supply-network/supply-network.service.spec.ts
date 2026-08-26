@@ -1,4 +1,5 @@
 import { SupplyNetworkService } from './supply-network.service';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
 function buildService() {
@@ -20,7 +21,10 @@ function buildService() {
     homepageSupplyNetworkSection,
   };
   return {
-    service: new SupplyNetworkService(prisma as unknown as PrismaService),
+    service: new SupplyNetworkService(
+      prisma as unknown as PrismaService,
+      {} as unknown as AiTranslationService,
+    ),
     supplyNetworkItem,
     supplyNetworkCountry,
     homepageSupplyNetworkSection,

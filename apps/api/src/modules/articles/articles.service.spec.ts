@@ -5,6 +5,7 @@ import { CONTENT_PUBLISHED_EVENT } from '../../common/events/content-published.e
 import { ApiException } from '../../common/exceptions/api.exception';
 import type { CurrentAdminPayload } from '../../common/decorators/current-admin.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import type { AiTranslationService } from '../ai/ai-translation.service';
 import { ArticlesService } from './articles.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
@@ -67,10 +68,30 @@ function buildService() {
     $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
   const events = { emit: jest.fn() };
+  const translationService = {
+    isConfigured: jest.fn<boolean, unknown[]>().mockReturnValue(false),
+    translateFields: jest.fn<
+      Promise<{
+        available: boolean;
+        translations: Record<string, Record<string, string>>;
+      }>,
+      unknown[]
+    >(),
+    generateAndMerge: jest.fn<
+      Promise<{
+        available: boolean;
+        translatedLocales: string[];
+        generated: Record<string, Record<string, string>>;
+        mergedTranslations: Record<string, Record<string, string>> | undefined;
+      }>,
+      unknown[]
+    >(),
+  };
   return {
     service: new ArticlesService(
       prisma as unknown as PrismaService,
       events as unknown as EventEmitter2,
+      translationService as unknown as AiTranslationService,
     ),
     article,
     articleCategory,
@@ -78,6 +99,7 @@ function buildService() {
     articleGalleryImage,
     queryRaw,
     events,
+    translationService,
   };
 }
 

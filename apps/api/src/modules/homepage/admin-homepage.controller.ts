@@ -88,6 +88,16 @@ export class AdminHomepageController {
     return slide;
   }
 
+  @Get('hero-slides/:id/translation-status')
+  getHeroSlideTranslationStatus(@Param('id') id: string) {
+    return this.homepageService.getHeroSlideTranslationStatus(id);
+  }
+
+  @Post('hero-slides/:id/translations/generate')
+  generateHeroSlideTranslations(@Param('id') id: string) {
+    return this.homepageService.generateHeroSlideTranslations(id);
+  }
+
   @Delete('hero-slides/:id')
   async removeHeroSlide(@Param('id') id: string) {
     const result = await this.homepageService.removeHeroSlide(id);
@@ -120,6 +130,16 @@ export class AdminHomepageController {
   ) {
     const logo = await this.homepageService.updatePartnerLogo(id, dto);
     return logo;
+  }
+
+  @Get('partner-logos/:id/translation-status')
+  getPartnerLogoTranslationStatus(@Param('id') id: string) {
+    return this.homepageService.getPartnerLogoTranslationStatus(id);
+  }
+
+  @Post('partner-logos/:id/translations/generate')
+  generatePartnerLogoTranslations(@Param('id') id: string) {
+    return this.homepageService.generatePartnerLogoTranslations(id);
   }
 
   @Delete('partner-logos/:id')
@@ -175,6 +195,16 @@ export class AdminHomepageController {
     return preview;
   }
 
+  @Get('about-preview/translation-status')
+  getAboutPreviewTranslationStatus() {
+    return this.homepageService.getAboutPreviewTranslationStatus();
+  }
+
+  @Post('about-preview/translations/generate')
+  generateAboutPreviewTranslations() {
+    return this.homepageService.generateAboutPreviewTranslations();
+  }
+
   // ── Highlights ──────────────────────────────────────────────────────
 
   @Get('highlights')
@@ -197,6 +227,16 @@ export class AdminHomepageController {
     return highlight;
   }
 
+  @Get('highlights/:id/translation-status')
+  getHighlightTranslationStatus(@Param('id') id: string) {
+    return this.homepageService.getHighlightTranslationStatus(id);
+  }
+
+  @Post('highlights/:id/translations/generate')
+  generateHighlightTranslations(@Param('id') id: string) {
+    return this.homepageService.generateHighlightTranslations(id);
+  }
+
   @Delete('highlights/:id')
   async removeHighlight(@Param('id') id: string) {
     const result = await this.homepageService.removeHighlight(id);
@@ -214,6 +254,16 @@ export class AdminHomepageController {
   async updatePartnersSection(@Body() dto: UpdatePartnersSectionDto) {
     const section = await this.homepageService.updatePartnersSection(dto);
     return section;
+  }
+
+  @Get('partners-section/translation-status')
+  getPartnersSectionTranslationStatus() {
+    return this.homepageService.getPartnersSectionTranslationStatus();
+  }
+
+  @Post('partners-section/translations/generate')
+  generatePartnersSectionTranslations() {
+    return this.homepageService.generatePartnersSectionTranslations();
   }
 
   // ── Why Choose Us ───────────────────────────────────────────────────
@@ -238,6 +288,16 @@ export class AdminHomepageController {
     return item;
   }
 
+  @Get('why-choose-us/:id/translation-status')
+  getWhyChooseUsTranslationStatus(@Param('id') id: string) {
+    return this.homepageService.getWhyChooseUsTranslationStatus(id);
+  }
+
+  @Post('why-choose-us/:id/translations/generate')
+  generateWhyChooseUsTranslations(@Param('id') id: string) {
+    return this.homepageService.generateWhyChooseUsTranslations(id);
+  }
+
   @Delete('why-choose-us/:id')
   async removeWhyChooseUs(@Param('id') id: string) {
     const result = await this.homepageService.removeWhyChooseUs(id);
@@ -255,6 +315,16 @@ export class AdminHomepageController {
   async updateExportReachSection(@Body() dto: UpdateExportReachSectionDto) {
     const section = await this.homepageService.updateExportReachSection(dto);
     return section;
+  }
+
+  @Get('export-reach-section/translation-status')
+  getExportReachSectionTranslationStatus() {
+    return this.homepageService.getExportReachSectionTranslationStatus();
+  }
+
+  @Post('export-reach-section/translations/generate')
+  generateExportReachSectionTranslations() {
+    return this.homepageService.generateExportReachSectionTranslations();
   }
 
   @Get('export-destinations')
@@ -278,6 +348,16 @@ export class AdminHomepageController {
       dto,
     );
     return destination;
+  }
+
+  @Get('export-destinations/:id/translation-status')
+  getExportDestinationTranslationStatus(@Param('id') id: string) {
+    return this.homepageService.getExportDestinationTranslationStatus(id);
+  }
+
+  @Post('export-destinations/:id/translations/generate')
+  generateExportDestinationTranslations(@Param('id') id: string) {
+    return this.homepageService.generateExportDestinationTranslations(id);
   }
 
   @Delete('export-destinations/:id')
@@ -308,6 +388,16 @@ export class AdminHomepageController {
     return partner;
   }
 
+  @Get('shipping-partners/:id/translation-status')
+  getShippingPartnerTranslationStatus(@Param('id') id: string) {
+    return this.homepageService.getShippingPartnerTranslationStatus(id);
+  }
+
+  @Post('shipping-partners/:id/translations/generate')
+  generateShippingPartnerTranslations(@Param('id') id: string) {
+    return this.homepageService.generateShippingPartnerTranslations(id);
+  }
+
   @Delete('shipping-partners/:id')
   async removeShippingPartner(@Param('id') id: string) {
     const result = await this.homepageService.removeShippingPartner(id);
@@ -329,6 +419,16 @@ export class AdminHomepageController {
   async updateShippingSection(@Body() dto: UpdateShippingSectionDto) {
     const section = await this.homepageService.updateShippingSection(dto);
     return section;
+  }
+
+  @Get('shipping-section/translation-status')
+  getShippingSectionTranslationStatus() {
+    return this.homepageService.getShippingSectionTranslationStatus();
+  }
+
+  @Post('shipping-section/translations/generate')
+  generateShippingSectionTranslations() {
+    return this.homepageService.generateShippingSectionTranslations();
   }
 
   // ── Homepage Manager: Draft/Publish ─────────────────────────────────

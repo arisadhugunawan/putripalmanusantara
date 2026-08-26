@@ -4,6 +4,7 @@ import { Card, Input, Label, Textarea } from "@ppn/ui-components";
 import type { HomepageShippingSection, Locale } from "@ppn/shared-types";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 
@@ -148,6 +149,11 @@ export function ShippingSectionEditor() {
           />
         </summary>
         <div className="mt-3">
+          <GenerateTranslationsPanel
+            statusUrl="/admin/homepage/shipping-section/translation-status"
+            generateUrl="/admin/homepage/shipping-section/translations/generate"
+            onGenerated={() => void load()}
+          />
           <LocaleTabs>
             {(locale) =>
               locale === "en" ? (
