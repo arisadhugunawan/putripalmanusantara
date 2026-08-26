@@ -1418,20 +1418,25 @@ enum QuotationRequestStatus {
 }
 
 model QuotationRequest {
-  id                String                 @id @default(cuid())
-  type              QuotationRequestType
-  name              String
-  company           String
-  country           String
-  email             String
-  phone             String?
-  productId         String?                @map("product_id")
-  product           Product?               @relation(fields: [productId], references: [id])
-  estimatedQuantity String?                @map("estimated_quantity")
-  message           String
-  status            QuotationRequestStatus @default(new)
-  sourcePage        String                 @map("source_page")
-  createdAt         DateTime               @default(now()) @map("created_at")
+  id                  String                 @id @default(cuid())
+  type                QuotationRequestType
+  name                String
+  company             String
+  country             String
+  email               String
+  phone               String?
+  productId           String?                @map("product_id")
+  product             Product?               @relation(fields: [productId], references: [id])
+  /// P2-2 — denormalized copy of Product.name at submission time, same reasoning as
+  /// AdminActivityLog.actorName: history must stay readable even after the Product is deleted
+  /// (productId → SET NULL on delete). Never touched after creation; the mapper only falls back
+  /// to it when the live `product` relation is gone.
+  productNameSnapshot String?                @map("product_name_snapshot")
+  estimatedQuantity   String?                @map("estimated_quantity")
+  message             String
+  status              QuotationRequestStatus @default(new)
+  sourcePage          String                 @map("source_page")
+  createdAt           DateTime               @default(now()) @map("created_at")
 
   @@index([status])
   @@index([createdAt])

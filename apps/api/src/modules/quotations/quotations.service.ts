@@ -39,9 +39,11 @@ export class QuotationsService {
   async createQuotationRequest(dto: CreateQuotationRequestDto) {
     assertNotSpam(dto.website);
 
+    let product: { name: string } | null = null;
     if (dto.product_id) {
-      const product = await this.prisma.product.findUnique({
+      product = await this.prisma.product.findUnique({
         where: { id: dto.product_id },
+        select: { name: true },
       });
       if (!product) {
         throw new ApiException(
@@ -64,6 +66,9 @@ export class QuotationsService {
         email: dto.email,
         phone: dto.phone,
         productId: dto.product_id,
+        // P2-2 — denormalized alongside productId so the quotation's product identity
+        // survives even after the Product is later deleted (productId → SET NULL on delete).
+        productNameSnapshot: product?.name,
         estimatedQuantity: dto.estimated_quantity,
         message: dto.message,
         sourcePage: dto.source_page,

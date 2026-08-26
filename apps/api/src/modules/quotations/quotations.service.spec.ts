@@ -70,6 +70,52 @@ describe('QuotationsService', () => {
     expect(prisma.quotationRequest.create).not.toHaveBeenCalled();
   });
 
+  // P2-2/A — a quotation submitted with a valid product_id must store both the live FK and a
+  // denormalized copy of the product's name, so the quotation's product identity survives even
+  // after the Product row is later deleted (productId → SET NULL on delete).
+  it('stores productId and a productNameSnapshot when a valid product_id is submitted', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 'product-1',
+      name: 'Coconut Shell Charcoal',
+    });
+    prisma.quotationRequest.create.mockResolvedValue({
+      id: 'quotation-1',
+      status: 'new',
+    });
+
+    await service.createQuotationRequest({
+      ...baseDto,
+      product_id: 'product-1',
+    });
+
+    expect(prisma.quotationRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.objectContaining() is untyped by Jest's own types.
+        data: expect.objectContaining({
+          productId: 'product-1',
+          productNameSnapshot: 'Coconut Shell Charcoal',
+        }),
+      }),
+    );
+  });
+
+  // P2-2/B — a quotation submitted without a product_id must never fabricate a snapshot.
+  it('leaves productId and productNameSnapshot undefined when no product_id is submitted', async () => {
+    prisma.quotationRequest.create.mockResolvedValue({
+      id: 'quotation-1',
+      status: 'new',
+    });
+
+    await service.createQuotationRequest(baseDto);
+
+    expect(prisma.product.findUnique).not.toHaveBeenCalled();
+    const [call] = prisma.quotationRequest.create.mock.calls[0] as [
+      { data: { productId: unknown; productNameSnapshot: unknown } },
+    ];
+    expect(call.data.productId).toBeUndefined();
+    expect(call.data.productNameSnapshot).toBeUndefined();
+  });
+
   // FR-QUOTE-04 — a legitimate submission must be persisted and trigger an admin notification.
   it('persists a valid submission and notifies the admin', async () => {
     prisma.quotationRequest.create.mockResolvedValue({
