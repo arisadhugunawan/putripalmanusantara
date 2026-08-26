@@ -196,7 +196,7 @@ function stubProfileRow(overrides: Record<string, unknown> = {}) {
 describe('AboutCompanyService.updateProfile — translation preservation (Phase 5E-A)', () => {
   function buildProfileService() {
     const aboutCompanyProfile = {
-      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      upsert: jest.fn<Promise<unknown>, unknown[]>(),
       update: jest.fn<Promise<unknown>, unknown[]>(),
     };
     const prisma = { aboutCompanyProfile };
@@ -212,7 +212,7 @@ describe('AboutCompanyService.updateProfile — translation preservation (Phase 
 
   it('a TH-only edit persists EN, ID, ZH, HI, and VI content unchanged', async () => {
     const { service, aboutCompanyProfile } = buildProfileService();
-    aboutCompanyProfile.findFirst.mockResolvedValue(stubProfileRow());
+    aboutCompanyProfile.upsert.mockResolvedValue(stubProfileRow());
     // Simulates what the Admin UI sends: it read the existing translations, changed only `th`,
     // and spread every other locale back in unmodified — id/zh/hi/vi below must reach Prisma
     // exactly as they already were.
@@ -241,7 +241,7 @@ describe('AboutCompanyService.updateProfile — translation preservation (Phase 
 
   it('an ID-only edit persists EN(source columns untouched), ZH, TH, HI, and VI unchanged', async () => {
     const { service, aboutCompanyProfile } = buildProfileService();
-    aboutCompanyProfile.findFirst.mockResolvedValue(stubProfileRow());
+    aboutCompanyProfile.upsert.mockResolvedValue(stubProfileRow());
     const mergedAfterIdEdit = {
       id: { eyebrow: 'Siapa Kami (diedit)' },
       zh: { eyebrow: '我们是谁' },
@@ -277,7 +277,7 @@ describe('AboutCompanyService.updateProfile — translation preservation (Phase 
 
   it('does not touch the translations column when the caller omits it from the patch', async () => {
     const { service, aboutCompanyProfile } = buildProfileService();
-    aboutCompanyProfile.findFirst.mockResolvedValue(stubProfileRow());
+    aboutCompanyProfile.upsert.mockResolvedValue(stubProfileRow());
     aboutCompanyProfile.update.mockResolvedValue(stubProfileRow());
 
     await service.updateProfile({ headline: 'Renamed' });
@@ -402,10 +402,9 @@ describe('resolveAboutCompanySectionStatus', () => {
 describe('AboutCompanyService.updateProfile — stored-XSS hardening (Phase 5F-P0.1)', () => {
   function buildService() {
     const aboutCompanyProfile = {
-      findFirst: jest
+      upsert: jest
         .fn()
         .mockResolvedValue({ id: 'profile-1', translations: null }),
-      create: jest.fn(),
       update: jest.fn<Promise<unknown>, unknown[]>(),
     };
     const prisma = { aboutCompanyProfile };
@@ -554,7 +553,7 @@ function stubExistingTranslations(overrides: Record<string, unknown> = {}) {
 describe('AboutCompanyService — partial-payload merge safety against saved data (Phase 5F-P0.3-A)', () => {
   it('updateProfile: an EN-only edit preserves every other locale already saved, through the merge+sanitize pipeline', async () => {
     const aboutCompanyProfile = {
-      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      upsert: jest.fn<Promise<unknown>, unknown[]>(),
       update: jest.fn<Promise<unknown>, unknown[]>(),
     };
     const service = new AboutCompanyService(
@@ -562,7 +561,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
     );
-    aboutCompanyProfile.findFirst.mockResolvedValue(
+    aboutCompanyProfile.upsert.mockResolvedValue(
       stubProfileRow({ translations: stubExistingTranslations() }),
     );
     aboutCompanyProfile.update.mockResolvedValue(stubProfileRow());
@@ -669,7 +668,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
 
   it('updateTeamSection (getOrCreate-based singleton): a single-locale payload against a saved row preserves every other locale', async () => {
     const aboutCompanyTeamSection = {
-      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      upsert: jest.fn<Promise<unknown>, unknown[]>(),
       update: jest.fn<Promise<unknown>, unknown[]>(),
     };
     const service = new AboutCompanyService(
@@ -677,7 +676,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
     );
-    aboutCompanyTeamSection.findFirst.mockResolvedValue({
+    aboutCompanyTeamSection.upsert.mockResolvedValue({
       id: 'section-1',
       translations: stubExistingTranslations(),
     });
@@ -745,7 +744,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
 
   it('updateFacilitiesFaqSection (getOrCreate-based singleton): a single-locale payload preserves every other locale already saved', async () => {
     const aboutCompanyFacilitiesFaqSection = {
-      findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+      upsert: jest.fn<Promise<unknown>, unknown[]>(),
       update: jest.fn<Promise<unknown>, unknown[]>(),
     };
     const service = new AboutCompanyService(
@@ -753,7 +752,7 @@ describe('AboutCompanyService — partial-payload merge safety against saved dat
       {} as unknown as MediaService,
       { emit: jest.fn() } as unknown as EventEmitter2,
     );
-    aboutCompanyFacilitiesFaqSection.findFirst.mockResolvedValue({
+    aboutCompanyFacilitiesFaqSection.upsert.mockResolvedValue({
       id: 'faq-section-1',
       translations: stubExistingTranslations(),
     });

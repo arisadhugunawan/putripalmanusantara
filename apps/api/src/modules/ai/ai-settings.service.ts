@@ -9,11 +9,17 @@ export class AiSettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Raw Prisma model — used internally by `AiSyncService`/`AiChatService`, which need the
-   * `include_*` toggles and `business_instructions` that never leave the server. */
+   * `include_*` toggles and `business_instructions` that never leave the server.
+   *
+   * P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+   * findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+   * database-enforced row instead of racing to create two. */
   async getOrCreateRaw(): Promise<AiSettingsModel> {
-    const existing = await this.prisma.aiSettings.findFirst();
-    if (existing) return existing;
-    return this.prisma.aiSettings.create({ data: {} });
+    return this.prisma.aiSettings.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findForAdmin() {

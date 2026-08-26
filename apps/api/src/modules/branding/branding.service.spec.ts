@@ -3,8 +3,7 @@ import type { PrismaService } from '../../prisma/prisma.service';
 
 function buildService() {
   const siteBranding = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
-    create: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   // P0.4-D2 — assertMediaIdsValid() looks up `prisma.media`; defaults to "every id exists" so
@@ -53,7 +52,7 @@ function stubBrandingRow(overrides: Record<string, unknown> = {}) {
 describe('BrandingService.update — media id validation (P0.4-D2)', () => {
   it('throws INVALID_MEDIA (400) when header_logo_id does not exist', async () => {
     const { service, siteBranding, media } = buildService();
-    siteBranding.findFirst.mockResolvedValue(stubBrandingRow());
+    siteBranding.upsert.mockResolvedValue(stubBrandingRow());
     media.findMany.mockResolvedValue([]); // none of the requested ids were found
 
     let thrown: { code?: string; getStatus?: () => number } | undefined;
@@ -69,7 +68,7 @@ describe('BrandingService.update — media id validation (P0.4-D2)', () => {
 
   it('validates all five media fields in a single batched query, not one per field', async () => {
     const { service, siteBranding, media } = buildService();
-    siteBranding.findFirst.mockResolvedValue(stubBrandingRow());
+    siteBranding.upsert.mockResolvedValue(stubBrandingRow());
     media.findMany.mockResolvedValue([
       { id: 'm-header' },
       { id: 'm-footer' },
@@ -92,7 +91,7 @@ describe('BrandingService.update — media id validation (P0.4-D2)', () => {
 
   it('a request with only some fields present validates only those provided ids', async () => {
     const { service, siteBranding, media } = buildService();
-    siteBranding.findFirst.mockResolvedValue(stubBrandingRow());
+    siteBranding.upsert.mockResolvedValue(stubBrandingRow());
     media.findMany.mockResolvedValue([{ id: 'm-header' }]);
     siteBranding.update.mockResolvedValue(stubBrandingRow());
 
@@ -106,7 +105,7 @@ describe('BrandingService.update — media id validation (P0.4-D2)', () => {
 
   it('null (clearing a slot) is never sent to the media existence check', async () => {
     const { service, siteBranding, media } = buildService();
-    siteBranding.findFirst.mockResolvedValue(stubBrandingRow());
+    siteBranding.upsert.mockResolvedValue(stubBrandingRow());
     siteBranding.update.mockResolvedValue(stubBrandingRow());
 
     await service.update({ header_logo_id: null });
@@ -120,7 +119,7 @@ describe('BrandingService.update — media id validation (P0.4-D2)', () => {
 
   it('a request with no media fields present never calls the media check', async () => {
     const { service, siteBranding, media } = buildService();
-    siteBranding.findFirst.mockResolvedValue(stubBrandingRow());
+    siteBranding.upsert.mockResolvedValue(stubBrandingRow());
     siteBranding.update.mockResolvedValue(stubBrandingRow());
 
     await service.update({ header_logo_enabled: false });
@@ -130,7 +129,7 @@ describe('BrandingService.update — media id validation (P0.4-D2)', () => {
 
   it('valid media ids save successfully exactly as before', async () => {
     const { service, siteBranding, media } = buildService();
-    siteBranding.findFirst.mockResolvedValue(stubBrandingRow());
+    siteBranding.upsert.mockResolvedValue(stubBrandingRow());
     media.findMany.mockResolvedValue([{ id: 'm-header' }]);
     siteBranding.update.mockResolvedValue(
       stubBrandingRow({ headerLogoId: 'm-header' }),
@@ -150,7 +149,7 @@ describe('BrandingService.update — media id validation (P0.4-D2)', () => {
 describe('BrandingService.update — reset/null behavior is unchanged (P0.4-D2 regression guard)', () => {
   it('resetSlot() always clears to null and never calls the media existence check', async () => {
     const { service, siteBranding, media } = buildService();
-    siteBranding.findFirst.mockResolvedValue(stubBrandingRow());
+    siteBranding.upsert.mockResolvedValue(stubBrandingRow());
     siteBranding.update.mockResolvedValue(stubBrandingRow());
 
     await service.resetSlot('header');

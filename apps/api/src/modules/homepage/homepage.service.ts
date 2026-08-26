@@ -532,13 +532,14 @@ export class HomepageService {
 
   // ── About Preview (Post-Launch, singleton) ─────────────────────────────
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   private async getOrCreateAboutPreview() {
-    const existing = await this.prisma.homepageAboutPreview.findFirst({
-      include: ABOUT_PREVIEW_INCLUDE,
-    });
-    if (existing) return existing;
-    return this.prisma.homepageAboutPreview.create({
-      data: {},
+    return this.prisma.homepageAboutPreview.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
       include: ABOUT_PREVIEW_INCLUDE,
     });
   }
@@ -635,10 +636,13 @@ export class HomepageService {
 
   // ── Partners Section (Post-Launch, singleton) ──────────────────────────
 
+  // P1-6 — see getOrCreateAboutPreview()'s comment above for why this is now an upsert.
   private async getOrCreatePartnersSection() {
-    const existing = await this.prisma.homepagePartnersSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.homepagePartnersSection.create({ data: {} });
+    return this.prisma.homepagePartnersSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findPartnersSection(locale: string = DEFAULT_LOCALE) {
@@ -666,10 +670,13 @@ export class HomepageService {
 
   // ── Shipping Section (Post-Launch, singleton) ──────────────────────────
 
+  // P1-6 — see getOrCreateAboutPreview()'s comment above for why this is now an upsert.
   private async getOrCreateShippingSection() {
-    const existing = await this.prisma.homepageShippingSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.homepageShippingSection.create({ data: {} });
+    return this.prisma.homepageShippingSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findShippingSection(locale: string = DEFAULT_LOCALE) {
@@ -900,10 +907,13 @@ export class HomepageService {
     return destination;
   }
 
+  // P1-6 — see getOrCreateAboutPreview()'s comment above for why this is now an upsert.
   private async getOrCreateExportReachSection() {
-    const existing = await this.prisma.homepageExportReach.findFirst();
-    if (existing) return existing;
-    return this.prisma.homepageExportReach.create({ data: {} });
+    return this.prisma.homepageExportReach.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findExportReachSection(locale: string = DEFAULT_LOCALE) {

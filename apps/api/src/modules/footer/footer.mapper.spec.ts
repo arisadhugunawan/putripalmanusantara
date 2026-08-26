@@ -6,6 +6,7 @@ function stubFooterRow(
 ): FooterSettingsWithRelations {
   return {
     id: 'footer-1',
+    singleton: true,
     enabled: true,
     showCta: true,
     showSocial: true,

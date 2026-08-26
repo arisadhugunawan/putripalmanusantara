@@ -246,10 +246,15 @@ export class AiSyncService {
     }
   }
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   private async getOrCreateStatusRow() {
-    const existing = await this.prisma.aiSyncStatus.findFirst();
-    if (existing) return existing;
-    return this.prisma.aiSyncStatus.create({ data: {} });
+    return this.prisma.aiSyncStatus.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async getStatus() {

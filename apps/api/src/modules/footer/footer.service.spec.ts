@@ -4,8 +4,7 @@ import type { PrismaService } from '../../prisma/prisma.service';
 
 function buildService() {
   const footerSettings = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
-    create: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const service = new FooterService(
@@ -51,7 +50,7 @@ function stubRow(overrides: Record<string, unknown> = {}) {
 describe('FooterService.update — translation merge safety (Phase P0.3-B3-A)', () => {
   it('a single-locale partial payload preserves every other locale already saved', async () => {
     const { service, footerSettings } = buildService();
-    footerSettings.findFirst.mockResolvedValue(
+    footerSettings.upsert.mockResolvedValue(
       stubRow({
         translations: {
           en: { tagline: 'Coconut Products for Global Markets' },
@@ -93,7 +92,7 @@ describe('FooterService.update — translation merge safety (Phase P0.3-B3-A)', 
 
   it('updating one field within a locale preserves the other field already saved for that same locale', async () => {
     const { service, footerSettings } = buildService();
-    footerSettings.findFirst.mockResolvedValue(
+    footerSettings.upsert.mockResolvedValue(
       stubRow({
         translations: {
           id: { tagline: 'Tagline lama', description: 'Deskripsi lama' },
@@ -117,7 +116,7 @@ describe('FooterService.update — translation merge safety (Phase P0.3-B3-A)', 
 
   it('does not touch translations when the caller omits it from the patch (existing translations remain unchanged)', async () => {
     const { service, footerSettings } = buildService();
-    footerSettings.findFirst.mockResolvedValue(
+    footerSettings.upsert.mockResolvedValue(
       stubRow({ translations: { id: { tagline: 'Tagline lama' } } }),
     );
     footerSettings.update.mockResolvedValue(stubRow());
@@ -132,7 +131,7 @@ describe('FooterService.update — translation merge safety (Phase P0.3-B3-A)', 
 
   it('a legacy row with no translations object at all still updates successfully (backward compatibility)', async () => {
     const { service, footerSettings } = buildService();
-    footerSettings.findFirst.mockResolvedValue(stubRow({ translations: null }));
+    footerSettings.upsert.mockResolvedValue(stubRow({ translations: null }));
     footerSettings.update.mockResolvedValue(stubRow());
 
     await expect(
@@ -147,7 +146,7 @@ describe('FooterService.update — translation merge safety (Phase P0.3-B3-A)', 
 
   it('does not change non-translatable fields (toggles, media, colors, company_name) when only translations are patched', async () => {
     const { service, footerSettings } = buildService();
-    footerSettings.findFirst.mockResolvedValue(stubRow());
+    footerSettings.upsert.mockResolvedValue(stubRow());
     footerSettings.update.mockResolvedValue(stubRow());
 
     await service.update({
@@ -176,7 +175,7 @@ describe('FooterService.update — translation merge safety (Phase P0.3-B3-A)', 
 describe('FooterService.find — locale threading', () => {
   it('passes the requested locale through to the mapper', async () => {
     const { service, footerSettings } = buildService();
-    footerSettings.findFirst.mockResolvedValue(
+    footerSettings.upsert.mockResolvedValue(
       stubRow({
         translations: { zh: { tagline: '面向全球市场的椰子产品' } },
       }),
@@ -189,7 +188,7 @@ describe('FooterService.find — locale threading', () => {
 
   it('falls back to the base value when no locale is passed', async () => {
     const { service, footerSettings } = buildService();
-    footerSettings.findFirst.mockResolvedValue(
+    footerSettings.upsert.mockResolvedValue(
       stubRow({
         translations: { zh: { tagline: '面向全球市场的椰子产品' } },
       }),

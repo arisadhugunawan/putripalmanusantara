@@ -16,7 +16,7 @@ function buildService() {
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepageAboutPreview = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const partnerLogo = {
@@ -32,11 +32,11 @@ function buildService() {
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepagePartnersSection = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepageShippingSection = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepageWhyChooseUs = {
@@ -49,7 +49,7 @@ function buildService() {
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepageExportReach = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const prisma = {
@@ -216,7 +216,7 @@ function stubAboutPreviewRow(overrides: Record<string, unknown> = {}) {
 describe('HomepageService.updateAboutPreview — translation preservation (Phase 5E-B)', () => {
   it('a TH-only edit persists EN, ID, ZH, HI, and VI content unchanged', async () => {
     const { service, homepageAboutPreview } = buildService();
-    homepageAboutPreview.findFirst.mockResolvedValue(stubAboutPreviewRow());
+    homepageAboutPreview.upsert.mockResolvedValue(stubAboutPreviewRow());
     const mergedAfterThEdit = {
       id: { heading: 'Ekspor Kelapa Terpercaya' },
       zh: { heading: '可靠的椰子出口' },
@@ -246,7 +246,7 @@ describe('HomepageService.updateAboutPreview — translation preservation (Phase
 
   it('an ID-only edit persists ZH, TH, HI, and VI unchanged', async () => {
     const { service, homepageAboutPreview } = buildService();
-    homepageAboutPreview.findFirst.mockResolvedValue(stubAboutPreviewRow());
+    homepageAboutPreview.upsert.mockResolvedValue(stubAboutPreviewRow());
     const mergedAfterIdEdit = {
       id: { heading: 'Ekspor Kelapa Terpercaya (diedit)' },
       zh: { heading: '可靠的椰子出口' },
@@ -276,7 +276,7 @@ describe('HomepageService.updateAboutPreview — translation preservation (Phase
 
   it('does not touch the translations column when the caller omits it from the patch', async () => {
     const { service, homepageAboutPreview } = buildService();
-    homepageAboutPreview.findFirst.mockResolvedValue(stubAboutPreviewRow());
+    homepageAboutPreview.upsert.mockResolvedValue(stubAboutPreviewRow());
     homepageAboutPreview.update.mockResolvedValue(stubAboutPreviewRow());
 
     await service.updateAboutPreview({ heading: 'Renamed' });
@@ -289,7 +289,7 @@ describe('HomepageService.updateAboutPreview — translation preservation (Phase
 
   it('leaves non-translatable fields (cta_link, video settings, enabled) untouched by a translation-only update', async () => {
     const { service, homepageAboutPreview } = buildService();
-    homepageAboutPreview.findFirst.mockResolvedValue(stubAboutPreviewRow());
+    homepageAboutPreview.upsert.mockResolvedValue(stubAboutPreviewRow());
     homepageAboutPreview.update.mockResolvedValue(stubAboutPreviewRow());
 
     await service.updateAboutPreview({
@@ -458,7 +458,7 @@ describe('HomepageService — partial-payload merge safety against saved data (P
 
   it('updateAboutPreview: a single-locale partial payload against a row with saved data preserves every other locale', async () => {
     const { service, homepageAboutPreview } = buildService();
-    homepageAboutPreview.findFirst.mockResolvedValue(
+    homepageAboutPreview.upsert.mockResolvedValue(
       stubAboutPreviewRow({ translations: stubExistingTranslations() }),
     );
     homepageAboutPreview.update.mockResolvedValue(stubAboutPreviewRow());
@@ -515,7 +515,7 @@ describe('HomepageService — partial-payload merge safety against saved data (P
 
   it('updatePartnersSection: a single-locale partial payload against a saved row preserves every other locale', async () => {
     const { service, homepagePartnersSection } = buildService();
-    homepagePartnersSection.findFirst.mockResolvedValue({
+    homepagePartnersSection.upsert.mockResolvedValue({
       id: 'section-1',
       translations: stubExistingTranslations(),
     });
@@ -542,7 +542,7 @@ describe('HomepageService — partial-payload merge safety against saved data (P
 
   it('updateShippingSection: a single-locale partial payload against a saved row preserves every other locale', async () => {
     const { service, homepageShippingSection } = buildService();
-    homepageShippingSection.findFirst.mockResolvedValue({
+    homepageShippingSection.upsert.mockResolvedValue({
       id: 'section-1',
       translations: stubExistingTranslations(),
     });
@@ -759,7 +759,7 @@ describe('HomepageService — partial-payload merge safety against saved data (P
 
   it('updateExportReachSection: a single-locale partial payload against a saved row preserves every other locale', async () => {
     const { service, homepageExportReach } = buildService();
-    homepageExportReach.findFirst.mockResolvedValue({
+    homepageExportReach.upsert.mockResolvedValue({
       id: 'reach-1',
       translations: stubExistingTranslations(),
     });

@@ -44,6 +44,7 @@ function buildPrisma() {
       findFirst: jest.fn().mockResolvedValue({ id: 'status-1' }),
       create: jest.fn().mockResolvedValue({ id: 'status-1' }),
       update: jest.fn().mockResolvedValue({}),
+      upsert: jest.fn().mockResolvedValue({ id: 'status-1' }),
     },
     aiKnowledgeChunk: {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),

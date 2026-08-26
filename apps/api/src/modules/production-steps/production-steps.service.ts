@@ -128,10 +128,15 @@ export class ProductionStepsService {
 
   // ── Section header + closing CTA (singleton) ────────────────────────────
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   async getOrCreateSection() {
-    const existing = await this.prisma.homepageProcessSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.homepageProcessSection.create({ data: {} });
+    return this.prisma.homepageProcessSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findSection(locale: string = DEFAULT_LOCALE) {

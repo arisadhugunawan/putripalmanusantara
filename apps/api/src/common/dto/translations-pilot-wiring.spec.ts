@@ -271,7 +271,7 @@ describe('Phase P0.3-E pilot — full DTO → service → Prisma chain', () => {
       translations: { zh: { heroEyebrow: 'Existing Chinese' } },
     };
     const contactPageSettings = {
-      findFirst: jest
+      upsert: jest
         .fn<Promise<unknown>, unknown[]>()
         .mockResolvedValue(stubSettingsRow),
       update: jest

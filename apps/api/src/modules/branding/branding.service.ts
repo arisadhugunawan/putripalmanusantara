@@ -16,13 +16,14 @@ const BRANDING_INCLUDE = {
 export class BrandingService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   private async getOrCreate() {
-    const existing = await this.prisma.siteBranding.findFirst({
-      include: BRANDING_INCLUDE,
-    });
-    if (existing) return existing;
-    return this.prisma.siteBranding.create({
-      data: {},
+    return this.prisma.siteBranding.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
       include: BRANDING_INCLUDE,
     });
   }

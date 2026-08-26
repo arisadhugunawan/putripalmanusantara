@@ -588,6 +588,11 @@ model AboutCompanyFacilitiesSection {
   /// i18n — non-English overrides for eyebrow/heading/description.
   translations          Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("about_company_facilities_section")
 }
 
@@ -610,6 +615,11 @@ model AboutCompanyMoqPaymentSection {
   updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for every translatable text field on this singleton.
   translations                Json?
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("about_company_moq_payment_section")
 }
@@ -664,6 +674,11 @@ model AboutCompanyShipmentTermsSection {
   updatedAt              DateTime @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for eyebrow/heading/introduction/commitment/cta text.
   translations           Json?
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("about_company_shipment_terms_section")
 }
@@ -786,6 +801,11 @@ model AboutCompanyFacilitiesFaqSection {
   /// i18n — non-English overrides for eyebrow/heading/description/cta text.
   translations      Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("about_company_facilities_faq_section")
 }
 
@@ -863,6 +883,11 @@ model HomepageProcessSection {
   /// i18n — non-English overrides for eyebrow/heading/description/finalHeading/
   /// finalDescription/primaryCtaLabel/secondaryCtaLabel.
   translations      Json?
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("homepage_process_section")
 }
@@ -961,6 +986,11 @@ model HomepageSupplyNetworkSection {
   /// i18n — non-English overrides for eyebrow/heading/description/centerLabel/centerTitle/
   /// centerDescription/finalHeading/finalDescription/primaryCtaLabel/secondaryCtaLabel.
   translations      Json?
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("homepage_supply_network_section")
 }
@@ -1065,6 +1095,11 @@ model HomepagePartnersSection {
   /// i18n — non-English overrides for title/subtitle.
   translations           Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("homepage_partners_section")
 }
 
@@ -1138,6 +1173,11 @@ model HomepageAboutPreview {
   updatedAt        DateTime            @updatedAt @map("updated_at")
   /// i18n — non-English overrides for label/heading/paragraph1-3/ctaText.
   translations     Json?
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("homepage_about_preview")
 }
@@ -1254,6 +1294,11 @@ model HomepageExportReach {
   /// i18n — non-English overrides for heading/subtitle.
   translations Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("homepage_export_reach")
 }
 
@@ -1307,6 +1352,11 @@ model HomepageShippingSection {
   updatedAt              DateTime @updatedAt @map("updated_at")
   /// i18n — non-English overrides for title/subtitle.
   translations           Json?
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("homepage_shipping_section")
 }
@@ -1434,6 +1484,11 @@ model SiteBranding {
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("site_branding")
 }
 
@@ -1545,6 +1600,11 @@ model AboutCompanyProfile {
 
   gallery AboutCompanyGalleryImage[]
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("about_company_profile")
 }
 
@@ -1647,6 +1707,11 @@ model AboutCompanyTeamSection {
   /// i18n — non-English overrides for eyebrow/heading/description/ctaLabel.
   translations Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("about_company_team_section")
 }
 
@@ -1699,6 +1764,11 @@ model AboutCompanyWhatWeDoSection {
   updatedAt              DateTime @default(now()) @updatedAt @map("updated_at")
   /// i18n — non-English overrides for the text fields above.
   translations           Json?
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("about_company_what_we_do_section")
 }
@@ -1810,6 +1880,11 @@ model FactoryProfile {
   documents FactoryDocument[]
   videos    FactoryVideo[]
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("factory_profile")
 }
 
@@ -1882,6 +1957,11 @@ model AboutCompanyLegalSection {
   /// i18n — non-English overrides for eyebrow/heading/description.
   translations Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("about_company_legal_section")
 }
 
@@ -1896,6 +1976,11 @@ model AboutCompanySettings {
   ogImage        Media?   @relation("AboutCompanySettingsOgImage", fields: [ogImageId], references: [id])
   visible        Boolean  @default(true)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("about_company_settings")
 }
@@ -1976,6 +2061,11 @@ model ContactPageSettings {
   /// consumer.
   translations Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("contact_page_settings")
 }
 
@@ -2035,6 +2125,11 @@ model ContactPagePublishedSnapshot {
   data        Json?
   publishedAt DateTime? @map("published_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("contact_page_published_snapshot")
 }
@@ -2168,6 +2263,11 @@ model FooterSettings {
   /// fields gain a real public consumer.
   translations Json?
 
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
+
   @@map("footer_settings")
 }
 
@@ -2223,6 +2323,11 @@ model AiSettings {
   whatsappProductMessage     String  @default("Hello PPN Team,\n\nI am interested in {product}.\n\nI would like to know more about:\n- Product specifications\n- Packaging\n- Availability\n- Pricing\n- Shipment options\n\nQuantity:\nDestination:\n\nThank you.") @map("whatsapp_product_message")
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("ai_settings")
 }
@@ -2295,6 +2400,11 @@ model AiSyncStatus {
   indexedCount   Int             @default(0) @map("indexed_count")
   failedCount    Int             @default(0) @map("failed_count")
   updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this
+  /// singleton impossible at the database level (defense-in-depth against the classic
+  /// findFirst()-then-create() TOCTOU race two concurrent admin requests could otherwise hit).
+  singleton Boolean @unique @default(true)
 
   @@map("ai_sync_status")
 }

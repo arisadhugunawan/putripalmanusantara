@@ -8,7 +8,7 @@ function buildService() {
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepageProcessSection = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const prisma = { productionStep, homepageProcessSection };
@@ -131,7 +131,7 @@ describe('ProductionStepsService.update — partial-payload merge safety (Phase 
 describe('ProductionStepsService.updateSection — partial-payload merge safety (Phase 5F-P0.3-A)', () => {
   it('a single-locale partial payload preserves every other locale already saved', async () => {
     const { service, homepageProcessSection } = buildService();
-    homepageProcessSection.findFirst.mockResolvedValue(
+    homepageProcessSection.upsert.mockResolvedValue(
       stubSectionRow({
         translations: {
           id: { heading: 'Cara Kerja Kami' },

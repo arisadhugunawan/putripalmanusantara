@@ -31,12 +31,16 @@ export class FooterService {
     private readonly mediaService: MediaService,
   ) {}
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   private async getOrCreate(): Promise<FooterSettingsWithRelations> {
-    const existing = await this.prisma.footerSettings.findFirst({
+    return this.prisma.footerSettings.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
       include: INCLUDE,
     });
-    if (existing) return existing;
-    return this.prisma.footerSettings.create({ data: {}, include: INCLUDE });
   }
 
   async find(locale?: string) {

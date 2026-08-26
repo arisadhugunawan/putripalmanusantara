@@ -41,13 +41,14 @@ export class ContactPageService {
 
   // ── Settings (singleton, draft) ────────────────────────────────────────
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   private async getOrCreateSettings() {
-    const existing = await this.prisma.contactPageSettings.findFirst({
-      include: SETTINGS_INCLUDE,
-    });
-    if (existing) return existing;
-    return this.prisma.contactPageSettings.create({
-      data: {},
+    return this.prisma.contactPageSettings.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
       include: SETTINGS_INCLUDE,
     });
   }
@@ -272,10 +273,15 @@ export class ContactPageService {
   // never leak onto the live page. See README "Contact Page — Full Redesign" for why this is a
   // simpler singleton rather than Homepage's append-only snapshot history.
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   private async getOrCreateSnapshot() {
-    const existing = await this.prisma.contactPagePublishedSnapshot.findFirst();
-    if (existing) return existing;
-    return this.prisma.contactPagePublishedSnapshot.create({ data: {} });
+    return this.prisma.contactPagePublishedSnapshot.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async getPublishStatus() {

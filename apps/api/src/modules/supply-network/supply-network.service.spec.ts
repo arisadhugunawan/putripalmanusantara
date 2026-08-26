@@ -11,7 +11,7 @@ function buildService() {
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const homepageSupplyNetworkSection = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const prisma = {
@@ -211,7 +211,7 @@ describe('SupplyNetworkService — partial-payload merge safety against saved da
 
   it('Section.updateSection: a single-locale partial payload preserves every other locale already saved', async () => {
     const { service, homepageSupplyNetworkSection } = buildService();
-    homepageSupplyNetworkSection.findFirst.mockResolvedValue({
+    homepageSupplyNetworkSection.upsert.mockResolvedValue({
       id: 'section-1',
       translations: {
         id: { heading: 'Jaringan Pasokan Kami' },

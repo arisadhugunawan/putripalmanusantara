@@ -40,8 +40,8 @@ function stubSettingsRow(overrides: Record<string, unknown> = {}) {
 
 function buildService() {
   const contactPageSettings = {
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     findFirst: jest.fn<Promise<unknown>, unknown[]>(),
-    create: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const contactLocation = {
@@ -56,8 +56,7 @@ function buildService() {
     findMany: jest.fn<Promise<unknown[]>, unknown[]>().mockResolvedValue([]),
   };
   const contactPagePublishedSnapshot = {
-    findFirst: jest.fn<Promise<unknown>, unknown[]>(),
-    create: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const events = { emit: jest.fn() };
@@ -85,7 +84,7 @@ function buildService() {
 describe('ContactPageService.unpublish', () => {
   it('sets is_published=false, same as before', async () => {
     const { service, contactPagePublishedSnapshot } = buildService();
-    contactPagePublishedSnapshot.findFirst.mockResolvedValue({
+    contactPagePublishedSnapshot.upsert.mockResolvedValue({
       id: 'snap-1',
       isPublished: true,
       publishedAt: new Date('2026-08-21T00:00:00.000Z'),
@@ -110,7 +109,7 @@ describe('ContactPageService.unpublish', () => {
 
   it('emits CONTENT_PUBLISHED_EVENT with source="contact", matching the publish() event convention', async () => {
     const { service, contactPagePublishedSnapshot, events } = buildService();
-    contactPagePublishedSnapshot.findFirst.mockResolvedValue({
+    contactPagePublishedSnapshot.upsert.mockResolvedValue({
       id: 'snap-1',
       isPublished: true,
       publishedAt: new Date(),
@@ -137,7 +136,7 @@ describe('ContactPageService.unpublish', () => {
 describe('ContactPageService.updateSettings — translation merge safety (Phase P0.3-B3-B)', () => {
   it('a single-locale partial payload preserves every other locale already saved', async () => {
     const { service, contactPageSettings } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(
+    contactPageSettings.upsert.mockResolvedValue(
       stubSettingsRow({
         translations: {
           en: { heroEyebrow: 'Contact PPN' },
@@ -169,7 +168,7 @@ describe('ContactPageService.updateSettings — translation merge safety (Phase 
 
   it('updating one field within a locale preserves the other fields already saved for that same locale', async () => {
     const { service, contactPageSettings } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(
+    contactPageSettings.upsert.mockResolvedValue(
       stubSettingsRow({
         translations: {
           id: { heroEyebrow: 'Hubungi lama', heroHeading: 'Judul lama' },
@@ -193,7 +192,7 @@ describe('ContactPageService.updateSettings — translation merge safety (Phase 
 
   it('does not touch translations when the caller omits it from the patch', async () => {
     const { service, contactPageSettings } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(
+    contactPageSettings.upsert.mockResolvedValue(
       stubSettingsRow({
         translations: { id: { heroEyebrow: 'Hubungi lama' } },
       }),
@@ -210,7 +209,7 @@ describe('ContactPageService.updateSettings — translation merge safety (Phase 
 
   it('a legacy row with no translations object at all still updates successfully (backward compatibility)', async () => {
     const { service, contactPageSettings } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(
+    contactPageSettings.upsert.mockResolvedValue(
       stubSettingsRow({ translations: null }),
     );
     contactPageSettings.update.mockResolvedValue(stubSettingsRow());
@@ -229,7 +228,7 @@ describe('ContactPageService.updateSettings — translation merge safety (Phase 
 
   it('does not change non-translatable fields (email, business hours, cta_*) when only translations are patched', async () => {
     const { service, contactPageSettings } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     contactPageSettings.update.mockResolvedValue(stubSettingsRow());
 
     await service.updateSettings({
@@ -260,7 +259,7 @@ describe('ContactPageService.updateSettings — translation merge safety (Phase 
 describe('ContactPageService.updateSettings — main_map_location_id validation (P0.4-D3)', () => {
   it('throws INVALID_LOCATION (400) for a nonexistent main_map_location_id', async () => {
     const { service, contactPageSettings, contactLocation } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     contactLocation.findUnique.mockResolvedValue(null);
 
     let thrown: { code?: string; getStatus?: () => number } | undefined;
@@ -276,7 +275,7 @@ describe('ContactPageService.updateSettings — main_map_location_id validation 
 
   it('a valid main_map_location_id saves successfully exactly as before', async () => {
     const { service, contactPageSettings, contactLocation } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     contactLocation.findUnique.mockResolvedValue({ id: 'loc-1' });
     contactPageSettings.update.mockResolvedValue(
       stubSettingsRow({ mainMapLocationId: 'loc-1' }),
@@ -294,7 +293,7 @@ describe('ContactPageService.updateSettings — main_map_location_id validation 
 
   it('omitting main_map_location_id from the patch never triggers a location lookup', async () => {
     const { service, contactPageSettings, contactLocation } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     contactPageSettings.update.mockResolvedValue(stubSettingsRow());
 
     await service.updateSettings({ email: 'new@ppn.co.id' });
@@ -315,14 +314,14 @@ describe('ContactPageService — publish → getPublished locale resolution (Pha
       buildService();
 
     // Draft row already has an Indonesian hero translation (simulating: admin saved it).
-    contactPageSettings.findFirst.mockResolvedValue(
+    contactPageSettings.upsert.mockResolvedValue(
       stubSettingsRow({
         translations: { id: { heroHeading: 'Terhubung dengan Tim Kami' } },
       }),
     );
 
     let storedSnapshotData: unknown;
-    contactPagePublishedSnapshot.findFirst.mockImplementation(() =>
+    contactPagePublishedSnapshot.upsert.mockImplementation(() =>
       Promise.resolve({
         id: 'snap-1',
         isPublished: true,
@@ -361,13 +360,13 @@ describe('ContactPageService — publish → getPublished locale resolution (Pha
   it('getPublished() defaults to English when called with no locale (preserves the AI content extractor call site)', async () => {
     const { service, contactPageSettings, contactPagePublishedSnapshot } =
       buildService();
-    contactPageSettings.findFirst.mockResolvedValue(
+    contactPageSettings.upsert.mockResolvedValue(
       stubSettingsRow({
         translations: { zh: { heroHeading: '与我们的团队联系' } },
       }),
     );
     let storedSnapshotData: unknown;
-    contactPagePublishedSnapshot.findFirst.mockImplementation(() =>
+    contactPagePublishedSnapshot.upsert.mockImplementation(() =>
       Promise.resolve({
         id: 'snap-1',
         isPublished: true,
@@ -399,7 +398,7 @@ describe('ContactPageService — publish → getPublished locale resolution (Pha
     const { service, contactPageSettings, contactPagePublishedSnapshot } =
       buildService();
     let storedSnapshotData: unknown;
-    contactPagePublishedSnapshot.findFirst.mockImplementation(() =>
+    contactPagePublishedSnapshot.upsert.mockImplementation(() =>
       Promise.resolve({
         id: 'snap-1',
         isPublished: true,
@@ -421,14 +420,14 @@ describe('ContactPageService — publish → getPublished locale resolution (Pha
       },
     );
 
-    contactPageSettings.findFirst.mockResolvedValueOnce(
+    contactPageSettings.upsert.mockResolvedValueOnce(
       stubSettingsRow({
         translations: { id: { heroHeading: 'Terhubung dengan Tim Kami' } },
       }),
     );
     await service.publish();
 
-    contactPageSettings.findFirst.mockResolvedValueOnce(
+    contactPageSettings.upsert.mockResolvedValueOnce(
       stubSettingsRow({
         translations: {
           id: { heroHeading: 'Terhubung dengan Tim Kami' },
@@ -446,7 +445,7 @@ describe('ContactPageService — publish → getPublished locale resolution (Pha
 
   it('returns null when nothing has been published, regardless of locale', async () => {
     const { service, contactPagePublishedSnapshot } = buildService();
-    contactPagePublishedSnapshot.findFirst.mockResolvedValue({
+    contactPagePublishedSnapshot.upsert.mockResolvedValue({
       id: 'snap-1',
       isPublished: false,
       data: null,
@@ -624,7 +623,7 @@ describe('ContactPageService — publish → getPublished locale resolution for 
     >['contactPagePublishedSnapshot'],
   ) {
     let storedSnapshotData: unknown;
-    contactPagePublishedSnapshot.findFirst.mockImplementation(() =>
+    contactPagePublishedSnapshot.upsert.mockImplementation(() =>
       Promise.resolve({
         id: 'snap-1',
         isPublished: true,
@@ -654,7 +653,7 @@ describe('ContactPageService — publish → getPublished locale resolution for 
       contactPageSettings,
       contactPagePublishedSnapshot,
     } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     wireSnapshot(contactPagePublishedSnapshot);
     contactLocation.findMany.mockResolvedValue([
       stubLocationRow({
@@ -677,7 +676,7 @@ describe('ContactPageService — publish → getPublished locale resolution for 
       contactPageSettings,
       contactPagePublishedSnapshot,
     } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     wireSnapshot(contactPagePublishedSnapshot);
 
     // First publish — the draft has no Indonesian translation yet.
@@ -709,7 +708,7 @@ describe('ContactPageService — publish → getPublished locale resolution for 
       contactPageSettings,
       contactPagePublishedSnapshot,
     } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     wireSnapshot(contactPagePublishedSnapshot);
 
     contactLocation.findMany.mockResolvedValueOnce([
@@ -734,7 +733,7 @@ describe('ContactPageService — publish → getPublished locale resolution for 
       contactPageSettings,
       contactPagePublishedSnapshot,
     } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     wireSnapshot(contactPagePublishedSnapshot);
 
     contactLocation.findMany.mockResolvedValueOnce([
@@ -762,7 +761,7 @@ describe('ContactPageService — publish → getPublished locale resolution for 
     const { service, contactPagePublishedSnapshot } = buildService();
     const legacyLocation = stubLocationRow();
     delete (legacyLocation as { translations?: unknown }).translations;
-    contactPagePublishedSnapshot.findFirst.mockResolvedValue({
+    contactPagePublishedSnapshot.upsert.mockResolvedValue({
       id: 'snap-1',
       isPublished: true,
       data: {
@@ -797,7 +796,7 @@ describe('ContactPageService — publish → getPublished locale resolution for 
       contactPageSettings,
       contactPagePublishedSnapshot,
     } = buildService();
-    contactPageSettings.findFirst.mockResolvedValue(stubSettingsRow());
+    contactPageSettings.upsert.mockResolvedValue(stubSettingsRow());
     wireSnapshot(contactPagePublishedSnapshot);
     contactLocation.findMany.mockResolvedValue([
       stubLocationRow({ translations: { id: { label: 'Gudang Utama' } } }),

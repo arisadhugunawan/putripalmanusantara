@@ -664,13 +664,14 @@ export class AboutCompanyService {
 
   // ── Section 01: Company Profile (singleton) ─────────────────────────────
 
+  // P1-6 — `upsert()` on the `singleton` marker (always `true`, `@unique`) closes the
+  // findFirst()-then-create() TOCTOU race: two concurrent calls now resolve to the SAME
+  // database-enforced row instead of racing to create two.
   private async getOrCreateProfile() {
-    const existing = await this.prisma.aboutCompanyProfile.findFirst({
-      include: PROFILE_INCLUDE,
-    });
-    if (existing) return existing;
-    return this.prisma.aboutCompanyProfile.create({
-      data: {},
+    return this.prisma.aboutCompanyProfile.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
       include: PROFILE_INCLUDE,
     });
   }
@@ -1026,10 +1027,13 @@ export class AboutCompanyService {
     return toTeamMember(member);
   }
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateTeamSection() {
-    const existing = await this.prisma.aboutCompanyTeamSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.aboutCompanyTeamSection.create({ data: {} });
+    return this.prisma.aboutCompanyTeamSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findTeamSection(locale: string = DEFAULT_LOCALE) {
@@ -1167,10 +1171,13 @@ export class AboutCompanyService {
 
   // ── "What We Supply" section copy (+ "Who We Supply" copy, Buyer/Supplier CTAs) ────────
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateWhatWeDoSection() {
-    const existing = await this.prisma.aboutCompanyWhatWeDoSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.aboutCompanyWhatWeDoSection.create({ data: {} });
+    return this.prisma.aboutCompanyWhatWeDoSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findWhatWeDoSection(locale: string = DEFAULT_LOCALE) {
@@ -1512,10 +1519,13 @@ export class AboutCompanyService {
     return slug;
   }
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateLegalSection() {
-    const existing = await this.prisma.aboutCompanyLegalSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.aboutCompanyLegalSection.create({ data: {} });
+    return this.prisma.aboutCompanyLegalSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findLegalSection(locale: string = DEFAULT_LOCALE) {
@@ -1545,13 +1555,12 @@ export class AboutCompanyService {
 
   // ── Section 05: Factory (singleton profile + gallery + documents) ───────
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateFactory() {
-    const existing = await this.prisma.factoryProfile.findFirst({
-      include: FACTORY_INCLUDE,
-    });
-    if (existing) return existing;
-    return this.prisma.factoryProfile.create({
-      data: {},
+    return this.prisma.factoryProfile.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
       include: FACTORY_INCLUDE,
     });
   }
@@ -1741,11 +1750,13 @@ export class AboutCompanyService {
     return toFacility(facility);
   }
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateFacilitiesSection() {
-    const existing =
-      await this.prisma.aboutCompanyFacilitiesSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.aboutCompanyFacilitiesSection.create({ data: {} });
+    return this.prisma.aboutCompanyFacilitiesSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findFacilitiesSection(locale: string = DEFAULT_LOCALE) {
@@ -1776,11 +1787,13 @@ export class AboutCompanyService {
 
   // ── "Facilities → MOQ & Payment Terms" ──────────────────────────────────
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateMoqPaymentSection() {
-    const existing =
-      await this.prisma.aboutCompanyMoqPaymentSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.aboutCompanyMoqPaymentSection.create({ data: {} });
+    return this.prisma.aboutCompanyMoqPaymentSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findMoqPaymentSection(locale: string = DEFAULT_LOCALE) {
@@ -1929,11 +1942,13 @@ export class AboutCompanyService {
 
   // ── "Facilities → Shipment Terms" ───────────────────────────────────────
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateShipmentTermsSection() {
-    const existing =
-      await this.prisma.aboutCompanyShipmentTermsSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.aboutCompanyShipmentTermsSection.create({ data: {} });
+    return this.prisma.aboutCompanyShipmentTermsSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findShipmentTermsSection(locale: string = DEFAULT_LOCALE) {
@@ -2316,11 +2331,13 @@ export class AboutCompanyService {
 
   // ── "Facilities → FAQ" ───────────────────────────────────────────────────
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateFacilitiesFaqSection() {
-    const existing =
-      await this.prisma.aboutCompanyFacilitiesFaqSection.findFirst();
-    if (existing) return existing;
-    return this.prisma.aboutCompanyFacilitiesFaqSection.create({ data: {} });
+    return this.prisma.aboutCompanyFacilitiesFaqSection.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
+    });
   }
 
   async findFacilitiesFaqSection(locale: string = DEFAULT_LOCALE) {
@@ -2562,13 +2579,12 @@ export class AboutCompanyService {
 
   // ── Settings (singleton) ─────────────────────────────────────────────────
 
+  // P1-6 — see getOrCreateProfile()'s comment above for why this is now an upsert.
   private async getOrCreateSettings() {
-    const existing = await this.prisma.aboutCompanySettings.findFirst({
-      include: SETTINGS_INCLUDE,
-    });
-    if (existing) return existing;
-    return this.prisma.aboutCompanySettings.create({
-      data: {},
+    return this.prisma.aboutCompanySettings.upsert({
+      where: { singleton: true },
+      create: { singleton: true },
+      update: {},
       include: SETTINGS_INCLUDE,
     });
   }
