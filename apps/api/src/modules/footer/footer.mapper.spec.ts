@@ -154,7 +154,7 @@ describe('toFooterSettings — locale resolution (Phase P0.3-B3-A)', () => {
     expect(en.tagline).not.toBe(th.tagline);
   });
 
-  it('does not change non-translatable fields (company_name, toggles, media, colors, cta_*) across locales', () => {
+  it('does not change genuinely non-translatable fields (company_name, toggles, media, colors) across locales', () => {
     const row = stubFooterRow({
       translations,
       companyName: 'CV. Putri Palma Nusantara',
@@ -162,7 +162,6 @@ describe('toFooterSettings — locale resolution (Phase P0.3-B3-A)', () => {
       showSocial: false,
       overlayType: 'charcoal',
       overlayOpacity: 55,
-      ctaHeadline: 'Ready to Source from Indonesia?',
     });
     const resultEn = toFooterSettings(row, 'en');
     const resultZh = toFooterSettings(row, 'zh');
@@ -170,14 +169,49 @@ describe('toFooterSettings — locale resolution (Phase P0.3-B3-A)', () => {
     expect(resultEn.show_social).toBe(false);
     expect(resultEn.overlay_type).toBe('charcoal');
     expect(resultEn.overlay_opacity).toBe(55);
-    expect(resultEn.cta_headline).toBe('Ready to Source from Indonesia?');
     // Identical regardless of which locale's tagline/description was resolved — translation
     // must never leak into non-translated fields.
     expect(resultZh.company_name).toBe(resultEn.company_name);
     expect(resultZh.show_social).toBe(resultEn.show_social);
     expect(resultZh.overlay_type).toBe(resultEn.overlay_type);
     expect(resultZh.overlay_opacity).toBe(resultEn.overlay_opacity);
-    expect(resultZh.cta_headline).toBe(resultEn.cta_headline);
+  });
+
+  // P2-4 — cta_headline/cta_description/cta_primary_text/cta_secondary_text gained their first
+  // public consumer (the Footer CTA row) and are now resolved through the same translate()
+  // mechanism as tagline/description above, not hardcoded to English.
+  it('resolves cta_headline/cta_description/cta_primary_text/cta_secondary_text per locale, with English fallback', () => {
+    const ctaTranslations = {
+      id: {
+        ctaHeadline: 'Siap Bersumber dari Indonesia?',
+        ctaDescription: 'Bicara dengan tim kami.',
+        ctaPrimaryText: 'Jelajahi Produk',
+        ctaSecondaryText: 'Hubungi PPN',
+      },
+      zh: {
+        ctaHeadline: '准备好从印度尼西亚采购了吗？',
+      },
+    };
+    const row = stubFooterRow({ translations: ctaTranslations });
+
+    const en = toFooterSettings(row, 'en');
+    expect(en.cta_headline).toBe('Ready to Source from Indonesia?');
+    expect(en.cta_description).toBe('Talk to our team.');
+    expect(en.cta_primary_text).toBe('Explore Products');
+    expect(en.cta_secondary_text).toBe('Talk to PPN');
+
+    const id = toFooterSettings(row, 'id');
+    expect(id.cta_headline).toBe('Siap Bersumber dari Indonesia?');
+    expect(id.cta_description).toBe('Bicara dengan tim kami.');
+    expect(id.cta_primary_text).toBe('Jelajahi Produk');
+    expect(id.cta_secondary_text).toBe('Hubungi PPN');
+
+    // zh only overrides ctaHeadline — the other three must fall back to English, not go blank.
+    const zh = toFooterSettings(row, 'zh');
+    expect(zh.cta_headline).toBe('准备好从印度尼西亚采购了吗？');
+    expect(zh.cta_description).toBe('Talk to our team.');
+    expect(zh.cta_primary_text).toBe('Explore Products');
+    expect(zh.cta_secondary_text).toBe('Talk to PPN');
   });
 
   it('surfaces the raw translations object unchanged, for the admin editor to read directly', () => {

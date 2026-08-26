@@ -15,8 +15,19 @@ function replaceLocaleInPath(pathname: string, nextLocale: Locale) {
 
 /** Plain-text trigger (flag + language code + chevron, no pill/border) opening a compact
  * flag/code list — mirrors a reference shipping-industry header's minimal nav-integrated style
- * rather than the boxed pill this used to be. */
-export function LanguageSwitcher({ locale, label }: { locale: Locale; label: string }) {
+ * rather than the boxed pill this used to be.
+ *
+ * `variant="dark"` (Footer's bottom bar, P2-4) swaps the trigger's text color for the light-on-
+ * dark footer background — same component/locale-switching logic, no second implementation. */
+export function LanguageSwitcher({
+  locale,
+  label,
+  variant = "light",
+}: {
+  locale: Locale;
+  label: string;
+  variant?: "light" | "dark";
+}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -59,7 +70,13 @@ export function LanguageSwitcher({ locale, label }: { locale: Locale; label: str
         onClick={() => setOpen((value) => !value)}
         className={cn(
           "flex items-center gap-2 text-body font-medium transition-colors",
-          open ? "text-primary-700" : "text-neutral-900 hover:text-primary-700",
+          variant === "dark"
+            ? open
+              ? "text-primary-400"
+              : "text-neutral-100 hover:text-primary-400"
+            : open
+              ? "text-primary-700"
+              : "text-neutral-900 hover:text-primary-700",
         )}
       >
         <span aria-hidden="true" className="text-[17px] leading-none">
@@ -73,7 +90,11 @@ export function LanguageSwitcher({ locale, label }: { locale: Locale; label: str
         role="menu"
         aria-label={label}
         className={cn(
-          "absolute right-0 z-50 mt-2 grid w-24 origin-top-right overflow-hidden rounded-field border border-neutral-200 bg-white shadow-card-hover transition-all duration-200 ease-out",
+          "absolute right-0 z-50 grid w-24 overflow-hidden rounded-field border border-neutral-200 bg-white shadow-card-hover transition-all duration-200 ease-out",
+          // Footer's bottom bar is the last thing on the page — opening downward (the Header's
+          // convention, which has room below) would render off-screen and get clipped by the
+          // footer's own `overflow-hidden`. The dark variant opens upward instead.
+          variant === "dark" ? "bottom-full mb-2 origin-bottom-right" : "top-full mt-2 origin-top-right",
           open ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0",
         )}
       >

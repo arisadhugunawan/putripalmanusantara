@@ -75,7 +75,13 @@ export default function FooterManagementPage() {
    * never drops another already-entered one. */
   function patchTranslation(
     locale: Exclude<Locale, "en">,
-    field: "tagline" | "description",
+    field:
+      | "tagline"
+      | "description"
+      | "ctaHeadline"
+      | "ctaDescription"
+      | "ctaPrimaryText"
+      | "ctaSecondaryText",
     value: string,
   ) {
     setRow((prev) => {
@@ -142,6 +148,7 @@ export default function FooterManagementPage() {
             {(
               [
                 ["enabled", "Footer Enabled"],
+                ["show_cta", "Show CTA Banner"],
                 ["show_social", "Show Social Media"],
                 ["show_contact", "Show Contact"],
                 ["show_navigation", "Show Navigation"],
@@ -227,6 +234,94 @@ export default function FooterManagementPage() {
                 </LocaleTabs>
               </div>
             </div>
+          </div>
+        </Card>
+
+        <Card>
+          <p className="text-small font-semibold uppercase tracking-wide text-neutral-500">
+            Call to Action
+          </p>
+          <p className="mt-1 text-small text-neutral-500">
+            The banner shown above the footer columns. Primary button always links to Products;
+            secondary button always opens WhatsApp (configured on the{" "}
+            <Link href="/admin/pengaturan/kontak" className="text-primary-700 underline">
+              Contact Page
+            </Link>
+            ) — hidden automatically if no WhatsApp number is set there.
+          </p>
+          <div className="mt-3">
+            <LocaleTabs>
+              {(locale) => {
+                const isEn = locale === "en";
+                const headlineValue = isEn
+                  ? row.cta_headline
+                  : (row.translations?.[locale]?.ctaHeadline ?? "");
+                const descriptionValue = isEn
+                  ? row.cta_description
+                  : (row.translations?.[locale]?.ctaDescription ?? "");
+                const primaryValue = isEn
+                  ? row.cta_primary_text
+                  : (row.translations?.[locale]?.ctaPrimaryText ?? "");
+                const secondaryValue = isEn
+                  ? row.cta_secondary_text
+                  : (row.translations?.[locale]?.ctaSecondaryText ?? "");
+                return (
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <Label htmlFor={`cta-headline-${locale}`}>Headline</Label>
+                      <Input
+                        id={`cta-headline-${locale}`}
+                        value={headlineValue}
+                        onChange={(e) =>
+                          isEn
+                            ? patch({ cta_headline: e.target.value })
+                            : patchTranslation(locale, "ctaHeadline", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`cta-description-${locale}`}>Description</Label>
+                      <Textarea
+                        id={`cta-description-${locale}`}
+                        rows={2}
+                        value={descriptionValue}
+                        onChange={(e) =>
+                          isEn
+                            ? patch({ cta_description: e.target.value })
+                            : patchTranslation(locale, "ctaDescription", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor={`cta-primary-${locale}`}>Primary Button Label</Label>
+                        <Input
+                          id={`cta-primary-${locale}`}
+                          value={primaryValue}
+                          onChange={(e) =>
+                            isEn
+                              ? patch({ cta_primary_text: e.target.value })
+                              : patchTranslation(locale, "ctaPrimaryText", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`cta-secondary-${locale}`}>Secondary Button Label</Label>
+                        <Input
+                          id={`cta-secondary-${locale}`}
+                          value={secondaryValue}
+                          onChange={(e) =>
+                            isEn
+                              ? patch({ cta_secondary_text: e.target.value })
+                              : patchTranslation(locale, "ctaSecondaryText", e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            </LocaleTabs>
           </div>
         </Card>
 

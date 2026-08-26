@@ -33,6 +33,10 @@ export function toFooterSettings(
   const t = translate(entry, entry.translations, locale, [
     'tagline',
     'description',
+    'ctaHeadline',
+    'ctaDescription',
+    'ctaPrimaryText',
+    'ctaSecondaryText',
   ]);
   return {
     id: entry.id,
@@ -55,10 +59,10 @@ export function toFooterSettings(
     overlay_opacity: entry.overlayOpacity,
     background_position: entry.backgroundPosition,
     mobile_background_position: entry.mobileBackgroundPosition,
-    cta_headline: entry.ctaHeadline,
-    cta_description: entry.ctaDescription,
-    cta_primary_text: entry.ctaPrimaryText,
-    cta_secondary_text: entry.ctaSecondaryText,
+    cta_headline: t.ctaHeadline,
+    cta_description: t.ctaDescription,
+    cta_primary_text: t.ctaPrimaryText,
+    cta_secondary_text: t.ctaSecondaryText,
     updated_at: entry.updatedAt.toISOString(),
     translations: entry.translations as SharedFooterSettings['translations'],
   };

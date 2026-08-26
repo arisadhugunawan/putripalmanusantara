@@ -2262,10 +2262,10 @@ model FooterSettings {
 
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  /// i18n — non-English overrides for tagline/description, the only two currently-rendered
-  /// marketing-copy fields on this model (P0.3-B3 audit: cta_* is dead on the public frontend,
-  /// company_name/media/toggles/colors are global). Never touched for cta_* unless/until those
-  /// fields gain a real public consumer.
+  /// i18n — non-English overrides for tagline/description/cta_headline/cta_description/
+  /// cta_primary_text/cta_secondary_text — every marketing-copy field on this model that's
+  /// actually rendered publicly (P2-4: cta_* gained its first public consumer, the Footer CTA
+  /// row). company_name/media/toggles/colors are global, not per-locale.
   translations Json?
 
   /// P1-6 — always `true`; the `@unique` constraint below makes a second row for this

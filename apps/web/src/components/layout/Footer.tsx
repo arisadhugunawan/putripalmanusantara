@@ -1,5 +1,5 @@
 import type { ContactLocation, Locale, PublicSiteBranding } from "@ppn/shared-types";
-import { Container, cn } from "@ppn/ui-components";
+import { Container, buttonVariants, cn } from "@ppn/ui-components";
 import Image from "next/image";
 import { Link } from "@/i18n/Link";
 import type { Dictionary } from "@/i18n/dictionary.d";
@@ -21,6 +21,7 @@ import {
 } from "@/components/contact/icons";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { BrandLogoImage } from "./BrandLogoImage";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const PalmLeaf = DECORATIVE_SVGS.palm_leaf;
 const LeafOutline = DECORATIVE_SVGS.leaf_outline;
@@ -151,6 +152,7 @@ export async function Footer({
     : null;
   const whatsAppMessage = settings ? buildWhatsAppMessage(settings, products.map((p) => p.name)) : "";
 
+  const showCta = (footerSettings?.show_cta ?? true) && !!footerSettings?.cta_headline;
   const showSocial = (footerSettings?.show_social ?? true) && activeSocialLinks.length > 0;
   const showContact = footerSettings?.show_contact ?? true;
   const showNavigation = footerSettings?.show_navigation ?? true;
@@ -207,6 +209,37 @@ export async function Footer({
         aria-hidden="true"
         className="pointer-events-none absolute -bottom-20 -left-20 h-80 w-80 text-primary-300/[0.07]"
       />
+
+      {showCta && footerSettings && (
+        <FadeUpSection className="relative border-b border-white/10">
+          <Container className="flex flex-col items-start gap-6 py-10 lg:flex-row lg:items-center lg:justify-between lg:py-12">
+            <div className="max-w-xl">
+              <h2 className="font-heading text-h3 font-bold text-white">{footerSettings.cta_headline}</h2>
+              {footerSettings.cta_description && (
+                <p className="mt-2 text-body text-neutral-300">{footerSettings.cta_description}</p>
+              )}
+            </div>
+            <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+              <Link href="/products" className={buttonVariants("primary", "lg")}>
+                {footerSettings.cta_primary_text}
+              </Link>
+              {settings?.whatsapp_number && (
+                <a
+                  href={whatsAppLink(settings.whatsapp_number, whatsAppMessage)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    buttonVariants("secondary", "lg"),
+                    "border-white/40 text-white hover:border-white hover:bg-white/10 hover:text-white",
+                  )}
+                >
+                  {footerSettings.cta_secondary_text}
+                </a>
+              )}
+            </div>
+          </Container>
+        </FadeUpSection>
+      )}
 
       <Container className="relative grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5 lg:py-20">
         <FadeUpSection className="flex flex-col gap-4 sm:col-span-2 lg:col-span-1" style={{ transitionDelay: "60ms" }}>
@@ -323,12 +356,19 @@ export async function Footer({
         )}
       </Container>
 
-      <div className="relative bg-primary-700 py-5">
-        <Container>
-          <p className="text-center text-small text-white">
+      {/* pb-28 on mobile only — some pages (e.g. Contact) render a `fixed inset-x-0 bottom-0
+          sm:hidden` mobile contact bar (see MobileContactBar.tsx) that would otherwise sit on
+          top of the language switcher below; that component's own convention is reserving
+          space rather than fighting z-index, applied here since the Footer has no way to know
+          whether the current page has that bar. sm:hidden kicks in at the exact same breakpoint
+          MobileContactBar itself hides at, so desktop/tablet padding is untouched. */}
+      <div className="relative bg-primary-700 pb-28 pt-5 sm:py-5">
+        <Container className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="text-center text-small text-white sm:text-left">
             © {new Date().getFullYear()} {footerSettings?.company_name ?? "CV Putri Palma Nusantara"}.{" "}
             {dictionary.footer.rightsReserved}
           </p>
+          <LanguageSwitcher locale={locale} label={dictionary.nav.language} variant="dark" />
         </Container>
       </div>
     </footer>
