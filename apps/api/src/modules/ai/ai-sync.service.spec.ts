@@ -65,7 +65,11 @@ describe('AiSyncService.scheduleSync — basic dispatch', () => {
   it('starts a sync immediately when nothing is in flight', async () => {
     const prisma = buildPrisma();
     const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
-    const extractor = { extractAll: jest.fn().mockResolvedValue([]) };
+    const extractor = {
+      extractAll: jest
+        .fn()
+        .mockResolvedValue({ chunks: [], failedSources: [] }),
+    };
     const service = loadService(prisma, extractor, settingsService);
 
     service.scheduleSync('publish:home');
@@ -86,15 +90,16 @@ describe('AiSyncService.scheduleSync — coalescing', () => {
     const prisma = buildPrisma();
     const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
 
-    let releaseFirstExtract: (chunks: unknown[]) => void = () => {};
-    const firstExtract = new Promise<unknown[]>((resolve) => {
+    type ExtractResult = { chunks: unknown[]; failedSources: unknown[] };
+    let releaseFirstExtract: (result: ExtractResult) => void = () => {};
+    const firstExtract = new Promise<ExtractResult>((resolve) => {
       releaseFirstExtract = resolve;
     });
     const extractor = {
       extractAll: jest
         .fn()
         .mockImplementationOnce(() => firstExtract)
-        .mockResolvedValue([]),
+        .mockResolvedValue({ chunks: [], failedSources: [] }),
     };
     const service = loadService(prisma, extractor, settingsService);
 
@@ -107,7 +112,7 @@ describe('AiSyncService.scheduleSync — coalescing', () => {
     service.scheduleSync('publish:products');
     expect(prisma.aiSyncLog.create).toHaveBeenCalledTimes(1);
 
-    releaseFirstExtract([]);
+    releaseFirstExtract({ chunks: [], failedSources: [] });
     await waitUntil(() => extractor.extractAll.mock.calls.length >= 2); // rerun started
     await waitUntil(() => prisma.aiSyncLog.create.mock.calls.length >= 2); // rerun finished creating its own log
     await waitUntil(() => prisma.aiSyncLog.update.mock.calls.length >= 2); // both runs completed
@@ -119,7 +124,11 @@ describe('AiSyncService.scheduleSync — coalescing', () => {
   it('does not start a second overlapping run when nothing is pending after the first finishes', async () => {
     const prisma = buildPrisma();
     const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
-    const extractor = { extractAll: jest.fn().mockResolvedValue([]) };
+    const extractor = {
+      extractAll: jest
+        .fn()
+        .mockResolvedValue({ chunks: [], failedSources: [] }),
+    };
     const service = loadService(prisma, extractor, settingsService);
 
     service.scheduleSync('publish:contact');
@@ -175,7 +184,8 @@ describe('AiSyncService — automatic-sync circuit breaker', () => {
     }
     expect((await service.getStatus()).auto_sync_suppressed).toBe(true);
 
-    extractor.extractAll.mockResolvedValue([]); // the underlying problem is now fixed
+    // the underlying problem is now fixed
+    extractor.extractAll.mockResolvedValue({ chunks: [], failedSources: [] });
     await service.runSync('manual');
     expect((await service.getStatus()).auto_sync_suppressed).toBe(false);
 
@@ -211,11 +221,104 @@ describe('AiSyncService.getStatus', () => {
   it('reports auto_sync_suppressed: false when nothing has failed', async () => {
     const prisma = buildPrisma();
     const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
-    const extractor = { extractAll: jest.fn().mockResolvedValue([]) };
+    const extractor = {
+      extractAll: jest
+        .fn()
+        .mockResolvedValue({ chunks: [], failedSources: [] }),
+    };
     const service = loadService(prisma, extractor, settingsService);
 
     const status = await service.getStatus();
 
     expect(status.auto_sync_suppressed).toBe(false);
+  });
+});
+
+describe('AiSyncService.runSync — failedCount persistence (Phase P0.4-D4/P1-5, Option A)', () => {
+  it('G. persists failedCount equal to the number of failed source groups reported by extractAll()', async () => {
+    const prisma = buildPrisma();
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const extractor = {
+      extractAll: jest.fn().mockResolvedValue({
+        chunks: [{ sourceKey: 'home' }],
+        failedSources: ['products'],
+      }),
+    };
+    const service = loadService(prisma, extractor, settingsService);
+
+    const result = await service.runSync('manual');
+
+    expect(result.success).toBe(true);
+    const [updateArgs] = prisma.__tx.aiSyncStatus.update.mock.calls[0] as [
+      { data: { failedCount: number; indexedCount: number } },
+    ];
+    expect(updateArgs.data.failedCount).toBe(1);
+    expect(updateArgs.data.indexedCount).toBe(1);
+  });
+
+  it('H. a clean sync (no failed groups) persists failedCount: 0', async () => {
+    const prisma = buildPrisma();
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const extractor = {
+      extractAll: jest
+        .fn()
+        .mockResolvedValue({ chunks: [], failedSources: [] }),
+    };
+    const service = loadService(prisma, extractor, settingsService);
+
+    await service.runSync('manual');
+
+    const [updateArgs] = prisma.__tx.aiSyncStatus.update.mock.calls[0] as [
+      { data: { failedCount: number } },
+    ];
+    expect(updateArgs.data.failedCount).toBe(0);
+  });
+
+  it('persists failedCount equal to the count of distinct failed groups, not the number of failed locale attempts', async () => {
+    const prisma = buildPrisma();
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const extractor = {
+      extractAll: jest.fn().mockResolvedValue({
+        chunks: [],
+        failedSources: ['contact', 'about_company'],
+      }),
+    };
+    const service = loadService(prisma, extractor, settingsService);
+
+    await service.runSync('manual');
+
+    const [updateArgs] = prisma.__tx.aiSyncStatus.update.mock.calls[0] as [
+      { data: { failedCount: number } },
+    ];
+    expect(updateArgs.data.failedCount).toBe(2);
+  });
+
+  it('I. a whole-sync failure (extractAll rejects) leaves failedCount/indexedCount untouched — only lastStatus/lastError are written, exactly as before this phase', async () => {
+    const prisma = buildPrisma();
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const extractor = {
+      extractAll: jest.fn().mockRejectedValue(new Error('boom')),
+    };
+    const service = loadService(prisma, extractor, settingsService);
+
+    const result = await service.runSync('manual');
+
+    expect(result.success).toBe(false);
+    const [updateArgs] = prisma.aiSyncStatus.update.mock.calls[0] as [
+      { data: Record<string, unknown> },
+    ];
+    expect(updateArgs.data).toEqual({
+      lastStatus: 'failed',
+      lastError: 'boom',
+    });
+    expect(updateArgs.data.failedCount).toBeUndefined();
   });
 });

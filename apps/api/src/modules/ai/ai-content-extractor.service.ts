@@ -81,8 +81,14 @@ export class AiContentExtractorService {
     private readonly contactPageService: ContactPageService,
   ) {}
 
-  async extractAll(settings: AiSettingsModel): Promise<ExtractedChunk[]> {
+  async extractAll(
+    settings: AiSettingsModel,
+  ): Promise<{ chunks: ExtractedChunk[]; failedSources: AiSourceKey[] }> {
     const chunks: ExtractedChunk[] = [];
+    // Dedupes by source group — the same group failing in multiple locales (e.g. contact/en,
+    // contact/id, contact/zh all throwing) must still surface as a single 'contact' entry, not
+    // one per failed locale.
+    const failedSources = new Set<AiSourceKey>();
 
     // Each source is wrapped in its OWN try/catch — one source throwing (e.g. a locale this
     // module hasn't been translated into yet) must never skip the sources listed after it for
@@ -90,8 +96,17 @@ export class AiContentExtractorService {
     // earlier version of this method (News extraction hit `ArticleQueryDto`'s missing default
     // for `sort` and swallowed Contact right along with it) — bug found and fixed during launch
     // verification of this feature.
+    //
+    // `sourceKey` identifies the failure group for `failedSources` at the SAME granularity this
+    // wrapper already isolates failures at — the about-company bundle (`extractAboutCompany()`)
+    // covers 6 distinct `AiSourceKey`s (about_company/facilities/moq_payment_terms/
+    // shipment_terms/legal_certificates/faq) behind one try/catch, so a failure there is
+    // recorded under the single representative key `'about_company'` rather than attributed to
+    // whichever of the 6 actually broke — deliberate (P0.4-D4/P1-5 Option A): this method is not
+    // restructured to fail at finer granularity than it already does.
     const safely = async (
       label: string,
+      sourceKey: AiSourceKey,
       fn: () => Promise<ExtractedChunk[]>,
     ): Promise<ExtractedChunk[]> => {
       try {
@@ -100,6 +115,7 @@ export class AiContentExtractorService {
         this.logger.warn(
           `Extraction failed for "${label}": ${(err as Error).message}`,
         );
+        failedSources.add(sourceKey);
         return [];
       }
     };
@@ -108,7 +124,7 @@ export class AiContentExtractorService {
       const language = locale;
       if (settings.includeHome) {
         chunks.push(
-          ...(await safely(`home/${language}`, () =>
+          ...(await safely(`home/${language}`, 'home', () =>
             this.extractHome(language),
           )),
         );
@@ -122,42 +138,42 @@ export class AiContentExtractorService {
         settings.includeFaq
       ) {
         chunks.push(
-          ...(await safely(`about-company/${language}`, () =>
+          ...(await safely(`about-company/${language}`, 'about_company', () =>
             this.extractAboutCompany(language, settings),
           )),
         );
       }
       if (settings.includeProducts) {
         chunks.push(
-          ...(await safely(`products/${language}`, () =>
+          ...(await safely(`products/${language}`, 'products', () =>
             this.extractProducts(language),
           )),
         );
       }
       if (settings.includeGallery) {
         chunks.push(
-          ...(await safely(`gallery/${language}`, () =>
+          ...(await safely(`gallery/${language}`, 'gallery', () =>
             this.extractGallery(language),
           )),
         );
       }
       if (settings.includeNews) {
         chunks.push(
-          ...(await safely(`news/${language}`, () =>
+          ...(await safely(`news/${language}`, 'news', () =>
             this.extractNews(language),
           )),
         );
       }
       if (settings.includeContact) {
         chunks.push(
-          ...(await safely(`contact/${language}`, () =>
+          ...(await safely(`contact/${language}`, 'contact', () =>
             this.extractContact(language),
           )),
         );
       }
     }
 
-    return chunks;
+    return { chunks, failedSources: [...failedSources] };
   }
 
   private async extractHome(language: Locale): Promise<ExtractedChunk[]> {

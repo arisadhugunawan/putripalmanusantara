@@ -128,7 +128,7 @@ describe('AiContentExtractorService.extractAll — Contact locale resolution (Ph
       Promise.resolve(stubContactPayload(LABEL_BY_LOCALE[locale])),
     );
 
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const locationChunks = chunks.filter((c) => c.contentType === 'location');
 
     for (const locale of SUPPORTED_LOCALES) {
@@ -143,7 +143,7 @@ describe('AiContentExtractorService.extractAll — Contact locale resolution (Ph
       Promise.resolve(stubContactPayload(LABEL_BY_LOCALE[locale])),
     );
 
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const locationChunks = chunks.filter((c) => c.contentType === 'location');
 
     const idChunk = locationChunks.find((c) => c.language === 'id');
@@ -160,7 +160,7 @@ describe('AiContentExtractorService.extractAll — Contact locale resolution (Ph
       return Promise.resolve(stubContactPayload(LABEL_BY_LOCALE[locale]));
     });
 
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const languagesPresent = new Set(chunks.map((c) => c.language));
 
     expect(languagesPresent.has('zh')).toBe(false);
@@ -175,7 +175,7 @@ describe('AiContentExtractorService.extractAll — Contact locale resolution (Ph
     const { service, getPublished } = buildService();
     getPublished.mockResolvedValue(null);
 
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
 
     expect(chunks).toHaveLength(0);
     expect(getPublished).toHaveBeenCalledTimes(SUPPORTED_LOCALES.length);
@@ -258,7 +258,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
 
   it('English extraction includes the English hero fields', async () => {
     const { service } = buildMultiLocaleService();
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const general = chunks.find(
       (c) => c.language === 'en' && c.contentType === 'contact_info',
     );
@@ -269,7 +269,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
 
   it('English extraction includes the English WhatsApp template fields', async () => {
     const { service } = buildMultiLocaleService();
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const general = chunks.find(
       (c) => c.language === 'en' && c.contentType === 'contact_info',
     );
@@ -283,7 +283,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
 
   it('Indonesian extraction includes the Indonesian translated hero fields', async () => {
     const { service } = buildMultiLocaleService();
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const general = chunks.find(
       (c) => c.language === 'id' && c.contentType === 'contact_info',
     );
@@ -294,7 +294,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
 
   it('Indonesian extraction includes the Indonesian WhatsApp template fields', async () => {
     const { service } = buildMultiLocaleService();
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const general = chunks.find(
       (c) => c.language === 'id' && c.contentType === 'contact_info',
     );
@@ -308,7 +308,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
 
   it('Chinese extraction includes the Chinese translated hero and WhatsApp fields', async () => {
     const { service } = buildMultiLocaleService();
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const general = chunks.find(
       (c) => c.language === 'zh' && c.contentType === 'contact_info',
     );
@@ -319,7 +319,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
 
   it('no cross-locale leakage — English, Indonesian, and Chinese chunks each contain only their own markers', async () => {
     const { service } = buildMultiLocaleService();
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
     const generalByLocale = (locale: 'en' | 'id' | 'zh') =>
       chunks.find(
         (c) => c.language === locale && c.contentType === 'contact_info',
@@ -339,7 +339,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
 
   it('existing location extraction and existing global fields (email/whatsapp/business hours) remain intact alongside the new fields', async () => {
     const { service } = buildMultiLocaleService();
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
 
     const enGeneral = chunks.find(
       (c) => c.language === 'en' && c.contentType === 'contact_info',
@@ -380,7 +380,7 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
       );
     });
 
-    const chunks = await service.extractAll(contactOnlySettings());
+    const { chunks } = await service.extractAll(contactOnlySettings());
 
     expect(chunks.some((c) => c.language === 'zh')).toBe(false);
     const enGeneral = chunks.find(
@@ -391,5 +391,105 @@ describe('AiContentExtractorService.extractAll — Contact hero/WhatsApp field c
       (c) => c.language === 'id' && c.contentType === 'contact_info',
     );
     expect(idGeneral?.content).toContain(FIELDS_BY_LOCALE.id.whatsappGreeting);
+  });
+});
+
+function settingsWith(overrides: Partial<AiSettingsModel>): AiSettingsModel {
+  return { ...contactOnlySettings(), ...overrides };
+}
+
+/** `buildService()`'s `{} as ProductsService`/`{} as HomepageService` stubs have no methods —
+ * any call into them (`extractProducts()`/`extractHome()`) throws immediately, which is exactly
+ * a `safely()`-caught failure. That makes them convenient, zero-setup stand-ins for a second
+ * failing group below — no bespoke mock needed to prove two DIFFERENT groups both get recorded. */
+describe('AiContentExtractorService.extractAll — failedSources tracking (Phase P0.4-D4/P1-5, Option A)', () => {
+  it('A. reports an empty failedSources array when nothing fails', async () => {
+    const { service, getPublished } = buildService();
+    getPublished.mockImplementation((locale: string) =>
+      Promise.resolve(stubContactPayload(LABEL_BY_LOCALE[locale])),
+    );
+
+    const { failedSources } = await service.extractAll(contactOnlySettings());
+
+    expect(failedSources).toEqual([]);
+  });
+
+  it('B. one group failing in exactly one locale is recorded under that group', async () => {
+    const { service, getPublished } = buildService();
+    getPublished.mockImplementation((locale: string) => {
+      if (locale === 'zh') return Promise.reject(new Error('boom'));
+      return Promise.resolve(stubContactPayload(LABEL_BY_LOCALE[locale]));
+    });
+
+    const { failedSources } = await service.extractAll(contactOnlySettings());
+
+    expect(failedSources).toEqual(['contact']);
+  });
+
+  it('C. the same group failing across every locale is still recorded exactly once, not once per locale', async () => {
+    const { service, getPublished } = buildService();
+    getPublished.mockRejectedValue(new Error('boom'));
+
+    const { failedSources } = await service.extractAll(contactOnlySettings());
+
+    expect(failedSources).toEqual(['contact']);
+    expect(failedSources).toHaveLength(1);
+  });
+
+  it('D. two different failing groups are both recorded', async () => {
+    const { service, getPublished } = buildService();
+    getPublished.mockRejectedValue(new Error('contact boom'));
+
+    const { failedSources } = await service.extractAll(
+      settingsWith({ includeContact: true, includeProducts: true }),
+    );
+
+    expect(new Set(failedSources)).toEqual(new Set(['contact', 'products']));
+    expect(failedSources).toHaveLength(2);
+  });
+
+  it('E. a successful group is never added to failedSources even when a sibling group fails', async () => {
+    const findPublished = jest.fn().mockResolvedValue([]);
+    const getPublished = jest.fn().mockRejectedValue(new Error('contact boom'));
+    const service = new AiContentExtractorService(
+      {} as HomepageService,
+      {} as AboutCompanyService,
+      { findPublished } as unknown as ProductsService,
+      {} as GalleryService,
+      {} as ArticlesService,
+      { getPublished } as unknown as ContactPageService,
+    );
+
+    const { failedSources } = await service.extractAll(
+      settingsWith({ includeContact: true, includeProducts: true }),
+    );
+
+    expect(findPublished).toHaveBeenCalled();
+    expect(failedSources).toEqual(['contact']);
+  });
+
+  it('F. successfully-extracted chunks are unaffected by a sibling group failing', async () => {
+    const { service, getPublished } = buildService();
+    getPublished.mockImplementation((locale: string) => {
+      if (locale === 'zh') return Promise.reject(new Error('boom'));
+      return Promise.resolve(stubContactPayload(LABEL_BY_LOCALE[locale]));
+    });
+
+    const { chunks } = await service.extractAll(contactOnlySettings());
+
+    const enLocation = chunks.find(
+      (c) => c.language === 'en' && c.contentType === 'location',
+    );
+    expect(enLocation?.content).toContain(LABEL_BY_LOCALE.en);
+  });
+
+  it('the about-company bundle (6 distinct AiSourceKeys behind one safely() call) is recorded under the single representative key "about_company", per Option A', async () => {
+    const { service } = buildService();
+
+    const { failedSources } = await service.extractAll(
+      settingsWith({ includeContact: false, includeAboutCompany: true }),
+    );
+
+    expect(failedSources).toEqual(['about_company']);
   });
 });

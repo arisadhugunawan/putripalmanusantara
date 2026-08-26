@@ -153,7 +153,8 @@ export class AiSyncService {
 
     try {
       const settings = await this.settingsService.getOrCreateRaw();
-      const chunks = await this.extractor.extractAll(settings);
+      const { chunks, failedSources } =
+        await this.extractor.extractAll(settings);
       const statusRow = await this.getOrCreateStatusRow();
 
       await this.prisma.$transaction(async (tx) => {
@@ -182,7 +183,7 @@ export class AiSyncService {
             lastError: null,
             totalSources: AI_SOURCE_KEYS.length,
             indexedCount: chunks.length,
-            failedCount: 0,
+            failedCount: failedSources.length,
           },
         });
       });
