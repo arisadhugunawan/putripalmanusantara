@@ -2646,3 +2646,224 @@ describe('ArticlesService.create/update — slug uniqueness race hardening (P2-1
     expect(result.slug).toBe('renamed-article');
   });
 });
+
+// P2-3 — publish()/restoreSnapshot() previously read the "last version" then created the next
+// one as two separate steps; two concurrent calls for the SAME article could both read the same
+// last version and race on the `(articleId, version)` unique constraint, surfacing a raw Prisma
+// error instead of retrying with a freshly-read version. Mirrors
+// `ProductsService — snapshot-version race retry (P2-3)`'s identical coverage.
+describe('ArticlesService — snapshot-version race retry (P2-3)', () => {
+  const versionConflictP2002 = {
+    code: 'P2002',
+    meta: { target: ['article_id', 'version'] },
+  };
+  const versionConflictP2039 = {
+    code: 'P2039',
+    meta: { driverAdapterError: { cause: { originalCode: '23505' } } },
+  };
+  const unrelated = new Error('connection lost');
+
+  it('publish(): succeeds on the first attempt with no retry overhead (K)', async () => {
+    const { service, article, articlePublishedSnapshot } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    articlePublishedSnapshot.findFirst.mockResolvedValue({ version: 3 });
+    articlePublishedSnapshot.create.mockResolvedValue({
+      id: 'snap-4',
+      version: 4,
+      publishedAt: new Date(),
+    });
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await service.publish('a1', ACTOR);
+
+    expect(articlePublishedSnapshot.findFirst).toHaveBeenCalledTimes(1);
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('publish(): retries once on a recognized P2002 version conflict and succeeds with a freshly-read version (C, L, M)', async () => {
+    const { service, article, articlePublishedSnapshot } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    // Simulates a concurrent publish winning version 4 between our two version reads.
+    articlePublishedSnapshot.findFirst
+      .mockResolvedValueOnce({ version: 3 })
+      .mockResolvedValueOnce({ version: 4 });
+    articlePublishedSnapshot.create
+      .mockRejectedValueOnce(versionConflictP2002)
+      .mockResolvedValueOnce({
+        id: 'snap-5',
+        version: 5,
+        publishedAt: new Date('2026-08-26T00:00:00.000Z'),
+      });
+    article.update.mockResolvedValue(stubArticleRow());
+
+    const result = await service.publish('a1', ACTOR);
+
+    expect(result.version).toBe(5);
+    expect(articlePublishedSnapshot.findFirst).toHaveBeenCalledTimes(2);
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(2);
+    const [firstCall, secondCall] = articlePublishedSnapshot.create.mock
+      .calls as [{ data: { version: number } }][];
+    expect(firstCall[0].data.version).toBe(4);
+    expect(secondCall[0].data.version).toBe(5);
+  });
+
+  it('publish(): retries once on the Prisma 7 driver-adapter P2039/23505 shape and succeeds (G)', async () => {
+    const { service, article, articlePublishedSnapshot } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    articlePublishedSnapshot.findFirst
+      .mockResolvedValueOnce({ version: 1 })
+      .mockResolvedValueOnce({ version: 2 });
+    articlePublishedSnapshot.create
+      .mockRejectedValueOnce(versionConflictP2039)
+      .mockResolvedValueOnce({
+        id: 'snap-3',
+        version: 3,
+        publishedAt: new Date(),
+      });
+    article.update.mockResolvedValue(stubArticleRow());
+
+    const result = await service.publish('a1', ACTOR);
+
+    expect(result.version).toBe(3);
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('publish(): an unrelated error is re-thrown unchanged, with no retry (H)', async () => {
+    const { service, article, articlePublishedSnapshot } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    articlePublishedSnapshot.findFirst.mockResolvedValue(null);
+    articlePublishedSnapshot.create.mockRejectedValueOnce(unrelated);
+
+    await expect(service.publish('a1', ACTOR)).rejects.toBe(unrelated);
+
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('publish(): exhausts all 3 attempts and re-throws the final Prisma error unchanged when the collision never clears (I, J)', async () => {
+    const { service, article, articlePublishedSnapshot } = buildService();
+    article.findUnique.mockResolvedValue(stubArticleRow());
+    articlePublishedSnapshot.findFirst.mockResolvedValue({ version: 1 });
+    const finalError = { ...versionConflictP2002 };
+    articlePublishedSnapshot.create
+      .mockRejectedValueOnce(versionConflictP2002)
+      .mockRejectedValueOnce(versionConflictP2002)
+      .mockRejectedValueOnce(finalError);
+    article.update.mockResolvedValue(stubArticleRow());
+
+    await expect(service.publish('a1', ACTOR)).rejects.toBe(finalError);
+
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(3);
+  });
+
+  it('restoreSnapshot(): retries once on a recognized P2002 version conflict and succeeds with a freshly-read version (D, L, M)', async () => {
+    const { service, article, articlePublishedSnapshot } = buildService();
+    const sourceData = stubSnapshotData({ title: 'Restored From V1' });
+    articlePublishedSnapshot.findFirst
+      .mockResolvedValueOnce({
+        id: 'snap-1',
+        articleId: 'a1',
+        version: 1,
+        data: sourceData,
+      }) // source lookup (outside the loop, once)
+      .mockResolvedValueOnce({ version: 5 }) // attempt 1 version read
+      .mockResolvedValueOnce({ version: 6 }); // attempt 2 (retry) version read
+    articlePublishedSnapshot.create
+      .mockRejectedValueOnce(versionConflictP2002)
+      .mockResolvedValueOnce({
+        id: 'snap-7',
+        version: 7,
+        publishedAt: new Date(),
+      });
+    article.update.mockResolvedValue(stubArticleRow());
+
+    const result = await service.restoreSnapshot('a1', 'snap-1', ACTOR);
+
+    expect(result.version).toBe(7);
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(2);
+    const [firstCall, secondCall] = articlePublishedSnapshot.create.mock
+      .calls as [{ data: { version: number } }][];
+    expect(firstCall[0].data.version).toBe(6);
+    expect(secondCall[0].data.version).toBe(7);
+  });
+
+  it('restoreSnapshot(): retries once on the Prisma 7 driver-adapter P2039/23505 shape and succeeds (G)', async () => {
+    const { service, article, articlePublishedSnapshot } = buildService();
+    articlePublishedSnapshot.findFirst
+      .mockResolvedValueOnce({
+        id: 'snap-1',
+        articleId: 'a1',
+        version: 1,
+        data: stubSnapshotData(),
+      })
+      .mockResolvedValueOnce({ version: 1 })
+      .mockResolvedValueOnce({ version: 2 });
+    articlePublishedSnapshot.create
+      .mockRejectedValueOnce(versionConflictP2039)
+      .mockResolvedValueOnce({
+        id: 'snap-3',
+        version: 3,
+        publishedAt: new Date(),
+      });
+    article.update.mockResolvedValue(stubArticleRow());
+
+    const result = await service.restoreSnapshot('a1', 'snap-1', ACTOR);
+
+    expect(result.version).toBe(3);
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('restoreSnapshot(): an unrelated error is re-thrown unchanged, with no retry (H)', async () => {
+    const { service, articlePublishedSnapshot } = buildService();
+    articlePublishedSnapshot.findFirst
+      .mockResolvedValueOnce({
+        id: 'snap-1',
+        articleId: 'a1',
+        version: 1,
+        data: stubSnapshotData(),
+      })
+      .mockResolvedValueOnce(null);
+    articlePublishedSnapshot.create.mockRejectedValueOnce(unrelated);
+
+    await expect(service.restoreSnapshot('a1', 'snap-1', ACTOR)).rejects.toBe(
+      unrelated,
+    );
+
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('restoreSnapshot(): exhausts all 3 attempts and re-throws the final Prisma error unchanged when the collision never clears (I, J)', async () => {
+    const { service, articlePublishedSnapshot } = buildService();
+    articlePublishedSnapshot.findFirst.mockImplementation((args: unknown) => {
+      const where = (args as { where?: { id?: string } })?.where;
+      if (where?.id === 'snap-1') {
+        return Promise.resolve({
+          id: 'snap-1',
+          articleId: 'a1',
+          version: 1,
+          data: stubSnapshotData(),
+        });
+      }
+      return Promise.resolve({ version: 1 });
+    });
+    const finalError = {
+      code: 'P2002',
+      meta: { target: ['article_id', 'version'] },
+    };
+    articlePublishedSnapshot.create
+      .mockRejectedValueOnce({
+        code: 'P2002',
+        meta: { target: ['article_id', 'version'] },
+      })
+      .mockRejectedValueOnce({
+        code: 'P2002',
+        meta: { target: ['article_id', 'version'] },
+      })
+      .mockRejectedValueOnce(finalError);
+
+    await expect(service.restoreSnapshot('a1', 'snap-1', ACTOR)).rejects.toBe(
+      finalError,
+    );
+
+    expect(articlePublishedSnapshot.create).toHaveBeenCalledTimes(3);
+  });
+});

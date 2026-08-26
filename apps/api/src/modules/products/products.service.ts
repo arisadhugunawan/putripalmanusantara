@@ -31,6 +31,11 @@ interface PublishActor {
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
+/** Bounds the snapshot-version retry loop in publish()/restoreSnapshot() (P2-3) — protects
+ * against retrying forever if something is systematically wrong, while comfortably covering
+ * realistic concurrent-publish bursts against the same product. */
+const MAX_SNAPSHOT_VERSION_RETRY_ATTEMPTS = 3;
+
 /** JSON round-trips through the `Json` column turn every Date into a plain ISO string — this
  * reconstructs real Date objects so the existing mapper functions (which call `.toISOString()`
  * on some fields) work unmodified against snapshot data. Same helper as
@@ -235,43 +240,65 @@ export class ProductsService {
   async publish(id: string, actor: PublishActor) {
     await this.assertExists(id);
     const data = await this.buildSnapshotData(id);
-    const last = await this.prisma.productPublishedSnapshot.findFirst({
-      where: { productId: id },
-      orderBy: { version: 'desc' },
-      select: { version: true },
-    });
-    const version = (last?.version ?? 0) + 1;
-    const now = new Date();
-    const [snapshot] = await this.prisma.$transaction([
-      this.prisma.productPublishedSnapshot.create({
-        data: {
-          productId: id,
-          version,
-          data: data as never,
-          publishedById: actor.id,
-          publishedByName: actor.name,
-          publishedAt: now,
-        },
-      }),
-      // `updatedAt` is set explicitly here (not left to Prisma's auto `@updatedAt`) so it
-      // lands on the exact same instant as `lastPublishedAt` — otherwise `@updatedAt` stamps
-      // whatever moment this query actually executes, a few ms after `now` was computed above,
-      // which made `has_unpublished_changes` (`updatedAt > lastPublishedAt`) read `true`
-      // immediately after every publish. Caught live during Phase 2 verification.
-      this.prisma.product.update({
-        where: { id },
-        data: { status: 'published', lastPublishedAt: now, updatedAt: now },
-      }),
-    ]);
-    // Only the id — never the product payload itself; the AI listener re-reads through the
-    // normal published-data path (`findPublishedBySlug`), never from the event.
-    const event: ContentPublishedEvent = { source: 'products', entityId: id };
-    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
-    return {
-      id: snapshot.id,
-      version: snapshot.version,
-      published_at: snapshot.publishedAt.toISOString(),
-    };
+    // P2-3 — the version read below and the create() inside the transaction are two separate
+    // steps, so two concurrent publish() calls for the SAME product can both read the same
+    // "last version" and both attempt to create the same next version; the DB's
+    // `@@unique([productId, version])` lets only one of them win. On that specific collision,
+    // re-read the now-current latest version and retry, rather than surfacing a raw
+    // unique-constraint error to the admin who did nothing wrong. Bounded so a systemic problem
+    // (not an ordinary race) still fails loudly instead of looping forever.
+    for (let attempt = 1; ; attempt++) {
+      const last = await this.prisma.productPublishedSnapshot.findFirst({
+        where: { productId: id },
+        orderBy: { version: 'desc' },
+        select: { version: true },
+      });
+      const version = (last?.version ?? 0) + 1;
+      const now = new Date();
+      try {
+        const [snapshot] = await this.prisma.$transaction([
+          this.prisma.productPublishedSnapshot.create({
+            data: {
+              productId: id,
+              version,
+              data: data as never,
+              publishedById: actor.id,
+              publishedByName: actor.name,
+              publishedAt: now,
+            },
+          }),
+          // `updatedAt` is set explicitly here (not left to Prisma's auto `@updatedAt`) so it
+          // lands on the exact same instant as `lastPublishedAt` — otherwise `@updatedAt` stamps
+          // whatever moment this query actually executes, a few ms after `now` was computed
+          // above, which made `has_unpublished_changes` (`updatedAt > lastPublishedAt`) read
+          // `true` immediately after every publish. Caught live during Phase 2 verification.
+          this.prisma.product.update({
+            where: { id },
+            data: { status: 'published', lastPublishedAt: now, updatedAt: now },
+          }),
+        ]);
+        // Only the id — never the product payload itself; the AI listener re-reads through the
+        // normal published-data path (`findPublishedBySlug`), never from the event.
+        const event: ContentPublishedEvent = {
+          source: 'products',
+          entityId: id,
+        };
+        this.events.emit(CONTENT_PUBLISHED_EVENT, event);
+        return {
+          id: snapshot.id,
+          version: snapshot.version,
+          published_at: snapshot.publishedAt.toISOString(),
+        };
+      } catch (error) {
+        if (
+          attempt < MAX_SNAPSHOT_VERSION_RETRY_ATTEMPTS &&
+          this.isProductSnapshotVersionConflict(error)
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   /** Takes the product off the public site without discarding any snapshot — Publish again
@@ -327,44 +354,59 @@ export class ProductsService {
     });
     if (!source)
       throw new ApiException('NOT_FOUND', 'Snapshot not found.', 404);
-    const last = await this.prisma.productPublishedSnapshot.findFirst({
-      where: { productId },
-      orderBy: { version: 'desc' },
-      select: { version: true },
-    });
-    const version = (last?.version ?? 0) + 1;
-    const now = new Date();
-    const [snapshot] = await this.prisma.$transaction([
-      this.prisma.productPublishedSnapshot.create({
-        data: {
-          productId,
-          version,
-          data: source.data as never,
-          publishedById: actor.id,
-          publishedByName: actor.name,
-          publishedAt: now,
-        },
-      }),
-      // See publish()'s identical comment above — `updatedAt` must be pinned to the same
-      // instant as `lastPublishedAt` explicitly, not left to Prisma's auto `@updatedAt`.
-      this.prisma.product.update({
-        where: { id: productId },
-        data: { status: 'published', lastPublishedAt: now, updatedAt: now },
-      }),
-    ]);
-    // A restore is a publish of an old snapshot — the public site changes exactly like a fresh
-    // publish, so it must trigger the same AI resync. Only the id, never the payload — same
-    // rule as publish(). Emitted only after the transaction above has committed.
-    const event: ContentPublishedEvent = {
-      source: 'products',
-      entityId: productId,
-    };
-    this.events.emit(CONTENT_PUBLISHED_EVENT, event);
-    return {
-      id: snapshot.id,
-      version: snapshot.version,
-      published_at: snapshot.publishedAt.toISOString(),
-    };
+    // P2-3 — see publish()'s identical comment above: closes the TOCTOU race between the
+    // version read and the create() below.
+    for (let attempt = 1; ; attempt++) {
+      const last = await this.prisma.productPublishedSnapshot.findFirst({
+        where: { productId },
+        orderBy: { version: 'desc' },
+        select: { version: true },
+      });
+      const version = (last?.version ?? 0) + 1;
+      const now = new Date();
+      try {
+        const [snapshot] = await this.prisma.$transaction([
+          this.prisma.productPublishedSnapshot.create({
+            data: {
+              productId,
+              version,
+              data: source.data as never,
+              publishedById: actor.id,
+              publishedByName: actor.name,
+              publishedAt: now,
+            },
+          }),
+          // See publish()'s identical comment above — `updatedAt` must be pinned to the same
+          // instant as `lastPublishedAt` explicitly, not left to Prisma's auto `@updatedAt`.
+          this.prisma.product.update({
+            where: { id: productId },
+            data: { status: 'published', lastPublishedAt: now, updatedAt: now },
+          }),
+        ]);
+        // A restore is a publish of an old snapshot — the public site changes exactly like a
+        // fresh publish, so it must trigger the same AI resync. Only the id, never the
+        // payload — same rule as publish(). Emitted only after the transaction above has
+        // committed.
+        const event: ContentPublishedEvent = {
+          source: 'products',
+          entityId: productId,
+        };
+        this.events.emit(CONTENT_PUBLISHED_EVENT, event);
+        return {
+          id: snapshot.id,
+          version: snapshot.version,
+          published_at: snapshot.publishedAt.toISOString(),
+        };
+      } catch (error) {
+        if (
+          attempt < MAX_SNAPSHOT_VERSION_RETRY_ATTEMPTS &&
+          this.isProductSnapshotVersionConflict(error)
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   /** Lightweight lookup used by the controller to revalidate the right public URL after a sub-resource mutation. */
@@ -974,6 +1016,33 @@ export class ProductsService {
     };
     if (err.code === 'P2002') {
       return !err.meta?.target || err.meta.target.includes('slug');
+    }
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23505'
+    );
+  }
+
+  /** True only for the unique-constraint violation on `ProductPublishedSnapshot`'s
+   * `(product_id, version)` pair — never a false positive on some other unrelated DB error.
+   * Closes the TOCTOU race (P2-3) between the `orderBy: { version: 'desc' }` read in
+   * publish()/restoreSnapshot() and the actual `create()`: two concurrent requests for the SAME
+   * product can both read the same "last version" and both attempt to create the same next
+   * version. Mirrors `isProductSlugConflict()`'s proven dual-shape check (P2-1) for the
+   * identical Prisma-7 driver-adapter quirk: `P2002` is Prisma's documented "unique constraint
+   * failed" code, but under Prisma 7's driver-adapter architecture this can instead surface as
+   * the generic unmapped code `P2039`, with the real Postgres SQLSTATE (`23505` =
+   * `unique_violation`) preserved at `error.meta.driverAdapterError.cause.originalCode`. */
+  private isProductSnapshotVersionConflict(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: {
+        target?: string[];
+        driverAdapterError?: { cause?: { originalCode?: string } };
+      };
+    };
+    if (err.code === 'P2002') {
+      return !err.meta?.target || err.meta.target.includes('version');
     }
     return (
       err.code === 'P2039' &&
