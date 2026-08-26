@@ -22,6 +22,11 @@ const TIKTOK_URL_PATTERN = /^https?:\/\/(www\.|vt\.|vm\.)?tiktok\.com\//i;
 
 const ITEM_INCLUDE = { media: true, category: true } as const;
 
+/** Bounds the slug-conflict retry loop in `createCategory()` (P2-1) — protects against an
+ * infinite loop if something is systematically wrong, while comfortably covering realistic
+ * concurrent-request bursts against the same category name. */
+const MAX_SLUG_RETRY_ATTEMPTS = 5;
+
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -65,19 +70,36 @@ export class GalleryService {
 
   async createCategory(dto: CreateGalleryCategoryDto) {
     const count = await this.prisma.galleryCategory.count();
-    const slug = await this.uniqueCategorySlug(
-      dto.slug ? slugify(dto.slug) : slugify(dto.name),
-    );
-    const category = await this.prisma.galleryCategory.create({
-      data: {
-        name: dto.name,
-        slug,
-        order: dto.order ?? count,
-        active: dto.active ?? true,
-        translations: dto.translations,
-      },
-    });
-    return toGalleryCategory(category);
+    const base = dto.slug ? slugify(dto.slug) : slugify(dto.name);
+    let slug = await this.uniqueCategorySlug(base);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const category = await this.prisma.galleryCategory.create({
+          data: {
+            name: dto.name,
+            slug,
+            order: dto.order ?? count,
+            active: dto.active ?? true,
+            translations: dto.translations,
+          },
+        });
+        return toGalleryCategory(category);
+      } catch (error) {
+        // P2-1 — closes the TOCTOU race between `uniqueCategorySlug()`'s read-loop above and
+        // this write: if another request claimed `slug` in between, re-resolve (a fresh DB
+        // read, so it naturally skips whatever is now taken) and retry, preserving the
+        // existing "always succeeds with the next available suffix" behavior rather than
+        // surfacing a new rejection to the caller.
+        if (
+          attempt < MAX_SLUG_RETRY_ATTEMPTS &&
+          this.isGalleryCategorySlugConflict(error)
+        ) {
+          slug = await this.uniqueCategorySlug(base);
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   async updateCategory(id: string, dto: UpdateGalleryCategoryDto) {
@@ -122,6 +144,36 @@ export class GalleryService {
       throw error;
     }
     return { deleted: true };
+  }
+
+  /** True only for the unique-constraint violation on `GalleryCategory.slug` — never a false
+   * positive on some other unrelated DB error. Defense-in-depth for the TOCTOU race between
+   * `uniqueCategorySlug()`'s read-loop and `createCategory()`'s actual write: two concurrent
+   * requests can both see the same slug as free before either commits. `updateCategory()` never
+   * writes `slug` (immutable after creation), so it has no equivalent race and is intentionally
+   * not guarded here. Mirrors `ProductsService.isProductSlugConflict()`'s proven dual-shape
+   * check (P2-1) for the identical Prisma-7 driver-adapter quirk: `P2002` is Prisma's documented
+   * "unique constraint failed" code, but under Prisma 7's driver-adapter architecture this can
+   * instead surface as the generic unmapped code `P2039`, with the real Postgres SQLSTATE
+   * (`23505` = `unique_violation`) preserved at `error.meta.driverAdapterError.cause.originalCode`.
+   * Unlike Product, a recognized conflict here does NOT become a user-facing error — the caller
+   * re-resolves the next available suffix and retries instead, preserving GalleryCategory's
+   * existing "always succeeds" slug-collision behavior. */
+  private isGalleryCategorySlugConflict(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: {
+        target?: string[];
+        driverAdapterError?: { cause?: { originalCode?: string } };
+      };
+    };
+    if (err.code === 'P2002') {
+      return !err.meta?.target || err.meta.target.includes('slug');
+    }
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23505'
+    );
   }
 
   /** True only for the FK RESTRICT violation on `GalleryItem.categoryId` — never a false

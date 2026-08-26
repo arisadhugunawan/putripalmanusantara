@@ -38,6 +38,11 @@ const SORT_FIELD_MAP: Record<string, string> = {
   title: 'title',
 };
 
+/** Bounds the slug-conflict retry loop in `create()`/`update()` (P2-1) — protects against an
+ * infinite loop if something is systematically wrong (e.g. `resolveSlug()` itself broken), while
+ * comfortably covering realistic concurrent-request bursts against the same title. */
+const MAX_SLUG_RETRY_ATTEMPTS = 5;
+
 /** The ten categories the brief lists — seeded once, then fully Admin-owned (add/rename/
  * reorder/deactivate/delete freely from there on). */
 const DEFAULT_ARTICLE_CATEGORIES = [
@@ -469,54 +474,73 @@ export class ArticlesService {
         );
       }
     }
-    const slug = await this.resolveSlug(dto.slug || dto.title);
-    const article = await this.prisma.article.create({
-      data: {
-        slug,
-        title: dto.title,
-        excerpt: dto.excerpt,
-        content: sanitizeRichText(dto.content),
-        coverImageId: dto.cover_image_id,
-        categoryId: emptyToNull(dto.category_id),
-        tags: dto.tags ?? [],
-        author: dto.author,
-        featured: dto.featured ?? false,
-        contentSource: dto.content_source ?? 'website',
-        instagramCaption: dto.instagram_caption,
-        instagramUrl: emptyToNull(dto.instagram_url),
-        instagramPostId: dto.instagram_url
-          ? (extractInstagramShortcode(dto.instagram_url) ?? undefined)
-          : undefined,
-        instagramImportedAt: dto.instagram_imported_at
-          ? new Date(dto.instagram_imported_at)
-          : undefined,
-        instagramDate: dto.instagram_date
-          ? new Date(dto.instagram_date)
-          : undefined,
-        instagramUsername: emptyToNull(dto.instagram_username),
-        metaTitle: dto.meta_title,
-        metaDescription: dto.meta_description,
-        canonicalUrl: emptyToNull(dto.canonical_url),
-        focusKeyword: dto.focus_keyword,
-        ogImageId: emptyToNull(dto.og_image_id),
-        keyTakeaways: dto.key_takeaways ?? [],
-        quoteText: emptyToNull(dto.quote_text),
-        quoteAuthor: emptyToNull(dto.quote_author),
-        statistics: dto.statistics as never,
-        readingTimeMinutes: dto.reading_time_minutes,
-        // Every article is born a draft, full stop — publishing is a deliberate, separately
-        // role-gated act (`publish()` below), never a side effect of create/update. `dto.status`
-        // is intentionally ignored here so a caller can never skip that gate by creating an
-        // article pre-published (Phase 5F-P0.2).
-        status: 'draft',
-        publishedAt: null,
-        translations: sanitizeTranslationsRichText(dto.translations, [
-          'content',
-        ]) as never,
-      },
-      include: DETAIL_INCLUDE,
-    });
-    return toArticleDetail(article);
+    const baseSlug = dto.slug || dto.title;
+    let slug = await this.resolveSlug(baseSlug);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const article = await this.prisma.article.create({
+          data: {
+            slug,
+            title: dto.title,
+            excerpt: dto.excerpt,
+            content: sanitizeRichText(dto.content),
+            coverImageId: dto.cover_image_id,
+            categoryId: emptyToNull(dto.category_id),
+            tags: dto.tags ?? [],
+            author: dto.author,
+            featured: dto.featured ?? false,
+            contentSource: dto.content_source ?? 'website',
+            instagramCaption: dto.instagram_caption,
+            instagramUrl: emptyToNull(dto.instagram_url),
+            instagramPostId: dto.instagram_url
+              ? (extractInstagramShortcode(dto.instagram_url) ?? undefined)
+              : undefined,
+            instagramImportedAt: dto.instagram_imported_at
+              ? new Date(dto.instagram_imported_at)
+              : undefined,
+            instagramDate: dto.instagram_date
+              ? new Date(dto.instagram_date)
+              : undefined,
+            instagramUsername: emptyToNull(dto.instagram_username),
+            metaTitle: dto.meta_title,
+            metaDescription: dto.meta_description,
+            canonicalUrl: emptyToNull(dto.canonical_url),
+            focusKeyword: dto.focus_keyword,
+            ogImageId: emptyToNull(dto.og_image_id),
+            keyTakeaways: dto.key_takeaways ?? [],
+            quoteText: emptyToNull(dto.quote_text),
+            quoteAuthor: emptyToNull(dto.quote_author),
+            statistics: dto.statistics as never,
+            readingTimeMinutes: dto.reading_time_minutes,
+            // Every article is born a draft, full stop — publishing is a deliberate, separately
+            // role-gated act (`publish()` below), never a side effect of create/update. `dto.status`
+            // is intentionally ignored here so a caller can never skip that gate by creating an
+            // article pre-published (Phase 5F-P0.2).
+            status: 'draft',
+            publishedAt: null,
+            translations: sanitizeTranslationsRichText(dto.translations, [
+              'content',
+            ]) as never,
+          },
+          include: DETAIL_INCLUDE,
+        });
+        return toArticleDetail(article);
+      } catch (error) {
+        // P2-1 — closes the TOCTOU race between `resolveSlug()`'s read-loop above and this
+        // write: if another request claimed `slug` in between, re-resolve (a fresh DB read,
+        // so it naturally skips whatever is now taken) and retry, preserving the existing
+        // "always succeeds with the next available suffix" behavior rather than surfacing a
+        // new rejection to the caller.
+        if (
+          attempt < MAX_SLUG_RETRY_ATTEMPTS &&
+          this.isArticleSlugConflict(error)
+        ) {
+          slug = await this.resolveSlug(baseSlug);
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   async update(id: string, dto: UpdateArticleDto) {
@@ -546,63 +570,83 @@ export class ArticlesService {
       slug = await this.resolveSlug(dto.slug, id);
     }
 
-    const article = await this.prisma.article.update({
-      where: { id },
-      data: {
-        slug,
-        title: dto.title,
-        excerpt: dto.excerpt,
-        content:
-          dto.content !== undefined ? sanitizeRichText(dto.content) : undefined,
-        coverImageId: dto.cover_image_id,
-        // Picking a structured category (even clearing it back to "none") retires the old
-        // free-text value — going forward `categoryId` is the single source of truth for
-        // this row, same as the LegalDocument categoryId/documentType relationship.
-        categoryId:
-          dto.category_id !== undefined
-            ? emptyToNull(dto.category_id)
-            : undefined,
-        category: dto.category_id !== undefined ? null : undefined,
-        tags: dto.tags,
-        author: dto.author,
-        featured: dto.featured,
-        contentSource: dto.content_source,
-        instagramCaption: dto.instagram_caption,
-        instagramUrl: emptyToNull(dto.instagram_url),
-        instagramPostId: dto.instagram_url
-          ? (extractInstagramShortcode(dto.instagram_url) ?? undefined)
-          : undefined,
-        instagramImportedAt: dto.instagram_imported_at
-          ? new Date(dto.instagram_imported_at)
-          : undefined,
-        instagramDate: dto.instagram_date
-          ? new Date(dto.instagram_date)
-          : undefined,
-        instagramUsername: emptyToNull(dto.instagram_username),
-        metaTitle: dto.meta_title,
-        metaDescription: dto.meta_description,
-        canonicalUrl: emptyToNull(dto.canonical_url),
-        focusKeyword: dto.focus_keyword,
-        ogImageId: emptyToNull(dto.og_image_id),
-        keyTakeaways: dto.key_takeaways,
-        quoteText: emptyToNull(dto.quote_text),
-        quoteAuthor: emptyToNull(dto.quote_author),
-        statistics: dto.statistics as never,
-        readingTimeMinutes: dto.reading_time_minutes,
-        // `status`/`publishedAt` are deliberately never written here — see `publish()`/
-        // `unpublish()` below (Phase 5F-P0.2). Letting ordinary content edits also flip
-        // publish state made the status field a label on an always-mutable row rather than a
-        // real gate: any authenticated admin could publish/unpublish by including `status` in
-        // an otherwise ordinary save. Publishing is now only ever reachable through the two
-        // dedicated, `@Roles('super_admin')`-gated endpoints.
-        translations: sanitizeTranslationsRichText(
-          mergeTranslations(existing.translations, dto.translations),
-          ['content'],
-        ) as never,
-      },
-      include: DETAIL_INCLUDE,
-    });
-    return toArticleDetail(article);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const article = await this.prisma.article.update({
+          where: { id },
+          data: {
+            slug,
+            title: dto.title,
+            excerpt: dto.excerpt,
+            content:
+              dto.content !== undefined
+                ? sanitizeRichText(dto.content)
+                : undefined,
+            coverImageId: dto.cover_image_id,
+            // Picking a structured category (even clearing it back to "none") retires the old
+            // free-text value — going forward `categoryId` is the single source of truth for
+            // this row, same as the LegalDocument categoryId/documentType relationship.
+            categoryId:
+              dto.category_id !== undefined
+                ? emptyToNull(dto.category_id)
+                : undefined,
+            category: dto.category_id !== undefined ? null : undefined,
+            tags: dto.tags,
+            author: dto.author,
+            featured: dto.featured,
+            contentSource: dto.content_source,
+            instagramCaption: dto.instagram_caption,
+            instagramUrl: emptyToNull(dto.instagram_url),
+            instagramPostId: dto.instagram_url
+              ? (extractInstagramShortcode(dto.instagram_url) ?? undefined)
+              : undefined,
+            instagramImportedAt: dto.instagram_imported_at
+              ? new Date(dto.instagram_imported_at)
+              : undefined,
+            instagramDate: dto.instagram_date
+              ? new Date(dto.instagram_date)
+              : undefined,
+            instagramUsername: emptyToNull(dto.instagram_username),
+            metaTitle: dto.meta_title,
+            metaDescription: dto.meta_description,
+            canonicalUrl: emptyToNull(dto.canonical_url),
+            focusKeyword: dto.focus_keyword,
+            ogImageId: emptyToNull(dto.og_image_id),
+            keyTakeaways: dto.key_takeaways,
+            quoteText: emptyToNull(dto.quote_text),
+            quoteAuthor: emptyToNull(dto.quote_author),
+            statistics: dto.statistics as never,
+            readingTimeMinutes: dto.reading_time_minutes,
+            // `status`/`publishedAt` are deliberately never written here — see `publish()`/
+            // `unpublish()` below (Phase 5F-P0.2). Letting ordinary content edits also flip
+            // publish state made the status field a label on an always-mutable row rather than a
+            // real gate: any authenticated admin could publish/unpublish by including `status` in
+            // an otherwise ordinary save. Publishing is now only ever reachable through the two
+            // dedicated, `@Roles('super_admin')`-gated endpoints.
+            translations: sanitizeTranslationsRichText(
+              mergeTranslations(existing.translations, dto.translations),
+              ['content'],
+            ) as never,
+          },
+          include: DETAIL_INCLUDE,
+        });
+        return toArticleDetail(article);
+      } catch (error) {
+        // P2-1 — only re-resolves when this update actually writes `slug` (dto.slug !==
+        // undefined); an update that never touches the slug column can't produce this
+        // conflict, so it always falls through to `throw error;` on the first attempt. Mirrors
+        // create()'s retry reasoning above.
+        if (
+          dto.slug !== undefined &&
+          attempt < MAX_SLUG_RETRY_ATTEMPTS &&
+          this.isArticleSlugConflict(error)
+        ) {
+          slug = await this.resolveSlug(dto.slug, id);
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   // ── Publish / Version History / Restore (Phase 5F-P0.2b-C) ─────────────────────────────
@@ -808,6 +852,35 @@ export class ArticlesService {
       select: { slug: true },
     });
     return article?.slug ?? null;
+  }
+
+  /** True only for the unique-constraint violation on `Article.slug` — never a false positive
+   * on some other unrelated DB error. Defense-in-depth for the TOCTOU race between
+   * `resolveSlug()`'s read-loop and the actual `create()`/`update()` write: two concurrent
+   * requests can both see the same slug as free before either commits. Mirrors
+   * `ProductsService.isProductSlugConflict()`'s proven dual-shape check (P2-1) for the identical
+   * Prisma-7 driver-adapter quirk: `P2002` is Prisma's documented "unique constraint failed"
+   * code, but under Prisma 7's driver-adapter architecture this can instead surface as the
+   * generic unmapped code `P2039`, with the real Postgres SQLSTATE (`23505` = `unique_violation`)
+   * preserved at `error.meta.driverAdapterError.cause.originalCode`. Unlike Product, a recognized
+   * conflict here does NOT become a user-facing error — the caller re-resolves the next
+   * available suffix and retries instead, preserving Article's existing "always succeeds"
+   * slug-collision behavior. */
+  private isArticleSlugConflict(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: {
+        target?: string[];
+        driverAdapterError?: { cause?: { originalCode?: string } };
+      };
+    };
+    if (err.code === 'P2002') {
+      return !err.meta?.target || err.meta.target.includes('slug');
+    }
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23505'
+    );
   }
 
   /** True only for the FK RESTRICT violation on `ArticlePublishedSnapshot.articleId` — never a

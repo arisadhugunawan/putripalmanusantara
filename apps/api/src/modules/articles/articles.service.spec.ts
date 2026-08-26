@@ -2341,3 +2341,308 @@ describe('ArticlesService.duplicate — preserves the source translations (Phase
     expect(article.update).not.toHaveBeenCalled();
   });
 });
+
+// P2-1 — `resolveSlug()` is a check-then-act read-loop; these tests prove the actual
+// create()/update() write is now also guarded against the TOCTOU race window where two
+// concurrent requests both see the same slug as free before either commits. Article's existing
+// "always succeeds, auto-suffix on collision" UX is preserved exactly — a recognized conflict
+// re-resolves the next available suffix and retries, it never becomes a user-facing error.
+describe('ArticlesService.create/update — slug uniqueness race hardening (P2-1)', () => {
+  it('1. a normal create with no collision uses the requested slug as-is', async () => {
+    const { service, article } = buildService();
+    article.create.mockResolvedValue(stubArticleRow({ slug: 'company-news' }));
+
+    await service.create({
+      slug: 'company-news',
+      title: 'Company News',
+      excerpt: 'Excerpt',
+      content: '<p>Body</p>',
+    });
+
+    expect(article.create).toHaveBeenCalledTimes(1);
+    const [call] = article.create.mock.calls[0] as [{ data: { slug: string } }];
+    expect(call.data.slug).toBe('company-news');
+  });
+
+  it('2. the existing resolveSlug() mechanism still resolves a pre-existing collision to -2, with no P2002 involved', async () => {
+    const { service, article } = buildService();
+    article.findUnique
+      .mockResolvedValueOnce({ id: 'other-article' }) // slugTaken('company-news') -> true
+      .mockResolvedValueOnce(null); // slugTaken('company-news-2') -> false
+    article.create.mockResolvedValue(
+      stubArticleRow({ slug: 'company-news-2' }),
+    );
+
+    await service.create({
+      slug: 'company-news',
+      title: 'Company News',
+      excerpt: 'Excerpt',
+      content: '<p>Body</p>',
+    });
+
+    expect(article.create).toHaveBeenCalledTimes(1);
+    const [call] = article.create.mock.calls[0] as [{ data: { slug: string } }];
+    expect(call.data.slug).toBe('company-news-2');
+  });
+
+  it('3. a P2002 unique-violation on the actual create() triggers a retry', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValueOnce(null); // resolveSlug: 'company-news' is free
+    article.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Unique constraint failed'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockResolvedValueOnce(stubArticleRow({ slug: 'company-news-2' }));
+    article.findUnique
+      .mockResolvedValueOnce({ id: 'other-article' }) // retry resolveSlug: 'company-news' now taken
+      .mockResolvedValueOnce(null); // 'company-news-2' free
+
+    await service.create({
+      slug: 'company-news',
+      title: 'Company News',
+      excerpt: 'Excerpt',
+      content: '<p>Body</p>',
+    });
+
+    expect(article.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('4. the retry after a P2002 succeeds with the next available suffix and returns the created article', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValueOnce(null);
+    article.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Unique constraint failed'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockResolvedValueOnce(stubArticleRow({ slug: 'company-news-2' }));
+    article.findUnique
+      .mockResolvedValueOnce({ id: 'other-article' })
+      .mockResolvedValueOnce(null);
+
+    const result = await service.create({
+      slug: 'company-news',
+      title: 'Company News',
+      excerpt: 'Excerpt',
+      content: '<p>Body</p>',
+    });
+
+    const [, secondCall] = article.create.mock.calls as [
+      unknown,
+      [{ data: { slug: string } }],
+    ];
+    expect(secondCall[0].data.slug).toBe('company-news-2');
+    expect(result.slug).toBe('company-news-2');
+  });
+
+  it('5. the Prisma 7 driver-adapter fallback (P2039 + originalCode 23505) on create() also triggers a retry', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValueOnce(null);
+    article.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('unmapped'), {
+          code: 'P2039',
+          meta: { driverAdapterError: { cause: { originalCode: '23505' } } },
+        }),
+      )
+      .mockResolvedValueOnce(stubArticleRow({ slug: 'company-news-2' }));
+    article.findUnique
+      .mockResolvedValueOnce({ id: 'other-article' })
+      .mockResolvedValueOnce(null);
+
+    const result = await service.create({
+      slug: 'company-news',
+      title: 'Company News',
+      excerpt: 'Excerpt',
+      content: '<p>Body</p>',
+    });
+
+    expect(article.create).toHaveBeenCalledTimes(2);
+    expect(result.slug).toBe('company-news-2');
+  });
+
+  it('6. multiple consecutive collisions on the actual write advance the suffix correctly', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValueOnce(null); // first resolveSlug: 'company-news' free
+    article.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('boom'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockRejectedValueOnce(
+        Object.assign(new Error('boom'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockResolvedValueOnce(stubArticleRow({ slug: 'company-news-3' }));
+    article.findUnique
+      // retry #1's resolveSlug: 'company-news' taken, 'company-news-2' free
+      .mockResolvedValueOnce({ id: 'other-article' })
+      .mockResolvedValueOnce(null)
+      // retry #2's resolveSlug: 'company-news' taken, 'company-news-2' taken, 'company-news-3' free
+      .mockResolvedValueOnce({ id: 'other-article' })
+      .mockResolvedValueOnce({ id: 'yet-another-article' })
+      .mockResolvedValueOnce(null);
+
+    const result = await service.create({
+      slug: 'company-news',
+      title: 'Company News',
+      excerpt: 'Excerpt',
+      content: '<p>Body</p>',
+    });
+
+    expect(article.create).toHaveBeenCalledTimes(3);
+    const [, , thirdCall] = article.create.mock.calls as [
+      unknown,
+      unknown,
+      [{ data: { slug: string } }],
+    ];
+    expect(thirdCall[0].data.slug).toBe('company-news-3');
+    expect(result.slug).toBe('company-news-3');
+  });
+
+  it('7. an unrelated Prisma error on create is re-thrown unchanged, never treated as a slug retry', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValueOnce(null);
+    const unrelated = Object.assign(new Error('connection lost'), {
+      code: 'P1001',
+    });
+    article.create.mockRejectedValueOnce(unrelated);
+
+    await expect(
+      service.create({
+        slug: 'company-news',
+        title: 'Company News',
+        excerpt: 'Excerpt',
+        content: '<p>Body</p>',
+      }),
+    ).rejects.toBe(unrelated);
+    expect(article.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('8. the retry loop is bounded and cannot loop forever — it rethrows the last recognized conflict once the limit is exhausted', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValue(null); // every resolveSlug() call sees the slug as free
+    const persistentConflict = Object.assign(new Error('always conflicts'), {
+      code: 'P2002',
+      meta: { target: ['slug'] },
+    });
+    article.create.mockRejectedValue(persistentConflict);
+
+    await expect(
+      service.create({
+        slug: 'company-news',
+        title: 'Company News',
+        excerpt: 'Excerpt',
+        content: '<p>Body</p>',
+      }),
+    ).rejects.toBe(persistentConflict);
+    // MAX_SLUG_RETRY_ATTEMPTS (5) retries + the original attempt = 6 total calls, then it gives up.
+    expect(article.create).toHaveBeenCalledTimes(6);
+  });
+
+  it('9a. a P2002 on update() (when the caller is actually changing the slug) retries and succeeds with the next suffix', async () => {
+    const { service, article } = buildService();
+    article.findUnique
+      .mockResolvedValueOnce(stubArticleRow({ id: 'a1' })) // assertExists
+      .mockResolvedValueOnce(null); // resolveSlug: 'company-news' free
+    article.update
+      .mockRejectedValueOnce(
+        Object.assign(new Error('boom'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockResolvedValueOnce(stubArticleRow({ slug: 'company-news-2' }));
+    article.findUnique
+      .mockResolvedValueOnce({ id: 'other-article' }) // retry resolveSlug: taken
+      .mockResolvedValueOnce(null); // -2 free
+
+    const result = await service.update('a1', {
+      slug: 'company-news',
+    });
+
+    expect(article.update).toHaveBeenCalledTimes(2);
+    const [, secondCall] = article.update.mock.calls as [
+      unknown,
+      [{ data: { slug: string } }],
+    ];
+    expect(secondCall[0].data.slug).toBe('company-news-2');
+    expect(result.slug).toBe('company-news-2');
+  });
+
+  it('9b. an update() that never touches slug (dto.slug undefined) never triggers slug-retry behavior, even on an unrelated write error', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValueOnce(stubArticleRow({ id: 'a1' })); // assertExists only
+    const unrelated = Object.assign(new Error('connection lost'), {
+      code: 'P1001',
+    });
+    article.update.mockRejectedValueOnce(unrelated);
+
+    await expect(service.update('a1', { title: 'New Title' })).rejects.toBe(
+      unrelated,
+    );
+    // Exactly one findUnique (assertExists) — resolveSlug()/slugTaken() were never called.
+    expect(article.findUnique).toHaveBeenCalledTimes(1);
+    expect(article.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('an unrelated Prisma error on update is re-thrown unchanged', async () => {
+    const { service, article } = buildService();
+    article.findUnique
+      .mockResolvedValueOnce(stubArticleRow({ id: 'a1' }))
+      .mockResolvedValueOnce(null);
+    const unrelated = Object.assign(new Error('connection lost'), {
+      code: 'P1001',
+    });
+    article.update.mockRejectedValueOnce(unrelated);
+
+    await expect(service.update('a1', { slug: 'company-news' })).rejects.toBe(
+      unrelated,
+    );
+    expect(article.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('a successful create with no collision is completely unaffected by the new retry loop', async () => {
+    const { service, article } = buildService();
+    article.findUnique.mockResolvedValueOnce(null);
+    article.create.mockResolvedValueOnce(
+      stubArticleRow({ slug: 'company-news' }),
+    );
+
+    const result = await service.create({
+      slug: 'company-news',
+      title: 'Company News',
+      excerpt: 'Excerpt',
+      content: '<p>Body</p>',
+    });
+
+    expect(article.create).toHaveBeenCalledTimes(1);
+    expect(result.slug).toBe('company-news');
+  });
+
+  it('a successful update with a new, available slug is completely unaffected by the new retry loop', async () => {
+    const { service, article } = buildService();
+    article.findUnique
+      .mockResolvedValueOnce(stubArticleRow({ id: 'a1' }))
+      .mockResolvedValueOnce(null);
+    article.update.mockResolvedValueOnce(
+      stubArticleRow({ slug: 'renamed-article' }),
+    );
+
+    const result = await service.update('a1', {
+      slug: 'renamed-article',
+    });
+
+    expect(article.update).toHaveBeenCalledTimes(1);
+    expect(result.slug).toBe('renamed-article');
+  });
+});

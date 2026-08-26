@@ -13,6 +13,8 @@ function buildService() {
     findUnique: jest
       .fn<Promise<unknown>, unknown[]>()
       .mockResolvedValue(stubGalleryCategoryRow()),
+    count: jest.fn<Promise<number>, unknown[]>().mockResolvedValue(0),
+    create: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
     delete: jest.fn<Promise<unknown>, unknown[]>(),
   };
@@ -413,5 +415,249 @@ describe('GalleryService.removeCategory — TOCTOU protection (P0.4-D3)', () => 
     galleryCategory.delete.mockRejectedValue(otherError);
 
     await expect(service.removeCategory('cat-1')).rejects.toBe(otherError);
+  });
+});
+
+// P2-1 — `uniqueCategorySlug()` is a check-then-act read-loop; these tests prove
+// `createCategory()`'s actual write is now also guarded against the TOCTOU race window where
+// two concurrent requests both see the same slug as free before either commits.
+// GalleryCategory's existing "always succeeds, auto-suffix on collision" UX is preserved
+// exactly — a recognized conflict re-resolves the next available suffix and retries, it never
+// becomes a user-facing error. `updateCategory()` never writes `slug` (immutable after
+// creation, confirmed by `UpdateGalleryCategoryDto` having no `slug` field at all), so it has
+// no equivalent race and is intentionally left unguarded.
+//
+// Note: `buildService()`'s `galleryCategory.findUnique` defaults to resolving a truthy stub row
+// (for `assertCategoryExists()`'s convenience elsewhere in this file) — every test below must
+// therefore explicitly sequence its slug-availability checks, ending in a `null`/falsy
+// resolution, or `uniqueCategorySlug()`'s while-loop would never terminate.
+describe('GalleryService.createCategory — slug uniqueness race hardening (P2-1)', () => {
+  it('1. a normal create with no collision uses the requested slug as-is', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique.mockResolvedValueOnce(null); // uniqueCategorySlug: free
+    galleryCategory.create.mockResolvedValueOnce(
+      stubGalleryCategoryRow({ slug: 'test-category' }),
+    );
+
+    await service.createCategory({
+      name: 'Test Category',
+      slug: 'test-category',
+    });
+
+    expect(galleryCategory.create).toHaveBeenCalledTimes(1);
+    const [call] = galleryCategory.create.mock.calls[0] as [
+      { data: { slug: string } },
+    ];
+    expect(call.data.slug).toBe('test-category');
+  });
+
+  it('2. the existing uniqueCategorySlug() mechanism still resolves a pre-existing collision to -2, with no P2002 involved', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique
+      .mockResolvedValueOnce(stubGalleryCategoryRow()) // 'test-category' taken
+      .mockResolvedValueOnce(null); // 'test-category-2' free
+    galleryCategory.create.mockResolvedValueOnce(
+      stubGalleryCategoryRow({ slug: 'test-category-2' }),
+    );
+
+    await service.createCategory({
+      name: 'Test Category',
+      slug: 'test-category',
+    });
+
+    expect(galleryCategory.create).toHaveBeenCalledTimes(1);
+    const [call] = galleryCategory.create.mock.calls[0] as [
+      { data: { slug: string } },
+    ];
+    expect(call.data.slug).toBe('test-category-2');
+  });
+
+  it('3. a P2002 unique-violation on the actual create() triggers a retry', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique
+      .mockResolvedValueOnce(null) // first uniqueCategorySlug: free
+      .mockResolvedValueOnce(stubGalleryCategoryRow()) // retry: 'test-category' now taken
+      .mockResolvedValueOnce(null); // 'test-category-2' free
+    galleryCategory.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Unique constraint failed'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockResolvedValueOnce(
+        stubGalleryCategoryRow({ slug: 'test-category-2' }),
+      );
+
+    await service.createCategory({
+      name: 'Test Category',
+      slug: 'test-category',
+    });
+
+    expect(galleryCategory.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('4. the retry after a P2002 succeeds with the next available suffix and returns the created category', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(stubGalleryCategoryRow())
+      .mockResolvedValueOnce(null);
+    galleryCategory.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Unique constraint failed'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockResolvedValueOnce(
+        stubGalleryCategoryRow({ slug: 'test-category-2' }),
+      );
+
+    const result = await service.createCategory({
+      name: 'Test Category',
+      slug: 'test-category',
+    });
+
+    const [, secondCall] = galleryCategory.create.mock.calls as [
+      unknown,
+      [{ data: { slug: string } }],
+    ];
+    expect(secondCall[0].data.slug).toBe('test-category-2');
+    expect(result.slug).toBe('test-category-2');
+  });
+
+  it('5. the Prisma 7 driver-adapter fallback (P2039 + originalCode 23505) on create() also triggers a retry', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(stubGalleryCategoryRow())
+      .mockResolvedValueOnce(null);
+    galleryCategory.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('unmapped'), {
+          code: 'P2039',
+          meta: { driverAdapterError: { cause: { originalCode: '23505' } } },
+        }),
+      )
+      .mockResolvedValueOnce(
+        stubGalleryCategoryRow({ slug: 'test-category-2' }),
+      );
+
+    const result = await service.createCategory({
+      name: 'Test Category',
+      slug: 'test-category',
+    });
+
+    expect(galleryCategory.create).toHaveBeenCalledTimes(2);
+    expect(result.slug).toBe('test-category-2');
+  });
+
+  it('6. multiple consecutive collisions on the actual write advance the suffix correctly', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique
+      .mockResolvedValueOnce(null) // first uniqueCategorySlug: 'test-category' free
+      // retry #1: 'test-category' taken, 'test-category-2' free
+      .mockResolvedValueOnce(stubGalleryCategoryRow())
+      .mockResolvedValueOnce(null)
+      // retry #2: 'test-category' taken, 'test-category-2' taken, 'test-category-3' free
+      .mockResolvedValueOnce(stubGalleryCategoryRow())
+      .mockResolvedValueOnce(stubGalleryCategoryRow())
+      .mockResolvedValueOnce(null);
+    galleryCategory.create
+      .mockRejectedValueOnce(
+        Object.assign(new Error('boom'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockRejectedValueOnce(
+        Object.assign(new Error('boom'), {
+          code: 'P2002',
+          meta: { target: ['slug'] },
+        }),
+      )
+      .mockResolvedValueOnce(
+        stubGalleryCategoryRow({ slug: 'test-category-3' }),
+      );
+
+    const result = await service.createCategory({
+      name: 'Test Category',
+      slug: 'test-category',
+    });
+
+    expect(galleryCategory.create).toHaveBeenCalledTimes(3);
+    const [, , thirdCall] = galleryCategory.create.mock.calls as [
+      unknown,
+      unknown,
+      [{ data: { slug: string } }],
+    ];
+    expect(thirdCall[0].data.slug).toBe('test-category-3');
+    expect(result.slug).toBe('test-category-3');
+  });
+
+  it('7. an unrelated Prisma error on create is re-thrown unchanged, never treated as a slug retry', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique.mockResolvedValueOnce(null);
+    const unrelated = Object.assign(new Error('connection lost'), {
+      code: 'P1001',
+    });
+    galleryCategory.create.mockRejectedValueOnce(unrelated);
+
+    await expect(
+      service.createCategory({
+        name: 'Test Category',
+        slug: 'test-category',
+      }),
+    ).rejects.toBe(unrelated);
+    expect(galleryCategory.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('8. the retry loop is bounded and cannot loop forever — it rethrows the last recognized conflict once the limit is exhausted', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique.mockResolvedValue(null); // every uniqueCategorySlug() call sees it as free
+    const persistentConflict = Object.assign(new Error('always conflicts'), {
+      code: 'P2002',
+      meta: { target: ['slug'] },
+    });
+    galleryCategory.create.mockRejectedValue(persistentConflict);
+
+    await expect(
+      service.createCategory({
+        name: 'Test Category',
+        slug: 'test-category',
+      }),
+    ).rejects.toBe(persistentConflict);
+    // MAX_SLUG_RETRY_ATTEMPTS (5) retries + the original attempt = 6 total calls, then it gives up.
+    expect(galleryCategory.create).toHaveBeenCalledTimes(6);
+  });
+
+  it('9. updateCategory() remains slug-immutable — no slug key is ever written, and no slug-retry behavior was added', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.update.mockResolvedValueOnce(stubGalleryCategoryRow());
+
+    await service.updateCategory('cat-1', { name: 'New Name' });
+
+    expect(galleryCategory.update).toHaveBeenCalledTimes(1);
+    const [call] = galleryCategory.update.mock.calls[0] as [
+      { data: Record<string, unknown> },
+    ];
+    expect(call.data).not.toHaveProperty('slug');
+  });
+
+  it('a successful create with no collision is completely unaffected by the new retry loop', async () => {
+    const { service, galleryCategory } = buildService();
+    galleryCategory.findUnique.mockResolvedValueOnce(null);
+    galleryCategory.create.mockResolvedValueOnce(
+      stubGalleryCategoryRow({ slug: 'test-category' }),
+    );
+
+    const result = await service.createCategory({
+      name: 'Test Category',
+      slug: 'test-category',
+    });
+
+    expect(galleryCategory.create).toHaveBeenCalledTimes(1);
+    expect(result.slug).toBe('test-category');
   });
 });
