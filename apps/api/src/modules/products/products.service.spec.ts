@@ -13,6 +13,7 @@ function buildService() {
     findFirst: jest.fn<Promise<unknown>, unknown[]>(),
     findMany: jest.fn<Promise<unknown[]>, unknown[]>(),
     count: jest.fn<Promise<number>, unknown[]>(),
+    create: jest.fn<Promise<unknown>, [{ data: Record<string, unknown> }]>(),
     update: jest.fn<
       Promise<unknown>,
       [{ where: unknown; data: Record<string, unknown> }]
@@ -1008,5 +1009,165 @@ describe('toProductDetail — SEO translation fallback (Phase 5E-D)', () => {
 
     expect(result.meta_title).toBe('โคปราที่ดีที่สุด');
     expect(result.meta_description).toBe('English SEO description.');
+  });
+});
+
+// P2-1 — assertSlugAvailable() is a check-then-act pre-check; these tests prove the actual
+// create()/update() write is now also guarded against the TOCTOU race window where two
+// concurrent requests both pass the pre-check before either commits.
+describe('ProductsService.create/update — slug uniqueness race hardening (P2-1)', () => {
+  it('1. the existing pre-check still rejects a duplicate slug on create with 409, before ever reaching product.create', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValueOnce({ id: 'other-product' }); // assertSlugAvailable
+
+    await expect(
+      service.create({ slug: 'copra', name: 'Copra' } as never),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(product.create).not.toHaveBeenCalled();
+  });
+
+  it('2. the existing pre-check still rejects a duplicate slug on update with 409, before ever reaching product.update', async () => {
+    const { service, product } = buildService();
+    product.findUnique
+      .mockResolvedValueOnce({ id: 'p1', translations: null }) // assertExists
+      .mockResolvedValueOnce({ id: 'other-product' }); // assertSlugAvailable
+
+    await expect(service.update('p1', { slug: 'copra' })).rejects.toMatchObject(
+      { code: 'CONFLICT' },
+    );
+    expect(product.update).not.toHaveBeenCalled();
+  });
+
+  it('3. a P2002 unique-violation reaching the actual create() call is converted to 409 CONFLICT', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValueOnce(null); // assertSlugAvailable passes
+    product.create.mockRejectedValueOnce(
+      Object.assign(new Error('Unique constraint failed'), {
+        code: 'P2002',
+        meta: { target: ['slug'] },
+      }),
+    );
+
+    await expect(
+      service.create({ slug: 'copra', name: 'Copra' } as never),
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'Slug "copra" is already in use.',
+    });
+  });
+
+  it('4. a P2002 unique-violation reaching the actual update() call is converted to 409 CONFLICT', async () => {
+    const { service, product } = buildService();
+    product.findUnique
+      .mockResolvedValueOnce({ id: 'p1', translations: null }) // assertExists
+      .mockResolvedValueOnce(null); // assertSlugAvailable passes
+    product.update.mockRejectedValueOnce(
+      Object.assign(new Error('Unique constraint failed'), {
+        code: 'P2002',
+        meta: { target: ['slug'] },
+      }),
+    );
+
+    await expect(service.update('p1', { slug: 'copra' })).rejects.toMatchObject(
+      {
+        code: 'CONFLICT',
+        message: 'Slug "copra" is already in use.',
+      },
+    );
+  });
+
+  it('5. the Prisma 7 driver-adapter fallback (P2039 + originalCode 23505) reaching create() is converted to 409', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValueOnce(null);
+    product.create.mockRejectedValueOnce(
+      Object.assign(new Error('unmapped'), {
+        code: 'P2039',
+        meta: { driverAdapterError: { cause: { originalCode: '23505' } } },
+      }),
+    );
+
+    await expect(
+      service.create({ slug: 'copra', name: 'Copra' } as never),
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'Slug "copra" is already in use.',
+    });
+  });
+
+  it('6. the Prisma 7 driver-adapter fallback (P2039 + originalCode 23505) reaching update() is converted to 409', async () => {
+    const { service, product } = buildService();
+    product.findUnique
+      .mockResolvedValueOnce({ id: 'p1', translations: null })
+      .mockResolvedValueOnce(null);
+    product.update.mockRejectedValueOnce(
+      Object.assign(new Error('unmapped'), {
+        code: 'P2039',
+        meta: { driverAdapterError: { cause: { originalCode: '23505' } } },
+      }),
+    );
+
+    await expect(service.update('p1', { slug: 'copra' })).rejects.toMatchObject(
+      {
+        code: 'CONFLICT',
+        message: 'Slug "copra" is already in use.',
+      },
+    );
+  });
+
+  it('7. an unrelated Prisma error on create is re-thrown unchanged, never converted to CONFLICT', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValueOnce(null);
+    const unrelated = Object.assign(new Error('connection lost'), {
+      code: 'P1001',
+    });
+    product.create.mockRejectedValueOnce(unrelated);
+
+    await expect(
+      service.create({ slug: 'copra', name: 'Copra' } as never),
+    ).rejects.toBe(unrelated);
+  });
+
+  it('8. an unrelated Prisma error on update is re-thrown unchanged, never converted to CONFLICT', async () => {
+    const { service, product } = buildService();
+    product.findUnique
+      .mockResolvedValueOnce({ id: 'p1', translations: null })
+      .mockResolvedValueOnce(null);
+    const unrelated = Object.assign(new Error('connection lost'), {
+      code: 'P1001',
+    });
+    product.update.mockRejectedValueOnce(unrelated);
+
+    await expect(service.update('p1', { slug: 'copra' })).rejects.toBe(
+      unrelated,
+    );
+  });
+
+  it('9. a successful create is completely unaffected by the new try/catch', async () => {
+    const { service, product } = buildService();
+    product.findUnique.mockResolvedValueOnce(null);
+    product.create.mockResolvedValueOnce(stubProductRow({ slug: 'copra' }));
+
+    const result = await service.create({
+      slug: 'copra',
+      name: 'Copra',
+    } as never);
+
+    expect(result.slug).toBe('copra');
+  });
+
+  it('10. a successful update is completely unaffected by the new try/catch', async () => {
+    const { service, product } = buildService();
+    product.findUnique
+      .mockResolvedValueOnce({ id: 'p1', translations: null })
+      .mockResolvedValueOnce(null);
+    product.update.mockResolvedValueOnce(
+      stubProductRow({ slug: 'copra-updated' }),
+    );
+
+    const result = await service.update('p1', {
+      slug: 'copra-updated',
+    });
+
+    expect(result.slug).toBe('copra-updated');
   });
 });

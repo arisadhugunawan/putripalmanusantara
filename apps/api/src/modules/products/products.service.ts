@@ -528,35 +528,46 @@ export class ProductsService {
 
   async create(dto: CreateProductDto) {
     await this.assertSlugAvailable(dto.slug);
-    const product = await this.prisma.product.create({
-      data: {
-        slug: dto.slug,
-        name: dto.name,
-        titleAccent: emptyToNull(dto.title_accent),
-        category: dto.category,
-        shortDescription: dto.short_description,
-        fullDescription: dto.full_description,
-        coverImageId: dto.cover_image_id,
-        metaTitle: dto.meta_title,
-        metaDescription: dto.meta_description,
-        isFeatured: dto.is_featured ?? false,
-        status: dto.status ?? 'draft',
-        order: dto.order ?? 0,
-        translations: dto.translations,
-        specifications: dto.specifications
-          ? {
-              create: dto.specifications.map((spec, index) => ({
-                specKey: spec.spec_key,
-                specValue: spec.spec_value,
-                order: spec.order ?? index,
-                group: spec.group ?? 'specification',
-              })),
-            }
-          : undefined,
-      },
-      include: DETAIL_INCLUDE,
-    });
-    return toProductDetail(product);
+    try {
+      const product = await this.prisma.product.create({
+        data: {
+          slug: dto.slug,
+          name: dto.name,
+          titleAccent: emptyToNull(dto.title_accent),
+          category: dto.category,
+          shortDescription: dto.short_description,
+          fullDescription: dto.full_description,
+          coverImageId: dto.cover_image_id,
+          metaTitle: dto.meta_title,
+          metaDescription: dto.meta_description,
+          isFeatured: dto.is_featured ?? false,
+          status: dto.status ?? 'draft',
+          order: dto.order ?? 0,
+          translations: dto.translations,
+          specifications: dto.specifications
+            ? {
+                create: dto.specifications.map((spec, index) => ({
+                  specKey: spec.spec_key,
+                  specValue: spec.spec_value,
+                  order: spec.order ?? index,
+                  group: spec.group ?? 'specification',
+                })),
+              }
+            : undefined,
+        },
+        include: DETAIL_INCLUDE,
+      });
+      return toProductDetail(product);
+    } catch (error) {
+      if (this.isProductSlugConflict(error)) {
+        throw new ApiException(
+          'CONFLICT',
+          `Slug "${dto.slug}" is already in use.`,
+          409,
+        );
+      }
+      throw error;
+    }
   }
 
   async update(id: string, dto: UpdateProductDto) {
@@ -564,35 +575,46 @@ export class ProductsService {
     if (dto.slug) {
       await this.assertSlugAvailable(dto.slug, id);
     }
-    const product = await this.prisma.product.update({
-      where: { id },
-      data: {
-        slug: dto.slug,
-        name: dto.name,
-        titleAccent:
-          dto.title_accent === undefined
-            ? undefined
-            : emptyToNull(dto.title_accent),
-        category: dto.category,
-        shortDescription: dto.short_description,
-        fullDescription: dto.full_description,
-        coverImageId: dto.cover_image_id,
-        metaTitle: dto.meta_title,
-        metaDescription: dto.meta_description,
-        isFeatured: dto.is_featured,
-        // `status` is deliberately NOT written here (`UpdateProductDto` still accepts it for
-        // API backward-compatibility, but this is now the "Save Draft" action — it must never
-        // change public visibility). Only publish()/unpublish()/restoreSnapshot() may change
-        // status, matching the brief's Edit → Save Draft → Publish separation.
-        order: dto.order,
-        translations: mergeTranslations(
-          existing.translations,
-          dto.translations,
-        ),
-      },
-      include: DETAIL_INCLUDE,
-    });
-    return toProductDetail(product);
+    try {
+      const product = await this.prisma.product.update({
+        where: { id },
+        data: {
+          slug: dto.slug,
+          name: dto.name,
+          titleAccent:
+            dto.title_accent === undefined
+              ? undefined
+              : emptyToNull(dto.title_accent),
+          category: dto.category,
+          shortDescription: dto.short_description,
+          fullDescription: dto.full_description,
+          coverImageId: dto.cover_image_id,
+          metaTitle: dto.meta_title,
+          metaDescription: dto.meta_description,
+          isFeatured: dto.is_featured,
+          // `status` is deliberately NOT written here (`UpdateProductDto` still accepts it for
+          // API backward-compatibility, but this is now the "Save Draft" action — it must never
+          // change public visibility). Only publish()/unpublish()/restoreSnapshot() may change
+          // status, matching the brief's Edit → Save Draft → Publish separation.
+          order: dto.order,
+          translations: mergeTranslations(
+            existing.translations,
+            dto.translations,
+          ),
+        },
+        include: DETAIL_INCLUDE,
+      });
+      return toProductDetail(product);
+    } catch (error) {
+      if (this.isProductSlugConflict(error)) {
+        throw new ApiException(
+          'CONFLICT',
+          `Slug "${dto.slug}" is already in use.`,
+          409,
+        );
+      }
+      throw error;
+    }
   }
 
   /** True only for the FK RESTRICT violation on `ProductPublishedSnapshot.productId` — never a
@@ -930,6 +952,33 @@ export class ProductsService {
         409,
       );
     }
+  }
+
+  /** True only for the unique-constraint violation on `Product.slug` — never a false positive
+   * on some other unrelated DB error. Defense-in-depth for the TOCTOU race between
+   * `assertSlugAvailable()`'s pre-check and this method's own write: two concurrent requests
+   * choosing the same slug can both pass the pre-check before either commits, so the write
+   * itself must also be guarded. Mirrors `isProductDeleteRestrictedByPublishHistory()`'s proven
+   * dual-shape check for the identical Prisma-7 driver-adapter quirk (P0.4-D2): `P2002` is
+   * Prisma's documented "unique constraint failed" code, but under Prisma 7's driver-adapter
+   * architecture this can instead surface as the generic unmapped code `P2039`, with the real
+   * Postgres SQLSTATE (`23505` = `unique_violation`) preserved at
+   * `error.meta.driverAdapterError.cause.originalCode`. */
+  private isProductSlugConflict(error: unknown): boolean {
+    const err = error as {
+      code?: string;
+      meta?: {
+        target?: string[];
+        driverAdapterError?: { cause?: { originalCode?: string } };
+      };
+    };
+    if (err.code === 'P2002') {
+      return !err.meta?.target || err.meta.target.includes('slug');
+    }
+    return (
+      err.code === 'P2039' &&
+      err.meta?.driverAdapterError?.cause?.originalCode === '23505'
+    );
   }
 
   private async assertGalleryItemExists(productId: string, galleryId: string) {
