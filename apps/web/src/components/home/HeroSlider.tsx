@@ -167,17 +167,30 @@ function Carousel({ slides, decorativeGraphics }: { slides: HeroSlide[]; decorat
 }
 
 function SlideBackground({ slide, active, priority }: { slide: HeroSlide; active: boolean; priority: boolean }) {
+  // Lighter flat overlay on mobile only: a landscape hero photo cropped into a portrait frame
+  // already reads darker/more zoomed-in than on desktop, so the CMS-configured overlay (tuned
+  // against the desktop crop) compounded into a near-blank dark panel on small screens.
+  // Proportional (not a flat subtraction) so it scales sensibly whatever opacity an admin has
+  // set. The gradient overlay below is untouched on purpose — it's what keeps the heading/CTA
+  // text readable and isn't specific to the mobile-crop issue.
+  const mobileOverlayOpacity = (slide.overlay_opacity * 0.6) / 100;
+  const desktopOverlayOpacity = slide.overlay_opacity / 100;
+
   return (
     <>
       <div key={active ? `${slide.id}-active` : `${slide.id}-idle`} className={cn("absolute inset-0", active && "animate-ken-burns")}>
-        <div className="hidden h-full w-full sm:block">
+        {/* `relative` here (not just `absolute inset-0` on the ancestor above) — next/image's
+            `fill` requires its DIRECT parent to be positioned, not merely an ancestor. Without
+            it, Next.js logs an "invalid position" warning on every load. */}
+        <div className="relative hidden h-full w-full sm:block">
           <SafeImage media={slide.desktop_image} priority={priority} sizes="100vw" />
         </div>
-        <div className="block h-full w-full sm:hidden">
+        <div className="relative block h-full w-full sm:hidden">
           <SafeImage media={slide.mobile_image ?? slide.desktop_image} priority={priority} sizes="100vw" />
         </div>
       </div>
-      <div className="absolute inset-0 bg-neutral-900" style={{ opacity: slide.overlay_opacity / 100 }} aria-hidden="true" />
+      <div className="absolute inset-0 block bg-neutral-900 sm:hidden" style={{ opacity: mobileOverlayOpacity }} aria-hidden="true" />
+      <div className="absolute inset-0 hidden bg-neutral-900 sm:block" style={{ opacity: desktopOverlayOpacity }} aria-hidden="true" />
       <div className="absolute inset-0 bg-linear-to-t from-neutral-900/70 via-neutral-900/10 to-transparent" aria-hidden="true" />
     </>
   );

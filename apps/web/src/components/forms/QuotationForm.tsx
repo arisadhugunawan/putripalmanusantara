@@ -77,7 +77,10 @@ export function QuotationForm({
     try {
       await submitQuotationRequest({
         ...form,
-        product_id: productId ?? selectedProductId ?? undefined,
+        // `selectedProductId` defaults to "" (the picker's "optional" empty option) — `??`
+        // only falls through on null/undefined, not on an empty string, so without the `||`
+        // an unselected picker sent product_id: "" straight to the API instead of omitting it.
+        product_id: productId ?? (selectedProductId || undefined),
         source_page: sourcePage,
       });
       setStatus("success");

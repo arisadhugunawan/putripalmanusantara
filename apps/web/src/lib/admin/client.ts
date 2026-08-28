@@ -18,6 +18,9 @@ async function request<T>(
       // request came from this app's own JS — a lightweight CSRF defense layered on top of the
       // auth cookie's own SameSite=Lax, enforced server-side for every /admin/* mutation.
       "X-Requested-With": "XMLHttpRequest",
+      // Skips localtunnel's anti-abuse interstitial when API_URL is a temporary *.loca.lt
+      // tunnel (dev-only convenience). Harmless no-op against any other host.
+      "bypass-tunnel-reminder": "true",
       ...(options?.body && !(options.body instanceof FormData)
         ? { "Content-Type": "application/json" }
         : {}),

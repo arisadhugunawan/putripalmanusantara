@@ -24,4 +24,25 @@ describe('assertNoProductionAuthBypass', () => {
       }),
     ).not.toThrow();
   });
+
+  it('does not throw in production when the flag is explicitly false', () => {
+    expect(() =>
+      assertNoProductionAuthBypass({
+        NODE_ENV: 'production',
+        ADMIN_AUTH_DISABLED: 'false',
+      }),
+    ).not.toThrow();
+  });
+
+  it.each(['TRUE', 'True', ' true '])(
+    'throws in production regardless of casing/whitespace (%s)',
+    (value) => {
+      expect(() =>
+        assertNoProductionAuthBypass({
+          NODE_ENV: 'production',
+          ADMIN_AUTH_DISABLED: value,
+        }),
+      ).toThrow(/Refusing to start/);
+    },
+  );
 });

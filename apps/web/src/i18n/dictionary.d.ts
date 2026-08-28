@@ -61,6 +61,7 @@ export interface Dictionary {
     breadcrumbProducts: string;
     noProductsYet: string;
     viewProduct: string;
+    overview: string;
     description: string;
     specifications: string;
     shapeAndSize: string;

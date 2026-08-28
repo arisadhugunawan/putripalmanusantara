@@ -18,8 +18,13 @@ export interface SubmitResult {
   status: string;
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`);
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  // Skips localtunnel's anti-abuse interstitial when API_URL is a temporary *.loca.lt tunnel
+  // (dev-only convenience). Harmless no-op against any other host.
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { "bypass-tunnel-reminder": "true" },
+    signal,
+  });
   const json = (await res.json()) as ApiResponse<T>;
   if (!json.success) {
     throw new ApiRequestError(json.error.message, res.status, json.error.code);
@@ -27,11 +32,15 @@ async function get<T>(path: string): Promise<T> {
   return json.data;
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "bypass-tunnel-reminder": "true",
+    },
     body: JSON.stringify(body),
+    signal,
   });
   const json = (await res.json()) as ApiResponse<T>;
   if (!json.success) {
@@ -50,12 +59,12 @@ export function submitContact(input: CreateContactInput) {
 
 // --- PPN AI Assistant + Floating WhatsApp Button ---
 
-export function getAiSettings() {
-  return get<PublicAiSettings>("/ai/settings");
+export function getAiSettings(signal?: AbortSignal) {
+  return get<PublicAiSettings>("/ai/settings", signal);
 }
 
-export function getAiQuickQuestions(language: string) {
-  return get<AiQuickQuestion[]>(`/ai/quick-questions?language=${encodeURIComponent(language)}`);
+export function getAiQuickQuestions(language: string, signal?: AbortSignal) {
+  return get<AiQuickQuestion[]>(`/ai/quick-questions?language=${encodeURIComponent(language)}`, signal);
 }
 
 export function sendAiChatMessage(request: AiChatRequest) {
@@ -77,10 +86,11 @@ export function recordAiAnalyticsEvent(
   });
 }
 
-export function generateWhatsAppMessage(productSlug?: string | null, language?: string) {
+export function generateWhatsAppMessage(productSlug?: string | null, language?: string, signal?: AbortSignal) {
   return post<{ whatsapp_number: string; display_name: string; message: string; url: string; enabled: boolean }>(
     "/ai/whatsapp/generate",
     { product_slug: productSlug, language },
+    signal,
   );
 }
 

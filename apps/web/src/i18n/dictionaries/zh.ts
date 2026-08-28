@@ -57,6 +57,7 @@ const dictionary: Dictionary = {
     breadcrumbProducts: "产品",
     noProductsYet: "暂无可用产品。",
     viewProduct: "查看产品",
+    overview: "产品概览",
     description: "产品描述",
     specifications: "产品规格",
     shapeAndSize: "形状与尺寸",

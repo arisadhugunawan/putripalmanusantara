@@ -57,6 +57,7 @@ const dictionary: Dictionary = {
     breadcrumbProducts: "Sản phẩm",
     noProductsYet: "Hiện chưa có sản phẩm nào.",
     viewProduct: "Xem sản phẩm",
+    overview: "Tổng Quan Sản Phẩm",
     description: "Mô tả",
     specifications: "Thông số kỹ thuật",
     shapeAndSize: "Hình dạng & Kích thước",

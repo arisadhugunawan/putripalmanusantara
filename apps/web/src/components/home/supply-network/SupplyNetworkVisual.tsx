@@ -26,9 +26,14 @@ function nodeAngleDeg(index: number, total: number) {
 
 function orbitPosition(index: number, total: number) {
   const angle = (nodeAngleDeg(index, total) * Math.PI) / 180;
+  // Rounded — Math.cos/Math.sin are implementation-defined at the ULP level (ECMA-262), so
+  // Node's V8 (SSR) and the browser's V8 (hydration) can disagree in the last 1-2 digits of a
+  // full-precision float, which React then flags as a hydration mismatch even though both
+  // values are "correct". 4 decimal places is already far more precision than this percentage
+  // position needs visually, and comfortably clears of that divergence.
   return {
-    left: `${CENTER_PCT + ORBIT_RADIUS_PCT * Math.cos(angle)}%`,
-    top: `${CENTER_PCT + ORBIT_RADIUS_PCT * Math.sin(angle)}%`,
+    left: `${(CENTER_PCT + ORBIT_RADIUS_PCT * Math.cos(angle)).toFixed(4)}%`,
+    top: `${(CENTER_PCT + ORBIT_RADIUS_PCT * Math.sin(angle)).toFixed(4)}%`,
   };
 }
 
@@ -365,8 +370,11 @@ function BackgroundGlobe({ countries, revealed }: { countries: SupplyNetworkCoun
       <span className="absolute inset-0 rounded-full border border-primary-200/15" style={{ transform: "scale(0.5)" }} />
       {countries.map((country, index) => {
         const angle = ((index / countries.length) * 360 + 40) * (Math.PI / 180);
-        const left = 50 + 47 * Math.cos(angle);
-        const top = 50 + 47 * Math.sin(angle);
+        // Rounded — see orbitPosition()'s comment above: Math.cos/Math.sin can differ between
+        // Node's V8 (SSR) and the browser's V8 (hydration) at the ULP level, which React then
+        // flags as a hydration mismatch on this attribute even though both values are "correct".
+        const left = (50 + 47 * Math.cos(angle)).toFixed(4);
+        const top = (50 + 47 * Math.sin(angle)).toFixed(4);
         return (
           <span
             key={country.id}

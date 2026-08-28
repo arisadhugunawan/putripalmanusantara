@@ -57,6 +57,7 @@ const dictionary: Dictionary = {
     breadcrumbProducts: "ผลิตภัณฑ์",
     noProductsYet: "ยังไม่มีผลิตภัณฑ์ในขณะนี้",
     viewProduct: "ดูผลิตภัณฑ์",
+    overview: "ภาพรวมผลิตภัณฑ์",
     description: "รายละเอียด",
     specifications: "ข้อมูลจำเพาะ",
     shapeAndSize: "รูปทรงและขนาด",

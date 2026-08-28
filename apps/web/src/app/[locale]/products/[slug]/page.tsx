@@ -2,7 +2,7 @@ import { Container } from "@ppn/ui-components";
 import type { Locale } from "@ppn/shared-types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPageHeader, getProductBySlug, getProducts, getPublicSettings } from "@/lib/api";
+import { getPageHeader, getProductBySlug, getProducts, getPublicContactPage } from "@/lib/api";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { ApplicationCards } from "@/components/products/catalogue/ApplicationCards";
@@ -50,10 +50,10 @@ export async function generateMetadata({
  */
 export default async function ProductDetailPage({ params }: PageProps<"/[locale]/products/[slug]">) {
   const { slug, locale } = await params;
-  const [product, allProducts, settings, headerConfig, dictionary] = await Promise.all([
+  const [product, allProducts, contactPage, headerConfig, dictionary] = await Promise.all([
     getProductBySlug(slug, locale),
     getProducts(locale),
-    getPublicSettings(locale).catch(() => null),
+    getPublicContactPage(locale).catch(() => null),
     getPageHeader("product-detail", locale),
     getDictionary(locale as Locale),
   ]);
@@ -122,7 +122,7 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
           {/* Section 2 — Product Overview */}
           <section aria-labelledby="overview-heading">
             <h2 id="overview-heading" className="sr-only">
-              Product Overview
+              {t.overview}
             </h2>
             <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:items-start">
               <ProductImageViewer
@@ -139,7 +139,7 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
                   <ProductQuickActions
                     productName={product.name}
                     downloads={downloads}
-                    whatsappNumber={settings?.whatsapp_number}
+                    whatsappNumber={contactPage?.settings.whatsapp_number}
                     catalogueLabel={t.catalogue}
                     whatsappMessageTemplate={t.whatsappMessageTemplate}
                   />

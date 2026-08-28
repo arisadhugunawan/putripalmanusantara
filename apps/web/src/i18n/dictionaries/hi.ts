@@ -57,6 +57,7 @@ const dictionary: Dictionary = {
     breadcrumbProducts: "उत्पाद",
     noProductsYet: "अभी तक कोई उत्पाद उपलब्ध नहीं है।",
     viewProduct: "उत्पाद देखें",
+    overview: "उत्पाद अवलोकन",
     description: "विवरण",
     specifications: "विशेष विवरण",
     shapeAndSize: "आकार एवं माप",

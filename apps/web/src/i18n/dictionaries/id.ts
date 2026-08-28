@@ -57,6 +57,7 @@ const dictionary: Dictionary = {
     breadcrumbProducts: "Produk",
     noProductsYet: "Belum ada produk tersedia.",
     viewProduct: "Lihat Produk",
+    overview: "Ikhtisar Produk",
     description: "Deskripsi",
     specifications: "Spesifikasi",
     shapeAndSize: "Bentuk & Ukuran",

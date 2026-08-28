@@ -1,8 +1,5 @@
 import { Test } from '@nestjs/testing';
-import {
-  ApiException,
-  SpamValidationException,
-} from '../../common/exceptions/api.exception';
+import { ApiException } from '../../common/exceptions/api.exception';
 import { EmailService } from '../../email/email.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QuotationsService } from './quotations.service';
@@ -43,16 +40,19 @@ describe('QuotationsService', () => {
     service = moduleRef.get(QuotationsService);
   });
 
-  // FR-QUOTE-03 / docs/05-api.md §6 — a filled honeypot field must reject the submission
-  // before it ever touches the database or sends an email.
-  it('rejects submissions with a filled honeypot field', async () => {
-    await expect(
-      service.createQuotationRequest({
-        ...baseDto,
-        website: 'https://spammer.example',
-      }),
-    ).rejects.toBeInstanceOf(SpamValidationException);
+  // FR-QUOTE-03 / docs/05-api.md §6 — a filled honeypot field must never touch the database
+  // or send an email, but the caller gets back a response shaped exactly like a real success
+  // (same fields, same implied 201) so an automated submitter can't fingerprint the trap by a
+  // different status/error code.
+  it('returns a success-shaped result for a filled honeypot field without persisting anything', async () => {
+    const result = await service.createQuotationRequest({
+      ...baseDto,
+      website: 'https://spammer.example',
+    });
 
+    expect(typeof result.id).toBe('string');
+    expect(result.id.length).toBeGreaterThan(0);
+    expect(result.status).toBe('new');
     expect(prisma.quotationRequest.create).not.toHaveBeenCalled();
     expect(email.sendAdminNotification).not.toHaveBeenCalled();
   });

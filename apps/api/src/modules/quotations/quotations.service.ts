@@ -3,10 +3,7 @@ import {
   buildPaginationMeta,
   parseSort,
 } from '../../common/dto/pagination-query.dto';
-import {
-  ApiException,
-  SpamValidationException,
-} from '../../common/exceptions/api.exception';
+import { ApiException } from '../../common/exceptions/api.exception';
 import { EmailService } from '../../email/email.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -23,10 +20,22 @@ const SORT_FIELD_MAP: Record<string, string> = {
 };
 
 /** docs/05-api.md §6 — honeypot must stay empty; a filled value flags the request as spam. */
-function assertNotSpam(website: string | undefined) {
-  if (website && website.trim().length > 0) {
-    throw new SpamValidationException();
+function isSpam(website: string | undefined): boolean {
+  return !!website && website.trim().length > 0;
+}
+
+/** A honeypot hit gets a response indistinguishable from a real submission — same shape, same
+ * 201 status — so an automated submitter can't learn to detect and route around the trap by
+ * watching for a different status/error code (previously `400 SPAM_VALIDATION_FAILED`, a clean
+ * tell). Nothing is written to the database and no notification email goes out; the `id` is a
+ * throwaway value shaped like a real one, never a row that exists anywhere. */
+function fakeSuccessResult(): { id: string; status: string } {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = 'c';
+  for (let i = 0; i < 24; i++) {
+    id += alphabet[Math.floor(Math.random() * alphabet.length)];
   }
+  return { id, status: 'new' };
 }
 
 @Injectable()
@@ -37,7 +46,7 @@ export class QuotationsService {
   ) {}
 
   async createQuotationRequest(dto: CreateQuotationRequestDto) {
-    assertNotSpam(dto.website);
+    if (isSpam(dto.website)) return fakeSuccessResult();
 
     let product: { name: string } | null = null;
     if (dto.product_id) {
@@ -84,7 +93,7 @@ export class QuotationsService {
   }
 
   async createContact(dto: CreateContactDto) {
-    assertNotSpam(dto.website);
+    if (isSpam(dto.website)) return fakeSuccessResult();
 
     const entry = await this.prisma.quotationRequest.create({
       data: {

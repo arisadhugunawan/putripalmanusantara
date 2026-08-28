@@ -55,6 +55,7 @@ const dictionary: Dictionary = {
     breadcrumbProducts: "Products",
     noProductsYet: "No products available yet.",
     viewProduct: "View Product",
+    overview: "Product Overview",
     description: "Description",
     specifications: "Specifications",
     shapeAndSize: "Shape & Size",

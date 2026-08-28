@@ -23,7 +23,10 @@ export function ProductCatalogueCard({
         className="flex h-full flex-col overflow-hidden p-0 shadow-card transition-transform duration-300 hover:-translate-y-1.5"
       >
         <div className="relative aspect-4/3 overflow-hidden">
-          <div className="h-full w-full transition-transform duration-500 group-hover:scale-105">
+          {/* `relative` here, not just on the ancestor above — next/image's `fill` requires
+              its DIRECT parent to be positioned, otherwise Next.js logs an "invalid position"
+              warning on every load. */}
+          <div className="relative h-full w-full transition-transform duration-500 group-hover:scale-105">
             <SafeImage media={product.cover_image} sizes="(min-width: 1024px) 25vw, 50vw" />
           </div>
         </div>

@@ -28,6 +28,12 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: { 'frame-ancestors': ["'self'", ...corsOrigins] },
       },
+      // This API's /uploads/* media is meant to be embedded as <img> on the public site — the
+      // default `same-origin` (or `same-site`) policy blocks that whenever the web origin and
+      // this API sit on different sites, e.g. web/API served from two different subdomains of a
+      // shared PSL-listed parent (as happens with the dev-only Cloudflare/localtunnel quick
+      // tunnels, each `*.trycloudflare.com`/`*.loca.lt` subdomain is its own "site").
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
   app.use(cookieParser());

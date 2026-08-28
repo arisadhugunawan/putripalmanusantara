@@ -8,7 +8,10 @@
 export function assertNoProductionAuthBypass(
   env: NodeJS.ProcessEnv = process.env,
 ): void {
-  if (env.NODE_ENV === 'production' && env.ADMIN_AUTH_DISABLED === 'true') {
+  // Case-insensitive: a human hand-editing an env file is just as likely to type "True" or
+  // "TRUE" as "true", and this fail-safe must catch all of them, not just an exact match.
+  const authDisabled = env.ADMIN_AUTH_DISABLED?.trim().toLowerCase() === 'true';
+  if (env.NODE_ENV === 'production' && authDisabled) {
     throw new Error(
       'Refusing to start: ADMIN_AUTH_DISABLED=true while NODE_ENV=production. ' +
         'This flag disables all admin authentication and must never be set in production. ' +

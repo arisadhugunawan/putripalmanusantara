@@ -30,15 +30,16 @@ describe('AiTranslationService.translateFields', () => {
   it('parses a well-formed JSON response into the expected shape', async () => {
     const { service, provider } = buildService();
     provider.isConfigured.mockReturnValue(true);
-    provider.generateReply.mockResolvedValue(
-      JSON.stringify({
-        id: { name: 'Kelapa Semi Kupas' },
-        zh: { name: '半剥壳椰子' },
-        th: { name: 'มะพร้าวปอกเปลือกครึ่งลูก' },
-        hi: { name: 'अर्ध-छिली नारियल' },
-        vi: { name: 'Dừa gọt vỏ một phần' },
-      }),
-    );
+    // One request per locale — each resolves with a flat `{field: value}` object, not nested
+    // under the locale key, since the locale is no longer part of the response shape.
+    provider.generateReply
+      .mockResolvedValueOnce(JSON.stringify({ name: 'Kelapa Semi Kupas' }))
+      .mockResolvedValueOnce(JSON.stringify({ name: '半剥壳椰子' }))
+      .mockResolvedValueOnce(
+        JSON.stringify({ name: 'มะพร้าวปอกเปลือกครึ่งลูก' }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ name: 'अर्ध-छिली नारियल' }))
+      .mockResolvedValueOnce(JSON.stringify({ name: 'Dừa gọt vỏ một phần' }));
 
     const result = await service.translateFields(
       { name: 'Semi Husked Coconut' },
@@ -49,26 +50,25 @@ describe('AiTranslationService.translateFields', () => {
     expect(result.translations.id).toEqual({ name: 'Kelapa Semi Kupas' });
     expect(result.translations.zh).toEqual({ name: '半剥壳椰子' });
     expect(Object.keys(result.translations)).toHaveLength(5);
+    expect(provider.generateReply).toHaveBeenCalledTimes(5);
   });
 
   it('strips a markdown code fence around the JSON before parsing', async () => {
     const { service, provider } = buildService();
     provider.isConfigured.mockReturnValue(true);
-    provider.generateReply.mockResolvedValue(
-      '```json\n{"id":{"name":"Kelapa"}}\n```',
-    );
+    provider.generateReply.mockResolvedValue('```json\n{"name":"Kelapa"}\n```');
 
     const result = await service.translateFields({ name: 'Coconut' }, ['id']);
 
     expect(result.translations.id).toEqual({ name: 'Kelapa' });
   });
 
-  it('drops a locale whose value is not an object rather than throwing', async () => {
+  it('drops a locale whose response is not valid JSON, without affecting the other locales', async () => {
     const { service, provider } = buildService();
     provider.isConfigured.mockReturnValue(true);
-    provider.generateReply.mockResolvedValue(
-      JSON.stringify({ id: { name: 'Kelapa' }, zh: 'not an object' }),
-    );
+    provider.generateReply
+      .mockResolvedValueOnce(JSON.stringify({ name: 'Kelapa' })) // id
+      .mockResolvedValueOnce('not valid JSON'); // zh
 
     const result = await service.translateFields({ name: 'Coconut' }, [
       'id',
@@ -123,9 +123,7 @@ describe('AiTranslationService.translateFields', () => {
     const { service, provider } = buildService();
     provider.isConfigured.mockReturnValue(true);
     provider.generateReply.mockResolvedValue(
-      JSON.stringify({
-        id: { name: 'Kelapa', category: '', shortDescription: 123 },
-      }),
+      JSON.stringify({ name: 'Kelapa', category: '', shortDescription: 123 }),
     );
 
     const result = await service.translateFields(
@@ -169,12 +167,10 @@ describe('AiTranslationService.generateAndMerge', () => {
   it('deep-merges the generated translations into the existing column, preserving untouched locales/fields', async () => {
     const { service, provider } = buildService();
     provider.isConfigured.mockReturnValue(true);
-    provider.generateReply.mockResolvedValue(
-      JSON.stringify({
-        id: { name: 'Kelapa' },
-        th: { name: 'มะพร้าว' },
-      }),
-    );
+    provider.generateReply
+      .mockResolvedValueOnce(JSON.stringify({ name: 'Kelapa' })) // id
+      .mockResolvedValueOnce(JSON.stringify({})) // zh — nothing translated
+      .mockResolvedValueOnce(JSON.stringify({ name: 'มะพร้าว' })); // th
 
     const result = await service.generateAndMerge(
       { name: 'Coconut' },
@@ -221,13 +217,13 @@ describe('AiTranslationService.generateAndMerge', () => {
 
     await service.generateAndMerge({ name: 'Coconut' }, null);
 
-    // translateFields builds its prompt from targetLocales — assert indirectly via the
-    // systemPrompt it produced, since that's the only place the locale list surfaces.
-    const [callArgs] = provider.generateReply.mock.calls;
-    const systemPrompt = (callArgs[0] as { systemPrompt: string }).systemPrompt;
-    for (const locale of ['id', 'zh', 'th', 'hi', 'vi']) {
-      expect(systemPrompt).toContain(`"${locale}"`);
-    }
-    expect(systemPrompt).not.toContain('"en"');
+    // One generateReply call per locale — assert indirectly via each call's systemPrompt,
+    // since the locale is the only thing that varies between them.
+    expect(provider.generateReply).toHaveBeenCalledTimes(5);
+    const localeCodes = provider.generateReply.mock.calls.map((call) => {
+      const { systemPrompt } = call[0] as { systemPrompt: string };
+      return /locale code: "(\w+)"/.exec(systemPrompt)?.[1];
+    });
+    expect(localeCodes.sort()).toEqual(['hi', 'id', 'th', 'vi', 'zh']);
   });
 });

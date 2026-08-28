@@ -38,29 +38,48 @@ export function AiFloatingWidgets({ locale, logoUrl }: { locale: string; logoUrl
   const [aiSettings, setAiSettings] = useState<PublicAiSettings | null>(null);
   const [quickQuestions, setQuickQuestions] = useState<AiQuickQuestion[]>([]);
   const [whatsappUrl, setWhatsappUrl] = useState<string>("");
+  const [whatsappReady, setWhatsappReady] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [hasOpenedOnce, setHasOpenedOnce] = useState(false);
 
   const pageContext = { path: pathname, product_slug: productSlug };
   const chat = useAiChat({ language: locale, pageContext });
 
+  // AbortController cleanup so React Strict Mode's dev-only double-invoke (mount → cleanup →
+  // mount) cancels the first in-flight request instead of letting both land — without this,
+  // every page load fired two complete settings/quick-questions round trips.
   useEffect(() => {
-    void getAiSettings()
+    const controller = new AbortController();
+    void getAiSettings(controller.signal)
       .then(setAiSettings)
-      .catch(() => setAiSettings(null));
-    void getAiQuickQuestions(locale)
+      .catch(() => {
+        if (!controller.signal.aborted) setAiSettings(null);
+      });
+    void getAiQuickQuestions(locale, controller.signal)
       .then(setQuickQuestions)
-      .catch(() => setQuickQuestions([]));
+      .catch(() => {
+        if (!controller.signal.aborted) setQuickQuestions([]);
+      });
+    return () => controller.abort();
   }, [locale]);
 
+  // The WhatsApp link is only resolved once the visitor shows real intent to use it (hovering/
+  // focusing the floating button, or opening the chat) — never eagerly on page load, so a page
+  // view alone no longer triggers this request at all.
   useEffect(() => {
-    void generateWhatsAppMessage(productSlug, locale)
+    if (!whatsappReady) return;
+    const controller = new AbortController();
+    void generateWhatsAppMessage(productSlug, locale, controller.signal)
       .then((res) => setWhatsappUrl(res.url))
       .catch(() => undefined);
-  }, [productSlug, locale]);
+    return () => controller.abort();
+  }, [whatsappReady, productSlug, locale]);
+
+  const prepareWhatsApp = useCallback(() => setWhatsappReady(true), []);
 
   const openChat = useCallback(() => {
     setChatOpen(true);
+    setWhatsappReady(true);
     if (!hasOpenedOnce && chat.sessionId) {
       setHasOpenedOnce(true);
       void recordAiAnalyticsEvent("chat_opened", chat.sessionId, locale).catch(() => undefined);
@@ -122,6 +141,9 @@ export function AiFloatingWidgets({ locale, logoUrl }: { locale: string; logoUrl
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Chat with PPN Team on WhatsApp"
+            onMouseEnter={prepareWhatsApp}
+            onFocus={prepareWhatsApp}
+            onTouchStart={prepareWhatsApp}
             onClick={() => void recordAiAnalyticsEvent("whatsapp_clicked", chat.sessionId || "anon", locale).catch(() => undefined)}
             className={cn(
               "relative flex h-14 w-14 items-center justify-center rounded-full bg-[#A8D85A] text-[#183D2B] shadow-[0_12px_30px_-8px_rgba(24,61,43,0.45)] transition-transform duration-200 hover:scale-105 motion-reduce:transition-none",

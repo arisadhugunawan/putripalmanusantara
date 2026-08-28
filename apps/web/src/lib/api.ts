@@ -52,6 +52,10 @@ async function request<T>(path: string, revalidate: number | false = DEFAULT_REV
   const res = await fetch(`${API_URL}${path}`, {
     next: noStore ? undefined : { revalidate },
     cache: noStore ? "no-store" : undefined,
+    // Skips localtunnel's anti-abuse interstitial when API_URL is a temporary *.loca.lt tunnel
+    // (dev-only convenience) — a real server-to-server fetch can't click through a warning
+    // page. Harmless no-op against any other host.
+    headers: { "bypass-tunnel-reminder": "true" },
   });
 
   const json = (await res.json()) as ApiResponse<T>;

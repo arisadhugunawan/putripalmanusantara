@@ -102,81 +102,100 @@ export class AiTranslationService {
       return { available: true, translations: {} };
     }
 
-    const systemPrompt = buildTranslationPrompt(fieldNames, targetLocales);
     const userMessage = JSON.stringify(
       Object.fromEntries(fieldNames.map((key) => [key, sourceFields[key]])),
     );
 
-    try {
-      const raw = await this.provider.generateReply({
-        systemPrompt,
-        history: [],
-        userMessage,
-        maxOutputTokens: 2000,
-      });
-      return {
-        available: true,
-        translations: parseResponse(raw, targetLocales, fieldNames),
-      };
-    } catch (err) {
-      this.logger.warn(
-        `Translation generation failed: ${(err as Error).message}`,
-      );
-      return { available: true, translations: {} };
+    const result: Partial<Record<Locale, Record<string, string>>> = {};
+    // One Groq request per target locale, rather than one big request asking for every locale
+    // at once. Groq's free tier enforces a hard tokens-per-minute ceiling on `openai/gpt-oss-20b`
+    // (verified live: a single all-locales request for a large field set — About Company's
+    // Profile — was rejected outright with HTTP 413 "Request too large... Limit 8000, Requested
+    // 8504"; raising max_tokens further only makes that worse). Splitting per locale keeps each
+    // request's footprint small enough to clear that ceiling regardless of how many
+    // fields/locales a resource has. It also isolates failures: if the model garbles one
+    // locale's output badly enough to break JSON.parse (observed with a Vietnamese response),
+    // only that locale is lost instead of discarding every other, perfectly good one.
+    for (const locale of targetLocales) {
+      const systemPrompt = buildTranslationPrompt(fieldNames, locale);
+      try {
+        const raw = await this.provider.generateReply({
+          systemPrompt,
+          history: [],
+          userMessage,
+          maxOutputTokens: 3000,
+        });
+        const fields = parseLocaleResponse(raw, fieldNames);
+        if (fields) result[locale] = fields;
+      } catch (err) {
+        this.logger.warn(
+          `Translation generation failed for locale "${locale}": ${(err as Error).message}`,
+        );
+      }
     }
+    return { available: true, translations: result };
   }
 }
 
+/** Spelled-out English language names for the prompt, rather than passing raw ISO codes —
+ * verified live that a bare code like "vi" is unreliable (a Groq model given "vi" returned
+ * Indonesian text instead of Vietnamese for one whole response), while naming the language
+ * explicitly ("Vietnamese") got it right every time. */
+const LOCALE_LANGUAGE_NAMES: Record<Exclude<Locale, 'en'>, string> = {
+  id: 'Indonesian',
+  zh: 'Chinese (Simplified)',
+  th: 'Thai',
+  hi: 'Hindi',
+  vi: 'Vietnamese',
+};
+
 function buildTranslationPrompt(
   fieldNames: string[],
-  targetLocales: readonly Locale[],
+  targetLocale: Locale,
 ): string {
-  const localeList = targetLocales.map((l) => `"${l}"`).join(', ');
   const fieldList = fieldNames.map((f) => `"${f}"`).join(', ');
+  const languageName =
+    LOCALE_LANGUAGE_NAMES[targetLocale as Exclude<Locale, 'en'>] ??
+    targetLocale;
   return (
     "You are a professional translator for an Indonesian coconut-export company's website CMS. " +
-    'Translate the given English field values into each requested target locale, preserving ' +
-    'meaning and tone for a B2B export/trade audience — do not add, omit, or embellish ' +
-    'information. Respond with ONLY a single valid JSON object, no markdown code fences, no ' +
-    'commentary before or after it, shaped exactly as: ' +
-    '{ "<locale>": { "<fieldName>": "<translated text>", ... }, ... } ' +
-    `— one top-level key per locale in [${localeList}], each containing exactly the field ` +
-    `names [${fieldList}] translated from the English values given in the user message.`
+    `Translate the given English field values into ${languageName} (locale code: ` +
+    `"${targetLocale}"), preserving meaning and tone for a B2B export/trade audience — do not ` +
+    'add, omit, or embellish information. Respond with ONLY a single valid JSON object, no ' +
+    'markdown code fences, no commentary before or after it, shaped exactly as: ' +
+    '{ "<fieldName>": "<translated text>", ... } — containing exactly the field names ' +
+    `[${fieldList}], with the field names left exactly as given (unchanged, English, ` +
+    `lowercase) and only their values translated into ${languageName}.`
   );
 }
 
 /** Models sometimes wrap JSON in a ```json fence despite instructions, or add stray text
- * around it — recovered here rather than failing outright. Any locale/field the model omitted,
- * or that isn't a non-empty string, is simply left out of the result (same as an admin who
- * hasn't translated that field yet) rather than treated as an error. */
-function parseResponse(
+ * around it — recovered here rather than failing outright. Any field the model omitted, or
+ * that isn't a non-empty string, is simply left out of the result (same as an admin who hasn't
+ * translated that field yet) rather than treated as an error. Returns `null` when nothing
+ * usable came back at all (e.g. malformed JSON), so the caller can skip this locale without
+ * writing an empty object over any translation it already had. */
+function parseLocaleResponse(
   raw: string,
-  targetLocales: readonly Locale[],
   fieldNames: string[],
-): Partial<Record<Locale, Record<string, string>>> {
+): Record<string, string> | null {
   const jsonText = extractJsonObject(raw);
-  if (!jsonText) return {};
+  if (!jsonText) return null;
 
   let data: unknown;
   try {
     data = JSON.parse(jsonText);
   } catch {
-    return {};
+    return null;
   }
-  if (typeof data !== 'object' || data === null) return {};
+  if (typeof data !== 'object' || data === null) return null;
 
-  const result: Partial<Record<Locale, Record<string, string>>> = {};
-  for (const locale of targetLocales) {
-    const block = (data as Record<string, unknown>)[locale];
-    if (typeof block !== 'object' || block === null) continue;
-    const fields: Record<string, string> = {};
-    for (const field of fieldNames) {
-      const value = (block as Record<string, unknown>)[field];
-      if (typeof value === 'string' && value.trim()) fields[field] = value;
-    }
-    if (Object.keys(fields).length > 0) result[locale] = fields;
+  const fields: Record<string, string> = {};
+  for (const field of fieldNames) {
+    const value = (data as Record<string, unknown>)[field];
+    if (typeof value === 'string' && value.trim()) fields[field] = value;
   }
-  return result;
+  return Object.keys(fields).length > 0 ? fields : null;
 }
 
 /** Per-locale translation coverage for a resource's own fields — shared by every module's
