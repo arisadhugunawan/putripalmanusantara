@@ -302,28 +302,20 @@
   }
 }
 
-/* "Our Supply Network" section — central PPN node breathing + connector dash-flow. Both are
-   pure CSS keyframes (compositor-friendly transform/background-position only), so the global
-   prefers-reduced-motion override above already neutralizes them with no extra JS. */
-@keyframes supply-network-breathe {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.015);
-  }
-}
-
+/* Shipment Terms route diagram (ShipmentRouteVisual.tsx) — connector dash-flow. Pure CSS
+   keyframe (compositor-friendly stroke-dashoffset only), so the global prefers-reduced-motion
+   override above already neutralizes it with no extra JS. Named "supply-network-*" from when
+   this was shared with the old Supply Network diagram — that section no longer uses it (see
+   SupplyNetworkVisual.tsx's 2026-08 redesign), but ShipmentRouteVisual.tsx still does. */
 @keyframes supply-network-flow {
   to {
     stroke-dashoffset: -28;
   }
 }
 
-/* Expanding halo behind the PPN node — a separate layer from supply-network-breathe above
-   (that one scales the node body itself; this is a static-sized ring that expands and fades).
-   Pure transform+opacity, no filter/box-shadow looping. */
+/* Expanding halo behind the Shipment Terms diagram's container icon — a static-sized ring that
+   expands and fades. Pure transform+opacity, no filter/box-shadow looping. Same
+   "supply-network-*" naming note as supply-network-flow above. */
 @keyframes supply-network-pulse-ring {
   0% {
     transform: translate(-50%, -50%) scale(1);
@@ -347,27 +339,6 @@
   100% {
     transform: scale(1.6);
     opacity: 0;
-  }
-}
-
-/* Slow-rotating decorative ring behind the Supply Network's orbiting nodes — purely ambient
-   (never applied to an interactive element, so click targets never move under the cursor).
-   20-40s/cycle per the redesign brief; paused on hover/click via the component's own state. */
-@keyframes supply-network-orbit-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Subtle idle float for Supply Network node icons — small, slow, no bounce. Staggered per node
-   via animation-delay so icons don't move in lockstep. */
-@keyframes supply-network-icon-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
   }
 }
 
