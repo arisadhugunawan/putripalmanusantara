@@ -14,10 +14,12 @@
     "build:web": "npm run build --workspace=web",
     "build:api": "npm run build --workspace=api",
     "build": "npm run build:api && npm run build:web",
+    "start:api:prod": "npm run prisma:migrate:deploy && npm run start:prod --workspace=api",
     "lint": "npm run lint --workspace=web && npm run lint --workspace=api",
     "format": "prettier --write .",
     "prisma:generate": "npm run prisma:generate --workspace=api",
     "prisma:migrate": "npm run prisma:migrate --workspace=api",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=api",
     "prisma:studio": "npm run prisma:studio --workspace=api"
   },
   "devDependencies": {

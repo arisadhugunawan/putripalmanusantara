@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
       // Temporary public tunnel (Cloudflare quick tunnel) fronting the API — changes every
       // restart, see the allowedDevOrigins comment above.
       { protocol: "https", hostname: "strip-wings-stage-expressed.trycloudflare.com", pathname: "/uploads/**" },
+      // Production API on Railway (docs/06-architecture.md §9 — backend hosting) — Railway's
+      // generated domains are always a subdomain of up.railway.app, so this wildcard covers the
+      // real service domain without needing to know it ahead of time. Still applies with
+      // MEDIA_STORAGE_DRIVER=local, since local uploads are served back through the API itself.
+      { protocol: "https", hostname: "**.up.railway.app", pathname: "/uploads/**" },
       // S3-compatible object storage in production, once S3_PUBLIC_URL is configured.
       { protocol: "https", hostname: "**.r2.dev" },
       { protocol: "https", hostname: "**.amazonaws.com" },
