@@ -15,21 +15,12 @@ function replaceLocaleInPath(pathname: string, nextLocale: Locale) {
 
 /** Plain-text trigger (flag + language code + chevron, no pill/border) opening a compact
  * flag/code list — mirrors a reference shipping-industry header's minimal nav-integrated style
- * rather than the boxed pill this used to be.
- *
- * `variant="dark"` (Footer's bottom bar, P2-4) swaps the trigger's text color for the light-on-
- * dark footer background — same component/locale-switching logic, no second implementation. */
-export function LanguageSwitcher({
-  locale,
-  label,
-  variant = "light",
-}: {
-  locale: Locale;
-  label: string;
-  variant?: "light" | "dark";
-}) {
+ * rather than the boxed pill this used to be. Header-only now (the Footer's copy of this was
+ * removed as a deliberate declutter — one switcher, not two). */
+export function LanguageSwitcher({ locale, label }: { locale: Locale; label: string }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -57,7 +48,36 @@ export function LanguageSwitcher({
     // eslint-disable-next-line react-hooks/immutability
     document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365}`;
     setOpen(false);
-    router.push(replaceLocaleInPath(pathname, next));
+    // Preserve the query string and hash by reading window.location directly at click time
+    // (not the reactive useSearchParams() hook — that requires a Suspense boundary around
+    // every page that renders it, and this component sits inside the layout that wraps every
+    // page including the statically-generated ones, so the hook would force them all out of
+    // static rendering) so switching language keeps the reader on the same
+    // page/anchor/filter state instead of quietly dropping it.
+    const { search, hash } = window.location;
+    router.push(`${replaceLocaleInPath(pathname, next)}${search}${hash}`);
+  }
+
+  // Roving arrow-key navigation across the open menu — the WAI-ARIA menu pattern's expected
+  // keyboard behavior beyond plain Tab order.
+  function onMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const items = menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    if (!items || items.length === 0) return;
+    const currentIndex = [...items].indexOf(document.activeElement as HTMLButtonElement);
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      items[(currentIndex + 1) % items.length]?.focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      items[(currentIndex - 1 + items.length) % items.length]?.focus();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      items[0]?.focus();
+    } else if (event.key === "End") {
+      event.preventDefault();
+      items[items.length - 1]?.focus();
+    }
   }
 
   return (
@@ -69,14 +89,11 @@ export function LanguageSwitcher({
         aria-label={label}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "flex items-center gap-2 text-body font-medium transition-colors",
-          variant === "dark"
-            ? open
-              ? "text-primary-400"
-              : "text-neutral-100 hover:text-primary-400"
-            : open
-              ? "text-primary-700"
-              : "text-neutral-900 hover:text-primary-700",
+          // p-2.5 -m-2.5: grows the invisible hit area to the ~44px touch-target guideline
+          // without changing the trigger's visible size (the negative margin cancels it back
+          // out for layout purposes, so the header row's spacing is unaffected).
+          "flex items-center gap-2 rounded-field p-2.5 -m-2.5 text-body font-medium transition-colors",
+          open ? "text-primary-700" : "text-neutral-900 hover:text-primary-700",
         )}
       >
         <span aria-hidden="true" className="text-[17px] leading-none">
@@ -87,14 +104,12 @@ export function LanguageSwitcher({
       </button>
 
       <div
+        ref={menuRef}
         role="menu"
         aria-label={label}
+        onKeyDown={onMenuKeyDown}
         className={cn(
-          "absolute right-0 z-50 grid w-24 overflow-hidden rounded-field border border-neutral-200 bg-white shadow-card-hover transition-all duration-200 ease-out",
-          // Footer's bottom bar is the last thing on the page — opening downward (the Header's
-          // convention, which has room below) would render off-screen and get clipped by the
-          // footer's own `overflow-hidden`. The dark variant opens upward instead.
-          variant === "dark" ? "bottom-full mb-2 origin-bottom-right" : "top-full mt-2 origin-top-right",
+          "absolute right-0 top-full z-50 mt-2 grid w-28 origin-top-right overflow-hidden rounded-field border border-neutral-200 bg-white shadow-card-hover transition-all duration-200 ease-out",
           open ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0",
         )}
       >
@@ -106,9 +121,10 @@ export function LanguageSwitcher({
                 key={code}
                 type="button"
                 role="menuitem"
+                aria-current={isActive || undefined}
                 onClick={() => selectLocale(code)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2 text-left text-body transition-colors hover:bg-neutral-50",
+                  "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-body transition-colors hover:bg-neutral-50",
                   isActive ? "font-semibold text-primary-700" : "text-neutral-700",
                 )}
               >

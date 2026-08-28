@@ -21,7 +21,6 @@ import {
 } from "@/components/contact/icons";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { BrandLogoImage } from "./BrandLogoImage";
-import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const PalmLeaf = DECORATIVE_SVGS.palm_leaf;
 const LeafOutline = DECORATIVE_SVGS.leaf_outline;
@@ -358,17 +357,16 @@ export async function Footer({
 
       {/* pb-28 on mobile only — some pages (e.g. Contact) render a `fixed inset-x-0 bottom-0
           sm:hidden` mobile contact bar (see MobileContactBar.tsx) that would otherwise sit on
-          top of the language switcher below; that component's own convention is reserving
-          space rather than fighting z-index, applied here since the Footer has no way to know
-          whether the current page has that bar. sm:hidden kicks in at the exact same breakpoint
+          top of this bar; that component's own convention is reserving space rather than
+          fighting z-index, applied here since the Footer has no way to know whether the
+          current page has that bar. sm:hidden kicks in at the exact same breakpoint
           MobileContactBar itself hides at, so desktop/tablet padding is untouched. */}
       <div className="relative bg-primary-700 pb-28 pt-5 sm:py-5">
-        <Container className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-          <p className="text-center text-small text-white sm:text-left">
+        <Container className="flex items-center justify-center">
+          <p className="text-center text-small text-white">
             © {new Date().getFullYear()} {footerSettings?.company_name ?? "CV Putri Palma Nusantara"}.{" "}
             {dictionary.footer.rightsReserved}
           </p>
-          <LanguageSwitcher locale={locale} label={dictionary.nav.language} variant="dark" />
         </Container>
       </div>
     </footer>

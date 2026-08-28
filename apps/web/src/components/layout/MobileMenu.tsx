@@ -138,7 +138,11 @@ function MobileLanguageSection({ locale, label }: { locale: Locale; label: strin
     // eslint-disable-next-line react-hooks/immutability
     document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365}`;
     setOpen(false);
-    router.push(replaceLocaleInPath(pathname, next));
+    // Preserve the query string and hash — same fix as LanguageSwitcher.tsx's selectLocale,
+    // read at click time (not useSearchParams()) so this stays safe inside the layout that
+    // wraps every statically-generated page.
+    const { search, hash } = window.location;
+    router.push(`${replaceLocaleInPath(pathname, next)}${search}${hash}`);
   }
 
   return (
