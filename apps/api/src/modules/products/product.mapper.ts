@@ -47,6 +47,7 @@ export function toProductSummary(
 ): ProductSummary {
   const t = translate(product, product.translations, locale, [
     'name',
+    'titleAccent',
     'category',
     'shortDescription',
   ]);
@@ -54,7 +55,7 @@ export function toProductSummary(
     id: product.id,
     slug: product.slug,
     name: t.name,
-    title_accent: product.titleAccent,
+    title_accent: t.titleAccent,
     category: t.category,
     short_description: t.shortDescription,
     cover_image: product.coverImage ? toMedia(product.coverImage) : null,

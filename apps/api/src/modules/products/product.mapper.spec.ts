@@ -1,4 +1,4 @@
-import { toProductDetail } from './product.mapper';
+import { toProductDetail, toProductSummary } from './product.mapper';
 
 function stubProduct(overrides: Record<string, unknown> = {}) {
   return {
@@ -70,6 +70,41 @@ function stubPackaging(overrides: Record<string, unknown> = {}) {
 // path (DTO/service) and the raw `translations` passthrough these sub-models needed for the
 // Admin to actually author them. These tests cover both: locale resolution (already correct,
 // now exercised) and the new passthrough (this phase's actual change to the mapper).
+// Products Multilingual — `titleAccent` was previously copied straight from the base row
+// regardless of `locale`, unlike its sibling name/category/shortDescription fields, even though
+// the `Product.translations` column already covers it. Fixed by adding `titleAccent` to the
+// same `translate()` field list its siblings already use.
+describe('toProductSummary — title_accent locale fallback', () => {
+  it('falls back to the base (English) title_accent when no translation exists for the locale', () => {
+    const product = stubProduct({ titleAccent: 'Premium Grade' });
+    const result = toProductSummary(product as never, 'id');
+    expect(result.title_accent).toBe('Premium Grade');
+  });
+
+  it('uses the translated title_accent when one exists for the requested locale', () => {
+    const product = stubProduct({
+      titleAccent: 'Premium Grade',
+      translations: { id: { titleAccent: 'Kelas Premium' } },
+    });
+    const result = toProductSummary(product as never, 'id');
+    expect(result.title_accent).toBe('Kelas Premium');
+  });
+
+  it('leaves title_accent as the base value for the default locale', () => {
+    const product = stubProduct({
+      titleAccent: 'Premium Grade',
+      translations: { id: { titleAccent: 'Kelas Premium' } },
+    });
+    const result = toProductSummary(product as never, 'en');
+    expect(result.title_accent).toBe('Premium Grade');
+  });
+
+  it('stays null when the product has no titleAccent at all', () => {
+    const product = stubProduct({ titleAccent: null });
+    expect(toProductSummary(product as never, 'id').title_accent).toBeNull();
+  });
+});
+
 describe('toProductDetail — ProductShape locale resolution', () => {
   it('resolves the requested locale for name/sizes', () => {
     const product = stubProduct({

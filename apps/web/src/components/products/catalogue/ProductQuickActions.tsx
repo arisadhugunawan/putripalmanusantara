@@ -14,12 +14,14 @@ export function ProductQuickActions({
   downloads,
   whatsappNumber,
   catalogueLabel = "Catalogue",
+  whatsappLabel = "WhatsApp",
   whatsappMessageTemplate = "Hi, I'm interested in {product}. Could you share more details?",
 }: {
   productName: string;
   downloads: ProductDownload[];
   whatsappNumber: string | undefined;
   catalogueLabel?: string;
+  whatsappLabel?: string;
   /** Must contain the literal "{product}" placeholder. */
   whatsappMessageTemplate?: string;
 }) {
@@ -47,7 +49,7 @@ export function ProductQuickActions({
           // the action is instantly recognisable; the rest of the page stays on PPN's palette.
           className="inline-flex items-center justify-center gap-2 rounded-button bg-[#1FA855] px-6 py-3.5 text-body font-medium text-white transition-[transform,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1a8f48] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a8f48]"
         >
-          WhatsApp
+          {whatsappLabel}
           <WhatsAppIcon />
         </a>
       )}

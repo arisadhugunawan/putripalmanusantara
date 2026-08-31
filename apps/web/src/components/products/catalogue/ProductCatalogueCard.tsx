@@ -12,9 +12,11 @@ import { SafeImage } from "@/components/SafeImage";
 export function ProductCatalogueCard({
   product,
   viewProductLabel = "View Product",
+  imageEmptyLabel = "Image coming soon",
 }: {
   product: ProductSummary;
   viewProductLabel?: string;
+  imageEmptyLabel?: string;
 }) {
   return (
     <Link href={`/products/${product.slug}`} className="group block h-full">
@@ -27,7 +29,11 @@ export function ProductCatalogueCard({
               its DIRECT parent to be positioned, otherwise Next.js logs an "invalid position"
               warning on every load. */}
           <div className="relative h-full w-full transition-transform duration-500 group-hover:scale-105">
-            <SafeImage media={product.cover_image} sizes="(min-width: 1024px) 25vw, 50vw" />
+            <SafeImage
+              media={product.cover_image}
+              sizes="(min-width: 1024px) 25vw, 50vw"
+              emptyLabel={imageEmptyLabel}
+            />
           </div>
         </div>
         <div className="flex flex-1 flex-col p-6">

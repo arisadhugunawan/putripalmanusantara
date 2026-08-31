@@ -76,6 +76,17 @@ const dictionary: Dictionary = {
     packagingPlasticNettedBags: "प्लास्टिक जाली बोरियां",
     whatsappMessageTemplate:
       "नमस्ते PPN टीम, मुझे {product} में रुचि है। कृपया विशेष विवरण, पैकेजिंग विकल्प और वर्तमान उपलब्धता साझा करें।",
+    whatsappCta: "WhatsApp",
+    closeAriaLabel: "बंद करें",
+    previousImageAriaLabel: "पिछली छवि",
+    nextImageAriaLabel: "अगली छवि",
+    zoomInAriaTemplate: "{name} को ज़ूम करें",
+    playVideoAriaTemplate: "वीडियो {index} चलाएं, कुल {total} में से",
+    viewImageAriaTemplate: "छवि {index} देखें, कुल {total} में से",
+    openPdfDocumentLabel: "पीडीएफ दस्तावेज़ खोलें",
+    viewFullSizeAriaTemplate: "{name} पूरे आकार में देखें",
+    closeDocumentAriaLabel: "दस्तावेज़ बंद करें",
+    imageComingSoonAriaLabel: "छवि जल्द ही उपलब्ध होगी",
   },
   contact: {
     metaTitle: "PPN से संपर्क करें | इंडोनेशियाई नारियल निर्यातक",

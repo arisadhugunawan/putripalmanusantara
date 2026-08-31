@@ -163,8 +163,8 @@ model Product {
   order            Int           @default(0)
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
-  /// i18n — non-English overrides for name/category/shortDescription/fullDescription/
-  /// metaTitle/metaDescription, e.g. {"id": {"name": "...", ...}, "zh": {...}}.
+  /// i18n — non-English overrides for name/titleAccent/category/shortDescription/
+  /// fullDescription/metaTitle/metaDescription, e.g. {"id": {"name": "...", ...}, "zh": {...}}.
   translations     Json?
 
   /// Set only by publish()/restoreSnapshot() — never by ordinary update() — so it reflects

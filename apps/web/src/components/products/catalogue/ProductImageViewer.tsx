@@ -21,10 +21,27 @@ export interface ProductImageViewerItem {
 export function ProductImageViewer({
   items,
   fallback,
+  closeLabel = "Close",
+  previousLabel = "Previous image",
+  nextLabel = "Next image",
+  zoomInAriaTemplate = "Zoom in on {name}",
+  playVideoAriaTemplate = "Play video {index} of {total}",
+  viewImageAriaTemplate = "View image {index} of {total}",
+  imageEmptyLabel = "Image coming soon",
 }: {
   items: ProductImageViewerItem[];
   /** Cover image to show when the product has no gallery yet. */
   fallback: Media | null;
+  closeLabel?: string;
+  previousLabel?: string;
+  nextLabel?: string;
+  /** Must contain the literal "{name}" placeholder. */
+  zoomInAriaTemplate?: string;
+  /** Must contain the literal "{index}" and "{total}" placeholders. */
+  playVideoAriaTemplate?: string;
+  /** Must contain the literal "{index}" and "{total}" placeholders. */
+  viewImageAriaTemplate?: string;
+  imageEmptyLabel?: string;
 }) {
   const [active, setActive] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -54,7 +71,7 @@ export function ProductImageViewer({
   if (items.length === 0) {
     return (
       <div className="relative aspect-4/3 overflow-hidden rounded-card">
-        <SafeImage media={fallback} />
+        <SafeImage media={fallback} emptyLabel={imageEmptyLabel} />
       </div>
     );
   }
@@ -81,10 +98,15 @@ export function ProductImageViewer({
         <button
           type="button"
           onClick={() => setLightboxOpen(true)}
-          aria-label={`Zoom in on ${current.media.alt_text}`}
+          aria-label={zoomInAriaTemplate.replace("{name}", current.media.alt_text)}
           className="group relative block aspect-4/3 w-full overflow-hidden rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600"
         >
-          <SafeImage media={current.media} sizes="(min-width: 1024px) 50vw, 100vw" priority />
+          <SafeImage
+            media={current.media}
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            priority
+            emptyLabel={imageEmptyLabel}
+          />
           <span className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-neutral-900 opacity-0 shadow-card transition-opacity duration-200 group-hover:opacity-100">
             <ZoomIcon />
           </span>
@@ -100,8 +122,12 @@ export function ProductImageViewer({
               onClick={() => setActive(index)}
               aria-label={
                 item.media.file_type === "video"
-                  ? `Play video ${index + 1} of ${items.length}`
-                  : `View image ${index + 1} of ${items.length}`
+                  ? playVideoAriaTemplate
+                      .replace("{index}", String(index + 1))
+                      .replace("{total}", String(items.length))
+                  : viewImageAriaTemplate
+                      .replace("{index}", String(index + 1))
+                      .replace("{total}", String(items.length))
               }
               aria-current={index === active ? "true" : undefined}
               className={cn(
@@ -114,7 +140,7 @@ export function ProductImageViewer({
                   <PlayBadge />
                 </span>
               ) : (
-                <SafeImage media={item.media} sizes="64px" />
+                <SafeImage media={item.media} sizes="64px" emptyLabel={imageEmptyLabel} />
               )}
             </button>
           ))}
@@ -131,7 +157,7 @@ export function ProductImageViewer({
           <button
             type="button"
             onClick={close}
-            aria-label="Close"
+            aria-label={closeLabel}
             className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/10"
           >
             <CloseIcon />
@@ -141,7 +167,7 @@ export function ProductImageViewer({
             <button
               type="button"
               onClick={showPrev}
-              aria-label="Previous image"
+              aria-label={previousLabel}
               className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white hover:bg-white/10 sm:left-4"
             >
               <ChevronIcon direction="left" />
@@ -162,7 +188,7 @@ export function ProductImageViewer({
             <button
               type="button"
               onClick={showNext}
-              aria-label="Next image"
+              aria-label={nextLabel}
               className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white hover:bg-white/10 sm:right-4"
             >
               <ChevronIcon direction="right" />

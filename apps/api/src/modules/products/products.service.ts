@@ -488,11 +488,12 @@ export class ProductsService {
     };
   }
 
-  /** The 6 master-content fields `translate()` actually resolves (see product.mapper.ts) —
+  /** The master-content fields `translate()` actually resolves (see product.mapper.ts) —
    * "translated" means an Admin (or a future generator) has filled in real text for a
    * locale, not just that the row exists. Never claims "translated" for an empty string. */
   private static readonly TRANSLATABLE_PRODUCT_FIELDS = [
     'name',
+    'titleAccent',
     'category',
     'shortDescription',
     'fullDescription',
@@ -512,6 +513,7 @@ export class ProductsService {
       select: {
         translations: true,
         name: true,
+        titleAccent: true,
         category: true,
         shortDescription: true,
         fullDescription: true,
@@ -541,6 +543,7 @@ export class ProductsService {
       where: { id },
       select: {
         name: true,
+        titleAccent: true,
         category: true,
         shortDescription: true,
         fullDescription: true,

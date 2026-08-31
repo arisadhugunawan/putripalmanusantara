@@ -13,7 +13,18 @@ import { useEffect, useRef, useState } from "react";
  * a lab report can hide the very figures a buyer came to check. Clicking one opens it full size;
  * PDFs open in a new tab instead, since a scan and a PDF need different viewers.
  */
-export function SpecLabDocuments({ items }: { items: ProductGalleryItem[] }) {
+export function SpecLabDocuments({
+  items,
+  openPdfDocumentLabel = "OPEN PDF DOCUMENT",
+  viewFullSizeAriaTemplate = "View {name} full size",
+  closeDocumentLabel = "Close document",
+}: {
+  items: ProductGalleryItem[];
+  openPdfDocumentLabel?: string;
+  /** Must contain the literal "{name}" placeholder. */
+  viewFullSizeAriaTemplate?: string;
+  closeDocumentLabel?: string;
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -61,14 +72,17 @@ export function SpecLabDocuments({ items }: { items: ProductGalleryItem[] }) {
                   className="group relative flex aspect-4/3 items-center justify-center overflow-hidden rounded-card border border-neutral-200 bg-white transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-card"
                 >
                   <span className="text-small font-semibold tracking-wide text-primary-700">
-                    OPEN PDF DOCUMENT
+                    {openPdfDocumentLabel}
                   </span>
                 </a>
               ) : (
                 <button
                   type="button"
                   onClick={() => setOpenIndex(index)}
-                  aria-label={`View ${item.caption || item.media.alt_text} full size`}
+                  aria-label={viewFullSizeAriaTemplate.replace(
+                    "{name}",
+                    item.caption || item.media.alt_text,
+                  )}
                   className="group relative aspect-4/3 overflow-hidden rounded-card border border-neutral-200 bg-white transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-card"
                 >
                   <Image
@@ -108,7 +122,7 @@ export function SpecLabDocuments({ items }: { items: ProductGalleryItem[] }) {
             <button
               ref={closeRef}
               type="button"
-              aria-label="Close document"
+              aria-label={closeDocumentLabel}
               onClick={() => setOpenIndex(null)}
               className="rounded-button px-3 py-1.5 text-small font-medium text-white/90 hover:bg-white/10"
             >

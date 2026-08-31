@@ -76,6 +76,17 @@ const dictionary: Dictionary = {
     packagingPlasticNettedBags: "Karung Jaring Plastik",
     whatsappMessageTemplate:
       "Halo Tim PPN, saya tertarik dengan {product}. Bisakah Anda membagikan spesifikasi, pilihan kemasan, dan ketersediaan saat ini?",
+    whatsappCta: "WhatsApp",
+    closeAriaLabel: "Tutup",
+    previousImageAriaLabel: "Gambar sebelumnya",
+    nextImageAriaLabel: "Gambar berikutnya",
+    zoomInAriaTemplate: "Perbesar {name}",
+    playVideoAriaTemplate: "Putar video {index} dari {total}",
+    viewImageAriaTemplate: "Lihat gambar {index} dari {total}",
+    openPdfDocumentLabel: "BUKA DOKUMEN PDF",
+    viewFullSizeAriaTemplate: "Lihat {name} ukuran penuh",
+    closeDocumentAriaLabel: "Tutup dokumen",
+    imageComingSoonAriaLabel: "Gambar akan segera hadir",
   },
   contact: {
     metaTitle: "Hubungi PPN | Eksportir Kelapa Indonesia",

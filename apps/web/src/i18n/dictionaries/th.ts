@@ -76,6 +76,17 @@ const dictionary: Dictionary = {
     packagingPlasticNettedBags: "ถุงตาข่ายพลาสติก",
     whatsappMessageTemplate:
       "สวัสดีทีมงาน PPN สนใจผลิตภัณฑ์ {product} รบกวนขอข้อมูลจำเพาะ ตัวเลือกบรรจุภัณฑ์ และสถานะสินค้าคงคลังปัจจุบัน",
+    whatsappCta: "WhatsApp",
+    closeAriaLabel: "ปิด",
+    previousImageAriaLabel: "รูปภาพก่อนหน้า",
+    nextImageAriaLabel: "รูปภาพถัดไป",
+    zoomInAriaTemplate: "ซูมดู {name}",
+    playVideoAriaTemplate: "เล่นวิดีโอที่ {index} จาก {total}",
+    viewImageAriaTemplate: "ดูรูปภาพที่ {index} จาก {total}",
+    openPdfDocumentLabel: "เปิดเอกสาร PDF",
+    viewFullSizeAriaTemplate: "ดู {name} ขนาดเต็ม",
+    closeDocumentAriaLabel: "ปิดเอกสาร",
+    imageComingSoonAriaLabel: "ภาพกำลังจะมาเร็ว ๆ นี้",
   },
   contact: {
     metaTitle: "ติดต่อ PPN | ผู้ส่งออกมะพร้าวจากอินโดนีเซีย",

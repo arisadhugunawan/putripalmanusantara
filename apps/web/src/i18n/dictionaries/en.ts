@@ -74,6 +74,17 @@ const dictionary: Dictionary = {
     packagingPlasticNettedBags: "Plastic Netted Bags",
     whatsappMessageTemplate:
       "Hello PPN Team, I'm interested in {product}. Could you share the specifications, packaging options, and current availability?",
+    whatsappCta: "WhatsApp",
+    closeAriaLabel: "Close",
+    previousImageAriaLabel: "Previous image",
+    nextImageAriaLabel: "Next image",
+    zoomInAriaTemplate: "Zoom in on {name}",
+    playVideoAriaTemplate: "Play video {index} of {total}",
+    viewImageAriaTemplate: "View image {index} of {total}",
+    openPdfDocumentLabel: "OPEN PDF DOCUMENT",
+    viewFullSizeAriaTemplate: "View {name} full size",
+    closeDocumentAriaLabel: "Close document",
+    imageComingSoonAriaLabel: "Image coming soon",
   },
   contact: {
     metaTitle: "Contact PPN | Indonesian Coconut Exporter",

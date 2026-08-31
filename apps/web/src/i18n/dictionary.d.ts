@@ -84,6 +84,28 @@ export interface Dictionary {
     /** WhatsApp pre-filled message — must contain the literal "{product}" placeholder,
      * substituted with the current product's (already-localized) name. */
     whatsappMessageTemplate: string;
+    /** Quick Action button label — WhatsApp is a brand name, so this reads identically
+     * (or near-identically) across locales, but still flows through the dictionary for
+     * architectural consistency with every other interactive label in this module. */
+    whatsappCta: string;
+    /** Shared lightbox controls — reused by both the overview image viewer and the
+     * product gallery grid, which show the same close/prev/next affordances. */
+    closeAriaLabel: string;
+    previousImageAriaLabel: string;
+    nextImageAriaLabel: string;
+    /** "Zoom in on {name}" — {name} is replaced with the (already-localized) media alt text. */
+    zoomInAriaTemplate: string;
+    /** "Play video {index} of {total}" — {index}/{total} are replaced with numbers. */
+    playVideoAriaTemplate: string;
+    /** "View image {index} of {total}" — {index}/{total} are replaced with numbers. */
+    viewImageAriaTemplate: string;
+    openPdfDocumentLabel: string;
+    /** "View {name} full size" — {name} is replaced with the (already-localized) caption
+     * or media alt text. */
+    viewFullSizeAriaTemplate: string;
+    closeDocumentAriaLabel: string;
+    /** aria-label shown on the placeholder graphic when a product has no image yet. */
+    imageComingSoonAriaLabel: string;
   };
   /** Contact page UI chrome — section headings, button/CTA text, WhatsApp message templates.
    * Real business data (email, WhatsApp number, business hours, office addresses, location

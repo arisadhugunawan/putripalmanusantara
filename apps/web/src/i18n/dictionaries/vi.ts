@@ -76,6 +76,17 @@ const dictionary: Dictionary = {
     packagingPlasticNettedBags: "Bao lưới nhựa",
     whatsappMessageTemplate:
       "Xin chào Đội ngũ PPN, tôi quan tâm đến {product}. Vui lòng cung cấp thông số kỹ thuật, tùy chọn đóng gói và tình trạng còn hàng hiện tại.",
+    whatsappCta: "WhatsApp",
+    closeAriaLabel: "Đóng",
+    previousImageAriaLabel: "Hình trước",
+    nextImageAriaLabel: "Hình tiếp theo",
+    zoomInAriaTemplate: "Phóng to {name}",
+    playVideoAriaTemplate: "Phát video {index} trong {total}",
+    viewImageAriaTemplate: "Xem hình {index} trong {total}",
+    openPdfDocumentLabel: "MỞ TÀI LIỆU PDF",
+    viewFullSizeAriaTemplate: "Xem {name} kích thước đầy đủ",
+    closeDocumentAriaLabel: "Đóng tài liệu",
+    imageComingSoonAriaLabel: "Hình ảnh sẽ sớm được cập nhật",
   },
   contact: {
     metaTitle: "Liên hệ PPN | Nhà xuất khẩu dừa Indonesia",

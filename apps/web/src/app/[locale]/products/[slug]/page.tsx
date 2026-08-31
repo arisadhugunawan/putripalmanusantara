@@ -128,6 +128,13 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
               <ProductImageViewer
                 items={galleryItems.map((item) => ({ id: item.id, media: item.media }))}
                 fallback={product.cover_image}
+                closeLabel={t.closeAriaLabel}
+                previousLabel={t.previousImageAriaLabel}
+                nextLabel={t.nextImageAriaLabel}
+                zoomInAriaTemplate={t.zoomInAriaTemplate}
+                playVideoAriaTemplate={t.playVideoAriaTemplate}
+                viewImageAriaTemplate={t.viewImageAriaTemplate}
+                imageEmptyLabel={t.imageComingSoonAriaLabel}
               />
 
               <div className="flex flex-col">
@@ -141,6 +148,7 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
                     downloads={downloads}
                     whatsappNumber={contactPage?.settings.whatsapp_number}
                     catalogueLabel={t.catalogue}
+                    whatsappLabel={t.whatsappCta}
                     whatsappMessageTemplate={t.whatsappMessageTemplate}
                   />
                 </div>
@@ -196,7 +204,12 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
                 {t.specLabTest}
               </h2>
               <div className="mt-6">
-                <SpecLabDocuments items={specLabItems} />
+                <SpecLabDocuments
+                  items={specLabItems}
+                  openPdfDocumentLabel={t.openPdfDocumentLabel}
+                  viewFullSizeAriaTemplate={t.viewFullSizeAriaTemplate}
+                  closeDocumentLabel={t.closeDocumentAriaLabel}
+                />
               </div>
             </section>
           )}
@@ -208,7 +221,13 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
                 {t.productGallery}
               </h2>
               <div className="mt-6">
-                <GalleryGrid items={galleryItems.map((item) => ({ id: item.id, media: item.media }))} />
+                <GalleryGrid
+                  items={galleryItems.map((item) => ({ id: item.id, media: item.media }))}
+                  closeLabel={t.closeAriaLabel}
+                  previousLabel={t.previousImageAriaLabel}
+                  nextLabel={t.nextImageAriaLabel}
+                  imageEmptyLabel={t.imageComingSoonAriaLabel}
+                />
               </div>
             </section>
           )}

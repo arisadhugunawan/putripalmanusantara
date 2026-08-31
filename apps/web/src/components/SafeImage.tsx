@@ -13,6 +13,7 @@ export function SafeImage({
   fill = true,
   priority,
   fit = "cover",
+  emptyLabel = "Image coming soon",
 }: {
   media: Media | null | undefined;
   className?: string;
@@ -23,6 +24,9 @@ export function SafeImage({
    * "contain" never crops, showing the whole photo letterboxed inside the box — use for
    * uploads whose aspect ratio isn't controlled (e.g. an article's Instagram-sourced cover). */
   fit?: "cover" | "contain";
+  /** aria-label on the placeholder shown when `media` is absent. Defaults to English —
+   * pass a localized string from callers that have a dictionary in scope. */
+  emptyLabel?: string;
 }) {
   if (media && media.file_type === "image") {
     return (
@@ -45,7 +49,7 @@ export function SafeImage({
         className,
       )}
       role="img"
-      aria-label="Image coming soon"
+      aria-label={emptyLabel}
     >
       <CoconutMark className="h-10 w-10 text-primary-600/40" />
     </div>

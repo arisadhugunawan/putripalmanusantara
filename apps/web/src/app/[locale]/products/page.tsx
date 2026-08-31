@@ -47,7 +47,12 @@ export default async function ProductsPage({ params }: PageProps<"/[locale]/prod
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {products.map((product) => (
-                <ProductCatalogueCard key={product.id} product={product} viewProductLabel={t.viewProduct} />
+                <ProductCatalogueCard
+                  key={product.id}
+                  product={product}
+                  viewProductLabel={t.viewProduct}
+                  imageEmptyLabel={t.imageComingSoonAriaLabel}
+                />
               ))}
             </div>
           )}

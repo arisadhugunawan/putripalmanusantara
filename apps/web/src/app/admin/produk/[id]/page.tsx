@@ -31,6 +31,7 @@ import { useSaveState } from "@/hooks/useSaveState";
 
 const TRANSLATABLE_FIELDS = [
   { key: "name", label: "Nama Produk", multiline: false },
+  { key: "titleAccent", label: "Bagian Judul Beraksen (opsional)", multiline: false },
   { key: "category", label: "Kategori", multiline: false },
   { key: "shortDescription", label: "Ringkasan Singkat", multiline: true },
   { key: "fullDescription", label: "Deskripsi Lengkap", multiline: true },

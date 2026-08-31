@@ -14,9 +14,25 @@ export interface GalleryGridItem {
 
 /**
  * FR-GAL-01/02/03 — responsive grid with lightbox viewer (next/prev, lazy-loaded thumbnails).
- * Reused for both the site Gallery and a single product's gallery (FR-PROD-04).
+ * Reused for both the site Gallery and a single product's gallery (FR-PROD-04). Label props
+ * default to English — the standalone Gallery page (out of scope for Products i18n) renders
+ * this without passing them, while the Product detail page passes its own dictionary strings.
  */
-export function GalleryGrid({ items }: { items: GalleryGridItem[] }) {
+export function GalleryGrid({
+  items,
+  emptyMessage = "No gallery items yet — check back soon.",
+  closeLabel = "Close",
+  previousLabel = "Previous image",
+  nextLabel = "Next image",
+  imageEmptyLabel = "Image coming soon",
+}: {
+  items: GalleryGridItem[];
+  emptyMessage?: string;
+  closeLabel?: string;
+  previousLabel?: string;
+  nextLabel?: string;
+  imageEmptyLabel?: string;
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const close = useCallback(() => setOpenIndex(null), []);
@@ -45,7 +61,7 @@ export function GalleryGrid({ items }: { items: GalleryGridItem[] }) {
   }, [openIndex, close, showPrev, showNext]);
 
   if (items.length === 0) {
-    return <p className="text-body text-neutral-600">No gallery items yet — check back soon.</p>;
+    return <p className="text-body text-neutral-600">{emptyMessage}</p>;
   }
 
   const active = openIndex !== null ? items[openIndex] : null;
@@ -60,7 +76,11 @@ export function GalleryGrid({ items }: { items: GalleryGridItem[] }) {
             onClick={() => setOpenIndex(index)}
             className="group relative aspect-square overflow-hidden rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600"
           >
-            <SafeImage media={item.media} sizes="(min-width: 1024px) 25vw, 33vw" />
+            <SafeImage
+              media={item.media}
+              sizes="(min-width: 1024px) 25vw, 33vw"
+              emptyLabel={imageEmptyLabel}
+            />
             <span className="absolute inset-0 bg-neutral-900/0 transition-colors duration-200 group-hover:bg-neutral-900/10" />
           </button>
         ))}
@@ -76,7 +96,7 @@ export function GalleryGrid({ items }: { items: GalleryGridItem[] }) {
           <button
             type="button"
             onClick={close}
-            aria-label="Close"
+            aria-label={closeLabel}
             className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/10"
           >
             <CloseIcon />
@@ -85,7 +105,7 @@ export function GalleryGrid({ items }: { items: GalleryGridItem[] }) {
           <button
             type="button"
             onClick={showPrev}
-            aria-label="Previous image"
+            aria-label={previousLabel}
             className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white hover:bg-white/10 sm:left-4"
           >
             <ChevronIcon direction="left" />
@@ -110,7 +130,7 @@ export function GalleryGrid({ items }: { items: GalleryGridItem[] }) {
           <button
             type="button"
             onClick={showNext}
-            aria-label="Next image"
+            aria-label={nextLabel}
             className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white hover:bg-white/10 sm:right-4"
           >
             <ChevronIcon direction="right" />
