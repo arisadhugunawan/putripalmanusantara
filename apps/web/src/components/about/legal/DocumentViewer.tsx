@@ -1,10 +1,23 @@
 "use client";
 
-import type { LegalCertificateDocument } from "@ppn/shared-types";
+import type { LegalCertificateDocument, LegalDocumentType } from "@ppn/shared-types";
 import { legalDocumentCategoryLabel } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
+
+function buildTypeLabels(dict: Dictionary): Record<LegalDocumentType, string> {
+  return {
+    certificate: dict.aboutCompany.legalCertificate.typeCertificate,
+    legal_document: dict.aboutCompany.legalCertificate.typeLegalDocument,
+    business_license: dict.aboutCompany.legalCertificate.typeBusinessLicense,
+    registration_document: dict.aboutCompany.legalCertificate.typeRegistrationDocument,
+    export_certificate: dict.aboutCompany.legalCertificate.typeExportCertificate,
+    quality_certificate: dict.aboutCompany.legalCertificate.typeQualityCertificate,
+    other: dict.aboutCompany.legalCertificate.typeOther,
+  };
+}
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
@@ -28,11 +41,14 @@ export function DocumentViewer({
   documents,
   startIndex,
   onClose,
+  dictionary,
 }: {
   documents: LegalCertificateDocument[];
   startIndex: number;
   onClose: () => void;
+  dictionary: Dictionary;
 }) {
+  const typeLabels = useMemo(() => buildTypeLabels(dictionary), [dictionary]);
   const [index, setIndex] = useState(startIndex);
   const [zoom, setZoom] = useState(1);
   const [fullResLoaded, setFullResLoaded] = useState(false);
@@ -178,7 +194,7 @@ export function DocumentViewer({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`${doc.title} — document viewer`}
+        aria-label={`${doc.title} — ${dictionary.aboutCompany.legalCertificate.viewerAriaSuffix}`}
         className="flex h-full flex-col"
         onClick={(event) => event.stopPropagation()}
       >
@@ -187,32 +203,43 @@ export function DocumentViewer({
           <div className="mr-auto min-w-0">
             <p className="truncate text-body font-medium">{doc.title}</p>
             <p className="truncate text-small text-white/70">
-              {legalDocumentCategoryLabel(doc)}
+              {legalDocumentCategoryLabel(doc, typeLabels)}
               {documents.length > 1 && ` · ${index + 1} / ${documents.length}`}
             </p>
           </div>
 
           {!isPdf && (
             <>
-              <ToolbarButton label="Zoom out" onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))} disabled={zoom <= ZOOM_MIN}>
+              <ToolbarButton
+                label={dictionary.aboutCompany.legalCertificate.zoomOut}
+                onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}
+                disabled={zoom <= ZOOM_MIN}
+              >
                 −
               </ToolbarButton>
               <span className="min-w-[3.2rem] text-center text-small tabular-nums text-white/80">
                 {Math.round(zoom * 100)}%
               </span>
-              <ToolbarButton label="Zoom in" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))} disabled={zoom >= ZOOM_MAX}>
+              <ToolbarButton
+                label={dictionary.aboutCompany.legalCertificate.zoomIn}
+                onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}
+                disabled={zoom >= ZOOM_MAX}
+              >
                 +
               </ToolbarButton>
-              <ToolbarButton label="Reset zoom" onClick={() => setZoom(1)} disabled={zoom === 1}>
+              <ToolbarButton label={dictionary.aboutCompany.legalCertificate.resetZoom} onClick={() => setZoom(1)} disabled={zoom === 1}>
                 ⟲
               </ToolbarButton>
-              <ToolbarButton label="Fit to screen" onClick={() => setZoom(1)} disabled={zoom === 1}>
-                Fit
+              <ToolbarButton label={dictionary.aboutCompany.legalCertificate.fitToScreen} onClick={() => setZoom(1)} disabled={zoom === 1}>
+                {dictionary.aboutCompany.legalCertificate.fitShort}
               </ToolbarButton>
             </>
           )}
 
-          <ToolbarButton label={isFullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={toggleFullscreen}>
+          <ToolbarButton
+            label={isFullscreen ? dictionary.aboutCompany.legalCertificate.exitFullscreen : dictionary.aboutCompany.legalCertificate.fullscreen}
+            onClick={toggleFullscreen}
+          >
             {isFullscreen ? "⤢" : "⛶"}
           </ToolbarButton>
 
@@ -222,22 +249,22 @@ export function DocumentViewer({
                 href={doc.file.file_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Open original file for ${doc.title}`}
+                aria-label={dictionary.aboutCompany.legalCertificate.openOriginalAriaTemplate.replace("{title}", doc.title)}
                 className="rounded-button px-3 py-1.5 text-small font-medium text-white/90 transition-colors hover:bg-white/10"
               >
-                Open Original
+                {dictionary.aboutCompany.legalCertificate.openOriginal}
               </a>
               <a
                 href={doc.file.file_url}
                 download
-                aria-label={`Download ${doc.title}`}
+                aria-label={dictionary.aboutCompany.legalCertificate.downloadAriaTemplate.replace("{title}", doc.title)}
                 className="rounded-button px-3 py-1.5 text-small font-medium text-white/90 transition-colors hover:bg-white/10"
               >
-                Download
+                {dictionary.aboutCompany.legalCertificate.download}
               </a>
             </>
           )}
-          <ToolbarButton label="Close viewer" onClick={onClose} ref={closeRef}>
+          <ToolbarButton label={dictionary.aboutCompany.legalCertificate.closeViewer} onClick={onClose} ref={closeRef}>
             ✕
           </ToolbarButton>
         </div>
@@ -251,7 +278,7 @@ export function DocumentViewer({
         >
           <div className="mx-auto flex h-full max-w-4xl items-center justify-center">
             {failed ? (
-              <ErrorState doc={doc} onRetry={() => { setFailed(false); setFullResLoaded(false); }} onClose={onClose} />
+              <ErrorState doc={doc} onRetry={() => { setFailed(false); setFullResLoaded(false); }} onClose={onClose} dictionary={dictionary} />
             ) : isPdf && doc.file ? (
               <object
                 data={doc.file.file_url}
@@ -259,7 +286,7 @@ export function DocumentViewer({
                 aria-label={doc.title}
                 className="h-full min-h-[60vh] w-full rounded-[14px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
               >
-                <ErrorState doc={doc} onRetry={() => setFailed(false)} onClose={onClose} embedded />
+                <ErrorState doc={doc} onRetry={() => setFailed(false)} onClose={onClose} embedded dictionary={dictionary} />
               </object>
             ) : (
               <div
@@ -297,7 +324,7 @@ export function DocumentViewer({
                     )}
                   </div>
                 )}
-                {!previewMedia && <ErrorState doc={doc} onRetry={() => setFailed(false)} onClose={onClose} embedded />}
+                {!previewMedia && <ErrorState doc={doc} onRetry={() => setFailed(false)} onClose={onClose} embedded dictionary={dictionary} />}
               </div>
             )}
           </div>
@@ -305,7 +332,7 @@ export function DocumentViewer({
           {/* Subtle hint only for the high-resolution layer — never a blocking spinner. */}
           {!isPdf && previewMedia && doc.file?.file_type === "image" && !fullResLoaded && !failed && (
             <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-button bg-black/40 px-3 py-1 text-small text-white/80">
-              Loading full resolution…
+              {dictionary.aboutCompany.legalCertificate.loadingFullRes}
             </p>
           )}
         </div>
@@ -313,11 +340,15 @@ export function DocumentViewer({
         {/* Paging */}
         {documents.length > 1 && (
           <div className="flex items-center justify-center gap-3 pb-4">
-            <ToolbarButton label="Previous document" onClick={() => go(-1)} disabled={index === 0}>
-              ← Prev
+            <ToolbarButton label={dictionary.aboutCompany.legalCertificate.prevDocumentAriaLabel} onClick={() => go(-1)} disabled={index === 0}>
+              {dictionary.aboutCompany.legalCertificate.prevShort}
             </ToolbarButton>
-            <ToolbarButton label="Next document" onClick={() => go(1)} disabled={index === documents.length - 1}>
-              Next →
+            <ToolbarButton
+              label={dictionary.aboutCompany.legalCertificate.nextDocumentAriaLabel}
+              onClick={() => go(1)}
+              disabled={index === documents.length - 1}
+            >
+              {dictionary.aboutCompany.legalCertificate.nextShort}
             </ToolbarButton>
           </div>
         )}
@@ -356,26 +387,28 @@ function ErrorState({
   onRetry,
   onClose,
   embedded,
+  dictionary,
 }: {
   doc: LegalCertificateDocument;
   onRetry: () => void;
   onClose: () => void;
   embedded?: boolean;
+  dictionary: Dictionary;
 }) {
   return (
     <div className={cn("flex flex-col items-center gap-3 p-8 text-center", embedded ? "text-neutral-700" : "rounded-[14px] bg-white text-neutral-700")}>
-      <p className="text-body">Unable to load this document.</p>
+      <p className="text-body">{dictionary.aboutCompany.legalCertificate.unableToLoad}</p>
       <div className="flex flex-wrap items-center justify-center gap-3 text-small font-medium">
         <button type="button" onClick={onRetry} className="text-primary-700 underline">
-          Retry
+          {dictionary.aboutCompany.legalCertificate.retry}
         </button>
         {doc.file && (
           <a href={doc.file.file_url} download className="text-primary-700 underline">
-            Download Original
+            {dictionary.aboutCompany.legalCertificate.downloadOriginal}
           </a>
         )}
         <button type="button" onClick={onClose} className="text-neutral-500 underline">
-          Close
+          {dictionary.aboutCompany.legalCertificate.close}
         </button>
       </div>
     </div>

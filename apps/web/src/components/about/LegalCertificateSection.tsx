@@ -6,6 +6,7 @@ import type {
 import { isLegalDocumentExpired } from "@ppn/shared-types";
 import { buttonVariants } from "@ppn/ui-components";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { AnimatedEyebrowLine } from "./AnimatedEyebrowLine";
 import { FadeUpSection } from "./FadeUpSection";
 import { DocumentGallery } from "./legal/DocumentGallery";
@@ -25,18 +26,26 @@ export function LegalCertificateSection({
   documents,
   section,
   categories,
+  dictionary,
 }: {
   documents: LegalCertificateDocument[];
   section: AboutCompanyLegalSection;
   categories: LegalDocumentCategory[];
+  dictionary: Dictionary;
 }) {
   const visibleDocuments = section.hide_expired
     ? documents.filter((doc) => !isLegalDocumentExpired(doc))
     : documents;
   const allVerified = visibleDocuments.length > 0 && visibleDocuments.every((doc) => doc.verified);
-  const counterLabel = `${visibleDocuments.length} ${
-    allVerified ? "VERIFIED DOCUMENT" : "DOCUMENT"
-  }${visibleDocuments.length === 1 ? "" : "S"}`;
+  const isPlural = visibleDocuments.length !== 1;
+  const counterWord = allVerified
+    ? isPlural
+      ? dictionary.aboutCompany.legalCertificate.verifiedDocumentPlural
+      : dictionary.aboutCompany.legalCertificate.verifiedDocumentSingular
+    : isPlural
+      ? dictionary.aboutCompany.legalCertificate.documentPlural
+      : dictionary.aboutCompany.legalCertificate.documentSingular;
+  const counterLabel = `${visibleDocuments.length} ${counterWord}`;
 
   return (
     <div className="relative overflow-hidden rounded-card bg-linear-to-b from-white to-[#F7F9F4] p-6 sm:p-8 lg:p-10">
@@ -66,17 +75,15 @@ export function LegalCertificateSection({
 
         {visibleDocuments.length === 0 ? (
           <p className="mt-7 max-w-2xl text-body-lg text-[#68736B]">
-            Legal registration details and product certifications will be listed here as they are
-            published. Buyers needing documentation ahead of an order can request it directly via
-            our contact form.
+            {dictionary.aboutCompany.legalCertificate.emptyState}
           </p>
         ) : (
-          <DocumentGallery documents={visibleDocuments} categories={categories} />
+          <DocumentGallery documents={visibleDocuments} categories={categories} dictionary={dictionary} />
         )}
 
         <FadeUpSection>
           <Link href="/contact" className={`mt-9 inline-flex ${buttonVariants("secondary", "md")}`}>
-            Contact Us
+            {dictionary.aboutCompany.legalCertificate.contactUsCta}
           </Link>
         </FadeUpSection>
       </div>

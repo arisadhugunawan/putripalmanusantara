@@ -11,13 +11,14 @@ export function toAboutCompanyTeamSection(
     'eyebrow',
     'heading',
     'description',
+    'ctaLabel',
   ]);
   return {
     id: entry.id,
     eyebrow: t.eyebrow,
     heading: t.heading,
     description: t.description,
-    cta_label: entry.ctaLabel,
+    cta_label: t.ctaLabel,
     cta_href: entry.ctaHref,
     show_counter: entry.showCounter,
     translations: entry.translations as SharedTeamSection['translations'],

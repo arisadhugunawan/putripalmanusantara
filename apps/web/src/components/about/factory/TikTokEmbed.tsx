@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 
 const TIKTOK_URL_PATTERN = /^https?:\/\/(www\.|vt\.|vm\.)?tiktok\.com\//i;
 /** How long to wait for TikTok's own script to produce a player before treating the embed as
@@ -19,9 +20,16 @@ const EMBED_TIMEOUT_MS = 8000;
  * and re-rendering the same element (rather than swapping it for different JSX) keeps React's
  * reconciliation from fighting over it.
  */
-export function TikTokEmbed({ url }: { url: string }) {
+/** `dictionary` is optional — `GalleryLightbox.tsx` (Gallery module, not in scope for the About
+ * Company i18n pass) also reuses this component for its TikTok embeds without a dictionary in
+ * context, so it keeps the original English copy; the Factory section passes its own. */
+export function TikTokEmbed({ url, dictionary }: { url: string; dictionary?: Dictionary }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(() => !TIKTOK_URL_PATTERN.test(url));
+  const t = {
+    watchOnTikTokAriaLabel: dictionary?.aboutCompany.factory.watchOnTikTokAriaLabel ?? "Watch this video on TikTok",
+    watchOnTikTokCta: dictionary?.aboutCompany.factory.watchOnTikTokCta ?? "Watch on TikTok →",
+  };
 
   useEffect(() => {
     if (failed) return;
@@ -47,11 +55,11 @@ export function TikTokEmbed({ url }: { url: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Watch this video on TikTok"
+        aria-label={t.watchOnTikTokAriaLabel}
         className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#0f1f14] text-white transition-colors hover:bg-[#16281b]"
       >
         <TikTokGlyph className="h-8 w-8 text-[#A7D94C]" />
-        <span className="text-body-lg font-semibold">Watch on TikTok →</span>
+        <span className="text-body-lg font-semibold">{t.watchOnTikTokCta}</span>
       </a>
     );
   }

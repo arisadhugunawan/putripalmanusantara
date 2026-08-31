@@ -4,6 +4,7 @@ import type {
   AboutCompanySocialLink,
   ExportDestination,
 } from "@ppn/shared-types";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FadeUpSection } from "./FadeUpSection";
 import { AboutCompanySocialRow } from "./company-profile/AboutCompanySocialRow";
 import { CompanyLegalDataTable } from "./company-profile/CompanyLegalDataTable";
@@ -33,18 +34,28 @@ export function CompanyProfileSection({
   facts,
   socialLinks,
   companyProfileCountries,
+  dictionary,
 }: {
   profile: AboutCompanyProfile;
   facts: AboutCompanyFact[];
   socialLinks: AboutCompanySocialLink[];
   companyProfileCountries: ExportDestination[];
+  dictionary: Dictionary;
 }) {
   const legalRows = [
-    { id: "company-name", label: "Company Name", value: profile.headline },
-    { id: "business-type", label: "Business Type", value: profile.business_type },
-    { id: "registered-address", label: "Registered Address", value: profile.registered_address },
-    { id: "business-id-number", label: "Business Identification Number", value: profile.business_id_number },
-    { id: "established", label: "Established", value: profile.established_year },
+    { id: "company-name", label: dictionary.aboutCompany.companyProfile.legalCompanyName, value: profile.headline },
+    { id: "business-type", label: dictionary.aboutCompany.companyProfile.legalBusinessType, value: profile.business_type },
+    {
+      id: "registered-address",
+      label: dictionary.aboutCompany.companyProfile.legalRegisteredAddress,
+      value: profile.registered_address,
+    },
+    {
+      id: "business-id-number",
+      label: dictionary.aboutCompany.companyProfile.legalBusinessId,
+      value: profile.business_id_number,
+    },
+    { id: "established", label: dictionary.aboutCompany.companyProfile.legalEstablished, value: profile.established_year },
     ...facts.filter((fact) => fact.active).map((fact) => ({ id: fact.id, label: fact.label, value: fact.value })),
   ].filter((row) => row.value.trim().length > 0);
 
@@ -70,7 +81,7 @@ export function CompanyProfileSection({
 
         {profile.youtube_video_url && (
           <div className="mt-9 max-w-3xl">
-            <YouTubeVideoEmbed url={profile.youtube_video_url} />
+            <YouTubeVideoEmbed url={profile.youtube_video_url} dictionary={dictionary} />
           </div>
         )}
 
@@ -102,7 +113,7 @@ export function CompanyProfileSection({
             href="#legal"
             className="mt-4 inline-flex text-small font-medium text-[#245C3A] underline underline-offset-4"
           >
-            View Legal &amp; Certificate documents →
+            {dictionary.aboutCompany.companyProfile.viewLegalDocsCta}
           </a>
         </FadeUpSection>
       )}
@@ -114,6 +125,7 @@ export function CompanyProfileSection({
             countries={companyProfileCountries}
             heading={profile.export_label}
             description={profile.export_description}
+            dictionary={dictionary}
           />
         </FadeUpSection>
       )}

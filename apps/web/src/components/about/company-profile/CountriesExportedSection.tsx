@@ -2,6 +2,7 @@
 
 import type { ExportDestination } from "@ppn/shared-types";
 import { useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FadeUpSection } from "../FadeUpSection";
 import { CountryDetailModal } from "./CountryDetailModal";
 import { flagEmoji } from "./flagEmoji";
@@ -21,10 +22,12 @@ export function CountriesExportedSection({
   countries,
   heading,
   description,
+  dictionary,
 }: {
   countries: ExportDestination[];
   heading: string;
   description: string;
+  dictionary: Dictionary;
 }) {
   const [selected, setSelected] = useState<ExportDestination | null>(null);
 
@@ -62,7 +65,7 @@ export function CountriesExportedSection({
         ))}
       </div>
 
-      {selected && <CountryDetailModal country={selected} onClose={() => setSelected(null)} />}
+      {selected && <CountryDetailModal country={selected} onClose={() => setSelected(null)} dictionary={dictionary} />}
     </div>
   );
 }

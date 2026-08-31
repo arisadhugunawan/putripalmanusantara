@@ -35,6 +35,11 @@ import { Container } from "@ppn/ui-components";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+// Client component — can't call the server-only `getDictionary()` — and this preview always
+// shows the default-locale (English) content anyway (no `?locale=` is ever sent to the public
+// GET endpoints below), so importing the English dictionary module directly matches exactly
+// what's already being previewed.
+import enDictionary from "@/i18n/dictionaries/en";
 import { CompanyProfileSection } from "@/components/about/CompanyProfileSection";
 import { TeamSection } from "@/components/about/TeamSection";
 import { WhatWeDoSection } from "@/components/about/WhatWeDoSection";
@@ -260,16 +265,18 @@ function renderSection(key: AboutCompanySectionKey, data: PreviewData) {
           facts={data.facts}
           socialLinks={data.socialLinks}
           companyProfileCountries={data.companyProfileCountries}
+          dictionary={enDictionary}
         />
       );
     case "team":
-      return <TeamSection members={data.teamMembers} section={data.teamSection} />;
+      return <TeamSection members={data.teamMembers} section={data.teamSection} dictionary={enDictionary} />;
     case "what_we_do":
       return (
         <WhatWeDoSection
           section={data.whatWeDoSection}
           items={data.whatWeDoItems}
           whoWeSupplyItems={data.whoWeSupplyItems}
+          dictionary={enDictionary}
         />
       );
     case "legal_certificate":
@@ -278,10 +285,11 @@ function renderSection(key: AboutCompanySectionKey, data: PreviewData) {
           documents={data.legalDocuments}
           section={data.legalSection}
           categories={data.legalCategories}
+          dictionary={enDictionary}
         />
       );
     case "factory":
-      return <FactorySection factory={data.factory} facilities={data.facilities} />;
+      return <FactorySection factory={data.factory} facilities={data.facilities} dictionary={enDictionary} />;
     case "facilities":
       return <FacilityShowcase facilities={data.facilities} section={data.facilitiesSection} />;
     case "moq_payment_terms":

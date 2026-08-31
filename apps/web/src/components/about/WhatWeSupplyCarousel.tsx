@@ -3,6 +3,7 @@
 import type { WhatWeDoItem } from "@ppn/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { SafeImage } from "@/components/SafeImage";
 
 /** Brief: "8–15px per second" — the slow, continuous auto-scroll speed. */
@@ -27,7 +28,7 @@ const RESUME_DELAY_MS = 3000;
  * `prefers-reduced-motion` disables all three layers (a plain browser-native horizontal scroll
  * remains fully usable via wheel/drag/touch/arrow buttons).
  */
-export function WhatWeSupplyCarousel({ items }: { items: WhatWeDoItem[] }) {
+export function WhatWeSupplyCarousel({ items, dictionary }: { items: WhatWeDoItem[]; dictionary: Dictionary }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const depthRefs = useRef<(HTMLDivElement | null)[]>([]);
   const tiltRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -192,7 +193,7 @@ export function WhatWeSupplyCarousel({ items }: { items: WhatWeDoItem[] }) {
       <div
         ref={trackRef}
         role="region"
-        aria-label="Product showcase, scrollable"
+        aria-label={dictionary.aboutCompany.whatWeDo.carouselAriaLabel}
         tabIndex={0}
         onPointerDown={pause}
         onPointerUp={resumeAfterDelay}
@@ -253,7 +254,7 @@ export function WhatWeSupplyCarousel({ items }: { items: WhatWeDoItem[] }) {
                       href={`/products/${item.product.slug}`}
                       className="mt-2 inline-flex items-center gap-1.5 text-small font-medium text-[#245C3A] transition-all duration-250 ease-out hover:gap-2.5 hover:text-[#183D2B]"
                     >
-                      View Product <span aria-hidden="true">→</span>
+                      {dictionary.aboutCompany.whatWeDo.viewProductCta} <span aria-hidden="true">→</span>
                     </Link>
                   )}
                 </div>
@@ -268,7 +269,7 @@ export function WhatWeSupplyCarousel({ items }: { items: WhatWeDoItem[] }) {
           type="button"
           onClick={handlePrev}
           disabled={activeIndex === 0}
-          aria-label="Previous product"
+          aria-label={dictionary.aboutCompany.whatWeDo.prevAriaLabel}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition-all duration-250 ease-out hover:border-[#245C3A] hover:bg-[#245C3A] hover:text-white disabled:pointer-events-none disabled:opacity-30"
         >
           <span aria-hidden="true">←</span>
@@ -280,7 +281,7 @@ export function WhatWeSupplyCarousel({ items }: { items: WhatWeDoItem[] }) {
           type="button"
           onClick={handleNext}
           disabled={activeIndex === items.length - 1}
-          aria-label="Next product"
+          aria-label={dictionary.aboutCompany.whatWeDo.nextAriaLabel}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition-all duration-250 ease-out hover:border-[#245C3A] hover:bg-[#245C3A] hover:text-white disabled:pointer-events-none disabled:opacity-30"
         >
           <span aria-hidden="true">→</span>

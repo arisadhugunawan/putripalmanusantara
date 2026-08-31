@@ -53,7 +53,7 @@ function scrollToSection(id: string) {
  * Active section is tracked with IntersectionObserver, not a `scroll` listener, per the
  * brief's performance guidance.
  */
-export function AboutNav({ sections }: { sections: AboutSection[] }) {
+export function AboutNav({ sections, ariaLabel }: { sections: AboutSection[]; ariaLabel: string }) {
   const [active, setActive] = useState(sections[0]?.id);
   const activeTabRef = useRef<HTMLAnchorElement>(null);
 
@@ -92,7 +92,7 @@ export function AboutNav({ sections }: { sections: AboutSection[] }) {
 
   return (
     <nav
-      aria-label="About Company sections"
+      aria-label={ariaLabel}
       className={cn(
         "sticky top-0 z-10 -mx-5 flex gap-1 overflow-x-auto border-b border-neutral-200 bg-white/95 px-5 py-3 backdrop-blur-sm",
         "lg:sticky lg:top-24 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none",

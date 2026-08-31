@@ -2,6 +2,7 @@
 
 import type { FactoryVideo } from "@ppn/shared-types";
 import { useEffect, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { TikTokEmbed } from "./TikTokEmbed";
 
 /**
@@ -11,7 +12,7 @@ import { TikTokEmbed } from "./TikTokEmbed";
  * exactly one card per view on mobile. Returns nothing when the Admin hasn't added any video —
  * this is a showcase, not a placeholder to fill.
  */
-export function FactoryVideoShowcase({ videos }: { videos: FactoryVideo[] }) {
+export function FactoryVideoShowcase({ videos, dictionary }: { videos: FactoryVideo[]; dictionary: Dictionary }) {
   if (videos.length === 0) return null;
 
   return (
@@ -37,35 +38,35 @@ export function FactoryVideoShowcase({ videos }: { videos: FactoryVideo[] }) {
       <div className="relative">
         {videos.length === 1 ? (
           <div className="mx-auto max-w-[380px]">
-            <VideoCard video={videos[0]} />
-            <VideoCaption video={videos[0]} />
+            <VideoCard video={videos[0]} dictionary={dictionary} />
+            <VideoCaption video={videos[0]} dictionary={dictionary} />
           </div>
         ) : (
-          <VideoCarousel videos={videos} />
+          <VideoCarousel videos={videos} dictionary={dictionary} />
         )}
       </div>
     </div>
   );
 }
 
-function VideoCarousel({ videos }: { videos: FactoryVideo[] }) {
+function VideoCarousel({ videos, dictionary }: { videos: FactoryVideo[]; dictionary: Dictionary }) {
   return (
     <div
       role="region"
-      aria-label="Factory videos, scrollable"
+      aria-label={dictionary.aboutCompany.factory.videosScrollableAriaLabel}
       className="flex snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {videos.map((video) => (
         <div key={video.id} className="w-[78%] shrink-0 snap-center sm:w-[55%] lg:w-[38%]">
-          <VideoCard video={video} />
-          <VideoCaption video={video} />
+          <VideoCard video={video} dictionary={dictionary} />
+          <VideoCaption video={video} dictionary={dictionary} />
         </div>
       ))}
     </div>
   );
 }
 
-function VideoCard({ video }: { video: FactoryVideo }) {
+function VideoCard({ video, dictionary }: { video: FactoryVideo; dictionary: Dictionary }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -94,16 +95,18 @@ function VideoCard({ video }: { video: FactoryVideo }) {
         transform: visible ? "translateY(0) scale(1)" : "translateY(30px) scale(0.96)",
       }}
     >
-      <TikTokEmbed url={video.tiktok_url} />
+      <TikTokEmbed url={video.tiktok_url} dictionary={dictionary} />
     </div>
   );
 }
 
-function VideoCaption({ video }: { video: FactoryVideo }) {
+function VideoCaption({ video, dictionary }: { video: FactoryVideo; dictionary: Dictionary }) {
   return (
     <div className="mt-4 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-small font-semibold uppercase tracking-[0.1em] text-[#A7D94C]">Factory Video</p>
+        <p className="text-small font-semibold uppercase tracking-[0.1em] text-[#A7D94C]">
+          {dictionary.aboutCompany.factory.videoLabel}
+        </p>
         <p className="mt-0.5 truncate text-body font-medium text-white">{video.title}</p>
       </div>
       <a
@@ -112,7 +115,7 @@ function VideoCaption({ video }: { video: FactoryVideo }) {
         rel="noopener noreferrer"
         className="shrink-0 text-small font-medium text-white/90 underline underline-offset-4 transition-colors hover:text-[#A7D94C]"
       >
-        Watch on TikTok →
+        {dictionary.aboutCompany.factory.watchOnTikTokCta}
       </a>
     </div>
   );

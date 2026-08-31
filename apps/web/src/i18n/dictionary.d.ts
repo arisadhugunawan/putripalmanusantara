@@ -222,6 +222,122 @@ export interface Dictionary {
       description: string;
     };
   };
+  /** About Company page ("/about") static UI chrome — same split as `home`: section headings/
+   * intros/CTAs come from the CMS and are already locale-resolved server-side via `translate()`;
+   * this namespace covers only text that has no CMS field (legal-table row labels, empty
+   * states, document-viewer toolbar, carousel/modal accessibility labels, fixed document-type
+   * fallback labels). */
+  aboutCompany: {
+    breadcrumbLabel: string;
+    pageTitleFallback: string;
+    seoTitleFallback: string;
+    seoDescriptionFallback: string;
+    sectionsNavAriaLabel: string;
+    companyProfile: {
+      legalCompanyName: string;
+      legalBusinessType: string;
+      legalRegisteredAddress: string;
+      legalBusinessId: string;
+      legalEstablished: string;
+      viewLegalDocsCta: string;
+      videoUnavailable: string;
+      playVideoAriaLabel: string;
+      companyVideoTitle: string;
+      closeModalAriaLabel: string;
+    };
+    team: {
+      memberSingular: string;
+      memberPlural: string;
+      emptyState: string;
+      featuredBadge: string;
+      viewProfileCta: string;
+      /** Full accessible name for the "View profile" link, set via `aria-label` (not a bolted-on
+       * suffix) so word order can differ per language — must contain the literal "{name}"
+       * placeholder, e.g. "View profile of {name}" / "查看{name}的资料". */
+      viewProfileAriaTemplate: string;
+      /** "— portrait coming soon" — appended after the member's name in the placeholder's aria-label. */
+      portraitComingSoonSuffix: string;
+      modalEmailLabel: string;
+      modalPhoneLabel: string;
+      modalLinkedInLabel: string;
+      modalLinkedInLinkText: string;
+      modalResponsibilitiesHeading: string;
+      modalCloseAriaLabel: string;
+    };
+    whatWeDo: {
+      emptyState: string;
+      carouselAriaLabel: string;
+      viewProductCta: string;
+      prevAriaLabel: string;
+      nextAriaLabel: string;
+    };
+    legalCertificate: {
+      verifiedDocumentSingular: string;
+      verifiedDocumentPlural: string;
+      documentSingular: string;
+      documentPlural: string;
+      emptyState: string;
+      contactUsCta: string;
+      filterAll: string;
+      verifiedBadge: string;
+      viewDocumentCta: string;
+      placeholderPdf: string;
+      placeholderGeneric: string;
+      /** Appended after " — " in the viewer's aria-label, e.g. `${doc.title} — ${viewerAriaSuffix}`. */
+      viewerAriaSuffix: string;
+      zoomOut: string;
+      zoomIn: string;
+      resetZoom: string;
+      fitToScreen: string;
+      fitShort: string;
+      exitFullscreen: string;
+      fullscreen: string;
+      /** Full aria-label template — must contain "{title}", e.g. "Open original file for {title}". */
+      openOriginalAriaTemplate: string;
+      openOriginal: string;
+      /** Full aria-label template — must contain "{title}", e.g. "Download {title}". */
+      downloadAriaTemplate: string;
+      download: string;
+      closeViewer: string;
+      loadingFullRes: string;
+      prevDocumentAriaLabel: string;
+      prevShort: string;
+      nextDocumentAriaLabel: string;
+      nextShort: string;
+      unableToLoad: string;
+      retry: string;
+      downloadOriginal: string;
+      close: string;
+      /** Fixed fallback labels for `LegalDocumentType`, used only when a document has no
+       * Admin-assigned category — mirrors `LEGAL_DOCUMENT_TYPE_LABELS` in `@ppn/shared-types`. */
+      typeCertificate: string;
+      typeLegalDocument: string;
+      typeBusinessLicense: string;
+      typeRegistrationDocument: string;
+      typeExportCertificate: string;
+      typeQualityCertificate: string;
+      typeOther: string;
+    };
+    factory: {
+      pictureHeading: string;
+      pictureDescription: string;
+      viewAllFacilitiesCta: string;
+      galleryScrollableAriaLabel: string;
+      /** Full aria-label template — must contain "{title}", e.g. "View {title} fullscreen". */
+      viewFullscreenAriaTemplate: string;
+      /** Lowercase, used inline mid-sentence when a photo has no title. */
+      photoFallbackTitle: string;
+      photoFallbackAlt: string;
+      photoFallbackAltShort: string;
+      viewImageCta: string;
+      prevPhotoAriaLabel: string;
+      nextPhotoAriaLabel: string;
+      videosScrollableAriaLabel: string;
+      videoLabel: string;
+      watchOnTikTokCta: string;
+      watchOnTikTokAriaLabel: string;
+    };
+  };
   /** `QuotationForm` — shared across the Homepage CTA, Product detail pages, and elsewhere via
    * `sourcePage`, so it lives at the top level rather than nested under `home`. */
   quotationForm: {

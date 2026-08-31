@@ -5,6 +5,7 @@ import { teamMemberPhotoAlt } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { hasTeamMemberProfile, TeamMemberModal } from "./TeamMemberModal";
 
 /** Stagger between cards. Kept short on purpose — the whole grid should finish revealing in
@@ -20,7 +21,7 @@ const MAX_STAGGER_MS = 420;
  * global rule in globals.css collapses every transition to ~0ms, so the stagger disappears
  * and the cards simply appear — no separate code path to keep in sync.
  */
-export function TeamGrid({ members }: { members: TeamMember[] }) {
+export function TeamGrid({ members, dictionary }: { members: TeamMember[]; dictionary: Dictionary }) {
   const [revealed, setRevealed] = useState(false);
   const [openMemberId, setOpenMemberId] = useState<string | null>(null);
   const gridRef = useRef<HTMLUListElement>(null);
@@ -80,11 +81,11 @@ export function TeamGrid({ members }: { members: TeamMember[] }) {
                       className="object-cover object-top transition-transform duration-[600ms] ease-out group-hover:scale-[1.025]"
                     />
                   ) : (
-                    <PortraitPlaceholder name={member.name} />
+                    <PortraitPlaceholder name={member.name} suffix={dictionary.aboutCompany.team.portraitComingSoonSuffix} />
                   )}
                   {member.featured && (
                     <span className="absolute left-3 top-3 rounded-button bg-white/95 px-2.5 py-1 text-small font-medium text-primary-700 shadow-[var(--shadow-card)]">
-                      Featured
+                      {dictionary.aboutCompany.team.featuredBadge}
                     </span>
                   )}
                 </div>
@@ -105,10 +106,10 @@ export function TeamGrid({ members }: { members: TeamMember[] }) {
                     <button
                       type="button"
                       onClick={() => setOpenMemberId(member.id)}
+                      aria-label={dictionary.aboutCompany.team.viewProfileAriaTemplate.replace("{name}", member.name)}
                       className="mt-3 text-small font-medium text-primary-700 underline underline-offset-4 transition-colors hover:text-primary-600"
                     >
-                      View profile
-                      <span className="sr-only"> of {member.name}</span>
+                      {dictionary.aboutCompany.team.viewProfileCta}
                     </button>
                   )}
                 </div>
@@ -118,13 +119,15 @@ export function TeamGrid({ members }: { members: TeamMember[] }) {
         })}
       </ul>
 
-      {openMember && <TeamMemberModal member={openMember} onClose={() => setOpenMemberId(null)} />}
+      {openMember && (
+        <TeamMemberModal member={openMember} onClose={() => setOpenMemberId(null)} dictionary={dictionary} />
+      )}
     </>
   );
 }
 
 /** Neutral initials placeholder — never a broken image icon when no portrait is uploaded. */
-function PortraitPlaceholder({ name }: { name: string }) {
+function PortraitPlaceholder({ name, suffix }: { name: string; suffix: string }) {
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -136,7 +139,7 @@ function PortraitPlaceholder({ name }: { name: string }) {
     <div
       className="flex h-full w-full items-center justify-center bg-linear-to-br from-primary-50 to-neutral-100"
       role="img"
-      aria-label={`${name} — portrait coming soon`}
+      aria-label={`${name} ${suffix}`}
     >
       <span className="text-h2 font-semibold text-primary-700/40">{initials}</span>
     </div>

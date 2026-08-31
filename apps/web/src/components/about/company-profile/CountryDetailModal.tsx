@@ -2,6 +2,7 @@
 
 import type { ExportDestination } from "@ppn/shared-types";
 import { useEffect, useRef } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { flagEmoji } from "./flagEmoji";
 
 const FOCUSABLE =
@@ -13,9 +14,11 @@ const FOCUSABLE =
 export function CountryDetailModal({
   country,
   onClose,
+  dictionary,
 }: {
   country: ExportDestination;
   onClose: () => void;
+  dictionary: Dictionary;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -71,7 +74,7 @@ export function CountryDetailModal({
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={dictionary.aboutCompany.companyProfile.closeModalAriaLabel}
             className="shrink-0 rounded-button p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
           >
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

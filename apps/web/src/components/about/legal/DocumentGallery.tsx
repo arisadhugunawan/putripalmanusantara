@@ -1,12 +1,27 @@
 "use client";
 
-import type { LegalCertificateDocument, LegalDocumentCategory } from "@ppn/shared-types";
+import type { LegalCertificateDocument, LegalDocumentCategory, LegalDocumentType } from "@ppn/shared-types";
 import { legalDocumentCategoryLabel } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { DocumentViewer } from "./DocumentViewer";
+
+/** Locale-aware equivalent of `LEGAL_DOCUMENT_TYPE_LABELS` (`@ppn/shared-types`), used only as
+ * the fallback when a document has no Admin-assigned category. */
+function buildTypeLabels(dict: Dictionary): Record<LegalDocumentType, string> {
+  return {
+    certificate: dict.aboutCompany.legalCertificate.typeCertificate,
+    legal_document: dict.aboutCompany.legalCertificate.typeLegalDocument,
+    business_license: dict.aboutCompany.legalCertificate.typeBusinessLicense,
+    registration_document: dict.aboutCompany.legalCertificate.typeRegistrationDocument,
+    export_certificate: dict.aboutCompany.legalCertificate.typeExportCertificate,
+    quality_certificate: dict.aboutCompany.legalCertificate.typeQualityCertificate,
+    other: dict.aboutCompany.legalCertificate.typeOther,
+  };
+}
 
 const STAGGER_MS = 60;
 const MAX_STAGGER_MS = 480;
@@ -21,9 +36,11 @@ const MAX_STAGGER_MS = 480;
 export function DocumentGallery({
   documents,
   categories,
+  dictionary,
 }: {
   documents: LegalCertificateDocument[];
   categories: LegalDocumentCategory[];
+  dictionary: Dictionary;
 }) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -31,6 +48,7 @@ export function DocumentGallery({
   const gridRef = useRef<HTMLUListElement>(null);
   const tiltRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const reducedMotion = useReducedMotion();
+  const typeLabels = useMemo(() => buildTypeLabels(dictionary), [dictionary]);
 
   useEffect(() => {
     const el = gridRef.current;
@@ -79,7 +97,11 @@ export function DocumentGallery({
       {chips.length > 1 && (
         // Horizontal scroll on mobile rather than wrapping into a tall block (item 44).
         <div className="mt-7 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <FilterChip label="All" selected={activeSlug === null} onClick={() => setActiveSlug(null)} />
+          <FilterChip
+            label={dictionary.aboutCompany.legalCertificate.filterAll}
+            selected={activeSlug === null}
+            onClick={() => setActiveSlug(null)}
+          />
           {chips.map((category) => (
             <FilterChip
               key={category.id}
@@ -137,17 +159,17 @@ export function DocumentGallery({
                         className="object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                       />
                     ) : (
-                      <DocumentPlaceholder isPdf={doc.file?.file_type === "pdf"} />
+                      <DocumentPlaceholder isPdf={doc.file?.file_type === "pdf"} dictionary={dictionary} />
                     )}
                     {doc.verified && (
                       <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-small font-medium text-[#315F3A] shadow-[0_2px_10px_rgba(49,95,58,0.15)]">
-                        ✓ Verified
+                        {dictionary.aboutCompany.legalCertificate.verifiedBadge}
                       </span>
                     )}
                     {doc.file && (
                       <span className="absolute inset-0 flex items-center justify-center bg-[#202522]/0 opacity-0 transition-[opacity,background-color] duration-300 ease-out group-hover:bg-[#202522]/45 group-hover:opacity-100">
                         <span className="translate-y-1.5 text-small font-semibold uppercase tracking-[0.12em] text-white transition-transform duration-300 ease-out group-hover:translate-y-0">
-                          View Document →
+                          {dictionary.aboutCompany.legalCertificate.viewDocumentCta}
                         </span>
                       </span>
                     )}
@@ -156,7 +178,7 @@ export function DocumentGallery({
                   <div className="flex flex-1 flex-col p-4">
                     <h3 className="text-body-lg font-medium text-[#202522]">{doc.title}</h3>
                     <p className="mt-1 text-small font-medium uppercase tracking-wide text-[#68736B]">
-                      {legalDocumentCategoryLabel(doc)}
+                      {legalDocumentCategoryLabel(doc, typeLabels)}
                     </p>
 
                     {doc.file && (
@@ -165,7 +187,8 @@ export function DocumentGallery({
                         onClick={() => setOpenIndex(viewerIndex)}
                         className="mt-auto pt-3 text-left text-small font-medium text-[#315F3A] underline underline-offset-4 transition-colors hover:text-[#6FAF3D]"
                       >
-                        View Document →<span className="sr-only"> {doc.title}</span>
+                        {dictionary.aboutCompany.legalCertificate.viewDocumentCta}
+                        <span className="sr-only"> {doc.title}</span>
                       </button>
                     )}
                   </div>
@@ -177,7 +200,12 @@ export function DocumentGallery({
       </ul>
 
       {openIndex !== null && (
-        <DocumentViewer documents={visible} startIndex={openIndex} onClose={() => setOpenIndex(null)} />
+        <DocumentViewer
+          documents={visible}
+          startIndex={openIndex}
+          onClose={() => setOpenIndex(null)}
+          dictionary={dictionary}
+        />
       )}
     </>
   );
@@ -203,7 +231,7 @@ function FilterChip({ label, selected, onClick }: { label: string; selected: boo
 
 /** Document-styled placeholder for a PDF with no Admin-uploaded preview image — deliberately
  * page-shaped rather than a bare file icon, so the card still reads as a document. */
-function DocumentPlaceholder({ isPdf }: { isPdf: boolean }) {
+function DocumentPlaceholder({ isPdf, dictionary }: { isPdf: boolean; dictionary: Dictionary }) {
   return (
     <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-[#F7F9F4] to-[#DDE4DC]/40">
       <div className="flex h-[70%] w-[52%] flex-col gap-1.5 rounded-[6px] border border-[#DDE4DC] bg-white p-2.5 shadow-[0_2px_10px_rgba(49,95,58,0.1)]">
@@ -212,7 +240,7 @@ function DocumentPlaceholder({ isPdf }: { isPdf: boolean }) {
         <span className="h-1.5 w-full rounded-full bg-[#DDE4DC]" />
         <span className="h-1.5 w-2/3 rounded-full bg-[#DDE4DC]" />
         <span className="mt-auto text-[10px] font-semibold tracking-wide text-[#315F3A]">
-          {isPdf ? "PDF" : "DOCUMENT"}
+          {isPdf ? dictionary.aboutCompany.legalCertificate.placeholderPdf : dictionary.aboutCompany.legalCertificate.placeholderGeneric}
         </span>
       </div>
     </div>

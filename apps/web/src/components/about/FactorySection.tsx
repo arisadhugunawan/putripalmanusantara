@@ -1,6 +1,7 @@
 import type { Facility, FactoryProfile } from "@ppn/shared-types";
 import { buttonVariants } from "@ppn/ui-components";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { AnimatedEyebrowLine } from "./AnimatedEyebrowLine";
 import { FactoryGalleryCarousel } from "./factory/FactoryGalleryCarousel";
 import { FactoryVideoShowcase } from "./factory/FactoryVideoShowcase";
@@ -18,7 +19,15 @@ import { FadeUpSection } from "./FadeUpSection";
  * they just aren't rendered as a text list here anymore — the video and gallery carry that
  * impression visually instead, per the brief's explicit instruction.
  */
-export function FactorySection({ factory, facilities }: { factory: FactoryProfile; facilities: Facility[] }) {
+export function FactorySection({
+  factory,
+  facilities,
+  dictionary,
+}: {
+  factory: FactoryProfile;
+  facilities: Facility[];
+  dictionary: Dictionary;
+}) {
   return (
     <FadeUpSection>
       <p className="flex items-center gap-3 text-small font-medium uppercase tracking-[0.14em] text-[#315F3A]">
@@ -31,17 +40,17 @@ export function FactorySection({ factory, facilities }: { factory: FactoryProfil
       )}
 
       <div className="mt-9">
-        <FactoryVideoShowcase videos={factory.videos} />
+        <FactoryVideoShowcase videos={factory.videos} dictionary={dictionary} />
       </div>
 
       {factory.gallery.length > 0 && (
         <div className="mt-14">
-          <h3 className="text-h3 text-[#202522]">Factory in Pictures</h3>
+          <h3 className="text-h3 text-[#202522]">{dictionary.aboutCompany.factory.pictureHeading}</h3>
           <p className="mt-2 max-w-2xl text-body text-[#68736B]">
-            A closer look at our facilities, people, handling process, and export preparation.
+            {dictionary.aboutCompany.factory.pictureDescription}
           </p>
           <div className="mt-7">
-            <FactoryGalleryCarousel images={factory.gallery} />
+            <FactoryGalleryCarousel images={factory.gallery} dictionary={dictionary} />
           </div>
         </div>
       )}
@@ -77,7 +86,7 @@ export function FactorySection({ factory, facilities }: { factory: FactoryProfil
 
       {facilities.length > 0 && (
         <Link href="/facilities" className={`mt-9 inline-flex ${buttonVariants("secondary", "md")}`}>
-          View All Facilities →
+          {dictionary.aboutCompany.factory.viewAllFacilitiesCta}
         </Link>
       )}
     </FadeUpSection>

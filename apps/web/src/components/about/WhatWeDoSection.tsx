@@ -1,4 +1,5 @@
 import type { AboutCompanyWhatWeDoSection, WhatWeDoItem, WhoWeSupplyItem } from "@ppn/shared-types";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FadeUpSection } from "./FadeUpSection";
 import { WhatWeSupplyCarousel } from "./WhatWeSupplyCarousel";
 import { WhatWeSupplyDecorative } from "./WhatWeSupplyDecorative";
@@ -19,10 +20,12 @@ export function WhatWeDoSection({
   section,
   items,
   whoWeSupplyItems,
+  dictionary,
 }: {
   section: AboutCompanyWhatWeDoSection;
   items: WhatWeDoItem[];
   whoWeSupplyItems: WhoWeSupplyItem[];
+  dictionary: Dictionary;
 }) {
   return (
     <div className="flex flex-col gap-16 lg:gap-24">
@@ -41,11 +44,11 @@ export function WhatWeDoSection({
 
           {items.length === 0 ? (
             <p className="mt-10 max-w-2xl text-body-lg text-neutral-600">
-              PPN product information is currently being updated.
+              {dictionary.aboutCompany.whatWeDo.emptyState}
             </p>
           ) : (
             <div className="mt-10">
-              <WhatWeSupplyCarousel items={items} />
+              <WhatWeSupplyCarousel items={items} dictionary={dictionary} />
             </div>
           )}
         </FadeUpSection>

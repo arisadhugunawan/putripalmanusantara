@@ -3,6 +3,7 @@
 import type { TeamMember } from "@ppn/shared-types";
 import { teamMemberPhotoAlt } from "@ppn/shared-types";
 import { useEffect, useRef } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { SafeImage } from "@/components/SafeImage";
 
 const FOCUSABLE =
@@ -15,7 +16,15 @@ const FOCUSABLE =
  * Accessibility (brief item 62): focus moves into the dialog on open, Tab is trapped inside it,
  * Escape closes, and focus returns to the card that opened it.
  */
-export function TeamMemberModal({ member, onClose }: { member: TeamMember; onClose: () => void }) {
+export function TeamMemberModal({
+  member,
+  onClose,
+  dictionary,
+}: {
+  member: TeamMember;
+  onClose: () => void;
+  dictionary: Dictionary;
+}) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -56,9 +65,24 @@ export function TeamMemberModal({ member, onClose }: { member: TeamMember; onClo
     .filter(Boolean);
 
   const contacts = [
-    member.email && { label: "Email", href: `mailto:${member.email}`, value: member.email, external: false },
-    member.phone && { label: "Phone", href: `tel:${member.phone.replace(/[^\d+]/g, "")}`, value: member.phone, external: false },
-    member.linkedin_url && { label: "LinkedIn", href: member.linkedin_url, value: "View profile", external: true },
+    member.email && {
+      label: dictionary.aboutCompany.team.modalEmailLabel,
+      href: `mailto:${member.email}`,
+      value: member.email,
+      external: false,
+    },
+    member.phone && {
+      label: dictionary.aboutCompany.team.modalPhoneLabel,
+      href: `tel:${member.phone.replace(/[^\d+]/g, "")}`,
+      value: member.phone,
+      external: false,
+    },
+    member.linkedin_url && {
+      label: dictionary.aboutCompany.team.modalLinkedInLabel,
+      href: member.linkedin_url,
+      value: dictionary.aboutCompany.team.modalLinkedInLinkText,
+      external: true,
+    },
   ].filter(Boolean) as { label: string; href: string; value: string; external: boolean }[];
 
   return (
@@ -94,7 +118,7 @@ export function TeamMemberModal({ member, onClose }: { member: TeamMember; onClo
                 ref={closeRef}
                 type="button"
                 onClick={onClose}
-                aria-label="Close profile"
+                aria-label={dictionary.aboutCompany.team.modalCloseAriaLabel}
                 className="shrink-0 rounded-button p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
               >
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -110,7 +134,7 @@ export function TeamMemberModal({ member, onClose }: { member: TeamMember; onClo
             {responsibilities.length > 0 && (
               <div className="mt-5">
                 <h4 className="text-small font-medium uppercase tracking-wide text-neutral-500">
-                  Responsibilities
+                  {dictionary.aboutCompany.team.modalResponsibilitiesHeading}
                 </h4>
                 {responsibilities.length === 1 ? (
                   <p className="mt-2 text-body text-neutral-700">{responsibilities[0]}</p>

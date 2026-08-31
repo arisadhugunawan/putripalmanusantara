@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 
 /** Supports watch/youtu.be/embed/shorts URLs, with or without extra query params
  * (`?si=`, `&t=`, playlist context, etc.) — the Admin only ever pastes a normal YouTube URL,
@@ -37,11 +38,19 @@ export function extractYouTubeId(url: string): string | null {
  * `FadeUpSection`). An invalid/unparseable URL degrades to an honest "Video unavailable"
  * message rather than a broken embed.
  */
-export function YouTubeVideoEmbed({ url }: { url: string | null }) {
+/** `dictionary` is optional — `GalleryLightbox.tsx` (Gallery module, not in scope for the About
+ * Company i18n pass) also reuses this component for its YouTube embeds without a dictionary in
+ * context, so it keeps the original English copy; the About Company page passes its own. */
+export function YouTubeVideoEmbed({ url, dictionary }: { url: string | null; dictionary?: Dictionary }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const t = {
+    videoUnavailable: dictionary?.aboutCompany.companyProfile.videoUnavailable ?? "Video unavailable",
+    playVideoAriaLabel: dictionary?.aboutCompany.companyProfile.playVideoAriaLabel ?? "Play video",
+    companyVideoTitle: dictionary?.aboutCompany.companyProfile.companyVideoTitle ?? "Company video",
+  };
 
   useEffect(() => {
     const el = ref.current;
@@ -73,7 +82,7 @@ export function YouTubeVideoEmbed({ url }: { url: string | null }) {
     >
       {!videoId && (
         <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-neutral-100 text-neutral-500">
-          <p className="text-body font-medium">Video unavailable</p>
+          <p className="text-body font-medium">{t.videoUnavailable}</p>
         </div>
       )}
 
@@ -81,7 +90,7 @@ export function YouTubeVideoEmbed({ url }: { url: string | null }) {
         <button
           type="button"
           onClick={() => setPlaying(true)}
-          aria-label="Play video"
+          aria-label={t.playVideoAriaLabel}
           className="group absolute inset-0 h-full w-full"
         >
           {!thumbnailFailed ? (
@@ -115,7 +124,7 @@ export function YouTubeVideoEmbed({ url }: { url: string | null }) {
 
       {videoId && playing && (
         <iframe
-          title="Company video"
+          title={t.companyVideoTitle}
           src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
           className="h-full w-full border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

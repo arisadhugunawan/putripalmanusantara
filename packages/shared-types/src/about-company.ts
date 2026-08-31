@@ -360,9 +360,15 @@ export interface AboutCompanyLegalSection {
   translations?: Record<string, Record<string, string>> | null;
 }
 
-/** A document's category label, falling back to the legacy enum for older records. */
-export function legalDocumentCategoryLabel(doc: LegalCertificateDocument): string {
-  return doc.category?.name ?? LEGAL_DOCUMENT_TYPE_LABELS[doc.document_type];
+/** A document's category label, falling back to the legacy enum for older records.
+ * `typeLabels` defaults to the English `LEGAL_DOCUMENT_TYPE_LABELS` map so existing callers
+ * (e.g. the Indonesian-only admin) keep working unchanged; the public, locale-aware About
+ * Company page passes its own dictionary-sourced map instead. */
+export function legalDocumentCategoryLabel(
+  doc: LegalCertificateDocument,
+  typeLabels: Record<LegalDocumentType, string> = LEGAL_DOCUMENT_TYPE_LABELS,
+): string {
+  return doc.category?.name ?? typeLabels[doc.document_type];
 }
 
 /** True when the document carries an expiry date that is already in the past. */

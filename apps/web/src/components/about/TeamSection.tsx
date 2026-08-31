@@ -1,6 +1,7 @@
 import type { AboutCompanyTeamSection, TeamMember } from "@ppn/shared-types";
 import { buttonVariants } from "@ppn/ui-components";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FadeUpSection } from "./FadeUpSection";
 import { TeamGrid } from "./team/TeamGrid";
 
@@ -17,9 +18,11 @@ import { TeamGrid } from "./team/TeamGrid";
 export function TeamSection({
   members,
   section,
+  dictionary,
 }: {
   members: TeamMember[];
   section: AboutCompanyTeamSection;
+  dictionary: Dictionary;
 }) {
   return (
     <div className="relative overflow-hidden rounded-card bg-linear-to-b from-white to-primary-50/40 p-6 sm:p-8 lg:p-10">
@@ -39,17 +42,16 @@ export function TeamSection({
           {/* Counter is derived from the published members, never a hard-coded number. */}
           {section.show_counter && members.length > 0 && (
             <p className="mt-3 text-small font-medium uppercase tracking-wide text-primary-600">
-              {members.length} Team Member{members.length !== 1 ? "s" : ""}
+              {members.length}{" "}
+              {members.length !== 1 ? dictionary.aboutCompany.team.memberPlural : dictionary.aboutCompany.team.memberSingular}
             </p>
           )}
         </FadeUpSection>
 
         {members.length === 0 ? (
-          <p className="mt-7 max-w-2xl text-body-lg text-neutral-600">
-            Individual team profiles will be published here as they become available.
-          </p>
+          <p className="mt-7 max-w-2xl text-body-lg text-neutral-600">{dictionary.aboutCompany.team.emptyState}</p>
         ) : (
-          <TeamGrid members={members} />
+          <TeamGrid members={members} dictionary={dictionary} />
         )}
 
         {section.cta_label && section.cta_href && (

@@ -4,6 +4,7 @@ import type { FactoryGalleryImage } from "@ppn/shared-types";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { GalleryLightbox } from "@/components/gallery/GalleryLightbox";
 
 /** Same slow-autoplay speed as the "What We Supply" showcase — 8-15px/s brief range. */
@@ -22,7 +23,13 @@ const RESUME_DELAY_MS = 3000;
  *
  * Clicking a card opens the shared `GalleryLightbox` instead of navigating away.
  */
-export function FactoryGalleryCarousel({ images }: { images: FactoryGalleryImage[] }) {
+export function FactoryGalleryCarousel({
+  images,
+  dictionary,
+}: {
+  images: FactoryGalleryImage[];
+  dictionary: Dictionary;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const depthRefs = useRef<(HTMLDivElement | null)[]>([]);
   const tiltRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -179,7 +186,7 @@ export function FactoryGalleryCarousel({ images }: { images: FactoryGalleryImage
       <div
         ref={trackRef}
         role="region"
-        aria-label="Factory photo gallery, scrollable"
+        aria-label={dictionary.aboutCompany.factory.galleryScrollableAriaLabel}
         tabIndex={0}
         onPointerDown={pause}
         onPointerUp={resumeAfterDelay}
@@ -222,13 +229,16 @@ export function FactoryGalleryCarousel({ images }: { images: FactoryGalleryImage
               <button
                 type="button"
                 onClick={() => setLightboxIndex(index)}
-                aria-label={`View ${image.title ?? "factory photo"} fullscreen`}
+                aria-label={dictionary.aboutCompany.factory.viewFullscreenAriaTemplate.replace(
+                  "{title}",
+                  image.title ?? dictionary.aboutCompany.factory.photoFallbackTitle,
+                )}
                 className="relative block aspect-4/3 w-full cursor-pointer overflow-hidden rounded-[22px] bg-[#F7F9F4] text-left shadow-[0_20px_45px_-20px_rgba(24,61,43,0.35)]"
               >
                 <div className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-[1.04]">
                   <Image
                     src={image.media.file_url}
-                    alt={image.alt_text || image.title || "PPN factory facility"}
+                    alt={image.alt_text || image.title || dictionary.aboutCompany.factory.photoFallbackAlt}
                     fill
                     sizes="(min-width: 1024px) 28vw, (min-width: 640px) 52vw, 78vw"
                     priority={index === 0}
@@ -238,7 +248,7 @@ export function FactoryGalleryCarousel({ images }: { images: FactoryGalleryImage
                 <div className="absolute inset-0 flex items-center justify-center bg-[#202522]/0 opacity-0 transition-[opacity,background-color] duration-300 ease-out group-hover:bg-[#202522]/40 group-hover:opacity-100">
                   <span className="flex translate-y-1.5 items-center gap-2 text-small font-semibold uppercase tracking-[0.1em] text-white transition-transform duration-300 ease-out group-hover:translate-y-0">
                     <ZoomIcon className="h-4 w-4" />
-                    View Image →
+                    {dictionary.aboutCompany.factory.viewImageCta}
                   </span>
                 </div>
               </button>
@@ -261,7 +271,7 @@ export function FactoryGalleryCarousel({ images }: { images: FactoryGalleryImage
           type="button"
           onClick={handlePrev}
           disabled={activeIndex === 0}
-          aria-label="Previous photo"
+          aria-label={dictionary.aboutCompany.factory.prevPhotoAriaLabel}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-[#DDE4DC] bg-white text-[#68736B] transition-all duration-250 ease-out hover:border-[#315F3A] hover:bg-[#315F3A] hover:text-white disabled:pointer-events-none disabled:opacity-30"
         >
           <span aria-hidden="true">←</span>
@@ -273,7 +283,7 @@ export function FactoryGalleryCarousel({ images }: { images: FactoryGalleryImage
           type="button"
           onClick={handleNext}
           disabled={activeIndex === images.length - 1}
-          aria-label="Next photo"
+          aria-label={dictionary.aboutCompany.factory.nextPhotoAriaLabel}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-[#DDE4DC] bg-white text-[#68736B] transition-all duration-250 ease-out hover:border-[#315F3A] hover:bg-[#315F3A] hover:text-white disabled:pointer-events-none disabled:opacity-30"
         >
           <span aria-hidden="true">→</span>
@@ -285,7 +295,7 @@ export function FactoryGalleryCarousel({ images }: { images: FactoryGalleryImage
           images={images}
           startIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
-          fallbackAlt="Factory photo"
+          fallbackAlt={dictionary.aboutCompany.factory.photoFallbackAltShort}
         />
       )}
     </div>
