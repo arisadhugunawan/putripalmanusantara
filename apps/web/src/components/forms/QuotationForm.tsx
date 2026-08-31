@@ -3,6 +3,7 @@
 import { Button, FieldError, Input, Label, Textarea } from "@ppn/ui-components";
 import type { ProductSummary } from "@ppn/shared-types";
 import { FormEvent, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { ApiRequestError, submitQuotationRequest } from "@/lib/api-client";
 
 export interface QuotationFormProps {
@@ -13,6 +14,7 @@ export interface QuotationFormProps {
   /** Product picker options, shown only when productId is not fixed. */
   products?: ProductSummary[];
   className?: string;
+  dictionary: Dictionary;
 }
 
 interface FieldErrors {
@@ -23,19 +25,22 @@ interface FieldErrors {
   message?: string;
 }
 
-function validate(form: {
-  name: string;
-  company: string;
-  country: string;
-  email: string;
-  message: string;
-}): FieldErrors {
+function validate(
+  form: {
+    name: string;
+    company: string;
+    country: string;
+    email: string;
+    message: string;
+  },
+  dictionary: Dictionary,
+): FieldErrors {
   const errors: FieldErrors = {};
-  if (!form.name.trim()) errors.name = "Name is required.";
-  if (!form.company.trim()) errors.company = "Company is required.";
-  if (!form.country.trim()) errors.country = "Country is required.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = "Enter a valid email address.";
-  if (!form.message.trim()) errors.message = "Please tell us what you need.";
+  if (!form.name.trim()) errors.name = dictionary.quotationForm.nameRequired;
+  if (!form.company.trim()) errors.company = dictionary.quotationForm.companyRequired;
+  if (!form.country.trim()) errors.country = dictionary.quotationForm.countryRequired;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = dictionary.quotationForm.emailInvalid;
+  if (!form.message.trim()) errors.message = dictionary.quotationForm.messageRequired;
   return errors;
 }
 
@@ -45,6 +50,7 @@ export function QuotationForm({
   productName,
   products,
   className,
+  dictionary,
 }: QuotationFormProps) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -68,7 +74,7 @@ export function QuotationForm({
       website: String(formData.get("website") ?? ""),
     };
 
-    const validation = validate(form);
+    const validation = validate(form, dictionary);
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
 
@@ -88,9 +94,7 @@ export function QuotationForm({
     } catch (error) {
       setStatus("error");
       setErrorMessage(
-        error instanceof ApiRequestError
-          ? error.message
-          : "Something went wrong. Please try again.",
+        error instanceof ApiRequestError ? error.message : dictionary.quotationForm.genericError,
       );
     }
   }
@@ -98,9 +102,9 @@ export function QuotationForm({
   if (status === "success") {
     return (
       <div className={className} role="status">
-        <p className="text-h3 text-neutral-900">Thank you — your request has been sent.</p>
+        <p className="text-h3 text-neutral-900">{dictionary.quotationForm.successTitle}</p>
         <p className="mt-2 text-body text-neutral-600">
-          Our team will get back to you shortly by email or WhatsApp.
+          {dictionary.quotationForm.successBody}
         </p>
       </div>
     );
@@ -110,53 +114,53 @@ export function QuotationForm({
     <form onSubmit={handleSubmit} noValidate className={className}>
       {/* Honeypot — must stay empty (docs/05-api.md §6). Hidden from sighted users, still in the tab flow avoidance. */}
       <div className="absolute left-[-9999px]" aria-hidden="true">
-        <label htmlFor="website">Website</label>
+        <label htmlFor="website">{dictionary.quotationForm.websiteHoneypotLabel}</label>
         <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="qf-name">Name</Label>
+          <Label htmlFor="qf-name">{dictionary.quotationForm.nameLabel}</Label>
           <Input id="qf-name" name="name" invalid={!!errors.name} required />
           <FieldError>{errors.name}</FieldError>
         </div>
         <div>
-          <Label htmlFor="qf-company">Company</Label>
+          <Label htmlFor="qf-company">{dictionary.quotationForm.companyLabel}</Label>
           <Input id="qf-company" name="company" invalid={!!errors.company} required />
           <FieldError>{errors.company}</FieldError>
         </div>
         <div>
-          <Label htmlFor="qf-country">Country</Label>
+          <Label htmlFor="qf-country">{dictionary.quotationForm.countryLabel}</Label>
           <Input id="qf-country" name="country" invalid={!!errors.country} required />
           <FieldError>{errors.country}</FieldError>
         </div>
         <div>
-          <Label htmlFor="qf-email">Email</Label>
+          <Label htmlFor="qf-email">{dictionary.quotationForm.emailLabel}</Label>
           <Input id="qf-email" name="email" type="email" invalid={!!errors.email} required />
           <FieldError>{errors.email}</FieldError>
         </div>
         <div>
-          <Label htmlFor="qf-phone">Phone / WhatsApp (optional)</Label>
+          <Label htmlFor="qf-phone">{dictionary.quotationForm.phoneLabel}</Label>
           <Input id="qf-phone" name="phone" type="tel" />
         </div>
 
         {productId ? (
           <div>
-            <Label>Product</Label>
+            <Label>{dictionary.quotationForm.productFixedLabel}</Label>
             <p className="rounded-field border border-neutral-300 bg-neutral-100 px-4 py-2.5 text-body text-neutral-900">
               {productName}
             </p>
           </div>
         ) : products && products.length > 0 ? (
           <div>
-            <Label htmlFor="qf-product">Product of interest</Label>
+            <Label htmlFor="qf-product">{dictionary.quotationForm.productLabel}</Label>
             <select
               id="qf-product"
               value={selectedProductId}
               onChange={(event) => setSelectedProductId(event.target.value)}
               className="w-full rounded-field border border-neutral-300 bg-white px-4 py-2.5 text-body text-neutral-900 focus:outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-100"
             >
-              <option value="">Select a product (optional)</option>
+              <option value="">{dictionary.quotationForm.productPlaceholder}</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
@@ -167,13 +171,13 @@ export function QuotationForm({
         ) : null}
 
         <div>
-          <Label htmlFor="qf-quantity">Estimated Quantity (optional)</Label>
-          <Input id="qf-quantity" name="estimated_quantity" placeholder="e.g. 2 containers/month" />
+          <Label htmlFor="qf-quantity">{dictionary.quotationForm.quantityLabel}</Label>
+          <Input id="qf-quantity" name="estimated_quantity" placeholder={dictionary.quotationForm.quantityPlaceholder} />
         </div>
       </div>
 
       <div className="mt-4">
-        <Label htmlFor="qf-message">Message</Label>
+        <Label htmlFor="qf-message">{dictionary.quotationForm.messageLabel}</Label>
         <Textarea id="qf-message" name="message" invalid={!!errors.message} required />
         <FieldError>{errors.message}</FieldError>
       </div>
@@ -185,7 +189,7 @@ export function QuotationForm({
       )}
 
       <Button type="submit" className="mt-6 w-full sm:w-auto" disabled={status === "submitting"}>
-        {status === "submitting" ? "Sending…" : "Request Quotation"}
+        {status === "submitting" ? dictionary.quotationForm.submittingCta : dictionary.quotationForm.submitCta}
       </Button>
     </form>
   );

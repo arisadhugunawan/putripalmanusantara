@@ -1,6 +1,8 @@
 import { Card } from "@ppn/ui-components";
-import type { ArticleSummary } from "@ppn/shared-types";
+import type { ArticleSummary, Locale } from "@ppn/shared-types";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
+import { localeToBCP47 } from "@/lib/seo";
 import { SafeImage } from "@/components/SafeImage";
 
 function InstagramGlyph({ className }: { className?: string }) {
@@ -13,13 +15,28 @@ function InstagramGlyph({ className }: { className?: string }) {
   );
 }
 
-export function ArticleCard({ article }: { article: ArticleSummary }) {
-  const date = new Date(article.published_at).toLocaleDateString("en-US", {
+/** `dictionary`/`locale` are optional — only the Homepage's carousel (`ArticlesSection`)
+ * currently passes them; the Articles listing page, Article Detail's "Related Insights", and
+ * the admin preview keep this card's original English-only text for now (out of scope for
+ * the Homepage-only i18n pass — see README "Internationalization"). */
+export function ArticleCard({
+  article,
+  dictionary,
+  locale,
+}: {
+  article: ArticleSummary;
+  dictionary?: Dictionary;
+  locale?: Locale;
+}) {
+  const date = new Date(article.published_at).toLocaleDateString(locale ? localeToBCP47(locale) : "en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
   const fromInstagram = article.content_source === "instagram" || article.content_source === "both";
+  const instagramBadgeText = dictionary?.home.articles.instagramBadge ?? "Originally shared on Instagram";
+  const readArticleText = dictionary?.home.articles.readArticleCta ?? "Read Article";
+  const viewOnInstagramText = dictionary?.home.articles.viewOnInstagramCta ?? "View on Instagram";
 
   return (
     <Card hoverable className="flex h-full flex-col overflow-hidden p-0">
@@ -33,10 +50,10 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
           {fromInstagram && (
             <span
               className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-neutral-900 backdrop-blur-sm"
-              title="Originally shared on Instagram"
+              title={instagramBadgeText}
             >
               <InstagramGlyph className="h-4 w-4" />
-              <span className="sr-only">Originally shared on Instagram</span>
+              <span className="sr-only">{instagramBadgeText}</span>
             </span>
           )}
         </div>
@@ -51,7 +68,7 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
           <div className="mt-4 flex items-center justify-between">
             <p className="text-small text-neutral-600">{date}</p>
             <span className="flex items-center gap-1 text-body font-medium text-primary-700">
-              Read Article
+              {readArticleText}
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -77,7 +94,7 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
           className="flex items-center gap-1.5 border-t border-neutral-100 px-6 py-3 text-small font-medium text-neutral-600 hover:text-primary-700"
         >
           <InstagramGlyph className="h-3.5 w-3.5" />
-          View on Instagram
+          {viewOnInstagramText}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3" aria-hidden="true">
             <path d="M7 17 17 7M9 7h8v8" />
           </svg>

@@ -1,10 +1,11 @@
 "use client";
 
-import type { ArticleSummary, DecorativeGraphic } from "@ppn/shared-types";
+import type { ArticleSummary, DecorativeGraphic, Locale } from "@ppn/shared-types";
 import { Container, Section, buttonVariants, cn } from "@ppn/ui-components";
 import useEmblaCarousel from "embla-carousel-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
@@ -22,9 +23,13 @@ import { SectionBackdrop } from "./SectionBackdrop";
 export function ArticlesSection({
   articles,
   decorativeGraphics = [],
+  dictionary,
+  locale,
 }: {
   articles: ArticleSummary[];
   decorativeGraphics?: DecorativeGraphic[];
+  dictionary: Dictionary;
+  locale: Locale;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: false, dragFree: false });
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -63,14 +68,14 @@ export function ArticlesSection({
           <div>
             <p className="flex items-center gap-3 text-small font-medium uppercase tracking-[0.14em] text-primary-700">
               <span aria-hidden="true" className="h-px w-8 bg-primary-400" />
-              Insight & Articles
+              {dictionary.home.articles.eyebrow}
             </p>
             <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">
-              Industry Intelligence from the Coconut &amp; Global Trade World
+              {dictionary.home.articles.heading}
             </h2>
           </div>
           <Link href="/articles" className={buttonVariants("ghost", "md")}>
-            View All Insights →
+            {dictionary.home.articles.viewAllCta}
           </Link>
         </FadeUpSection>
 
@@ -79,21 +84,21 @@ export function ArticlesSection({
             <div className="-ml-6 flex">
               {articles.map((article) => (
                 <div key={article.id} className="min-w-0 shrink-0 grow-0 basis-[85%] pl-6 sm:basis-[55%] lg:basis-[32%]">
-                  <ArticleCard article={article} />
+                  <ArticleCard article={article} dictionary={dictionary} locale={locale} />
                 </div>
               ))}
             </div>
           </div>
 
           <div className="mt-8 flex items-center justify-between">
-            <div className="flex gap-2" role="tablist" aria-label="Insight slide">
+            <div className="flex gap-2" role="tablist" aria-label={dictionary.home.articles.ariaSlide}>
               {articles.map((article, index) => (
                 <button
                   key={article.id}
                   type="button"
                   role="tab"
                   aria-selected={index === selectedIndex}
-                  aria-label={`Go to article ${index + 1}`}
+                  aria-label={`${dictionary.home.articles.ariaGoToArticle} ${index + 1}`}
                   onClick={() => emblaApi?.scrollTo(index)}
                   className={cn(
                     "h-1.5 rounded-full transition-all duration-300",
@@ -107,7 +112,7 @@ export function ArticlesSection({
                 type="button"
                 onClick={() => emblaApi?.scrollPrev()}
                 disabled={!canScrollPrev}
-                aria-label="Previous article"
+                aria-label={dictionary.home.articles.ariaPrevArticle}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 disabled:pointer-events-none disabled:opacity-30"
               >
                 <ArrowIcon className="rotate-180" />
@@ -116,7 +121,7 @@ export function ArticlesSection({
                 type="button"
                 onClick={() => emblaApi?.scrollNext()}
                 disabled={!canScrollNext}
-                aria-label="Next article"
+                aria-label={dictionary.home.articles.ariaNextArticle}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 disabled:pointer-events-none disabled:opacity-30"
               >
                 <ArrowIcon />

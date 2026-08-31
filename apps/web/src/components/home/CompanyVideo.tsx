@@ -3,6 +3,7 @@
 import type { HomepageAboutPreview } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import { useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { SafeImage } from "@/components/SafeImage";
 
 function extractYouTubeId(url: string): string | null {
@@ -23,7 +24,7 @@ function extractVimeoId(url: string): string | null {
  * only on click) so the section never pays an embed's script/network cost until a visitor
  * actually wants to watch.
  */
-export function CompanyVideo({ preview }: { preview: HomepageAboutPreview }) {
+export function CompanyVideo({ preview, dictionary }: { preview: HomepageAboutPreview; dictionary: Dictionary }) {
   const [playing, setPlaying] = useState(false);
 
   const wrapperClass = "relative aspect-video w-full overflow-hidden rounded-card border border-neutral-200 shadow-card";
@@ -70,7 +71,7 @@ export function CompanyVideo({ preview }: { preview: HomepageAboutPreview }) {
       <button
         type="button"
         onClick={() => setPlaying(true)}
-        aria-label={`Play video: ${preview.heading}`}
+        aria-label={`${dictionary.home.companyVideo.playVideoPrefix} ${preview.heading}`}
         className={cn(wrapperClass, "group block w-full cursor-pointer")}
       >
         {thumbnail ? (

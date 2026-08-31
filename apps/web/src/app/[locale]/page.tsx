@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Fragment, type ReactNode } from "react";
-import type { HomepageSectionKey } from "@ppn/shared-types";
+import type { HomepageSectionKey, Locale } from "@ppn/shared-types";
 import {
   getDecorativeGraphics,
   getFacilities,
@@ -26,6 +26,7 @@ import { QuotationSection } from "@/components/home/QuotationSection";
 import { StatisticsSection } from "@/components/home/StatisticsSection";
 import { SupplyNetworkSection } from "@/components/home/supply-network/SupplyNetworkSection";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { getDictionary } from "@/i18n/get-dictionary";
 import { faqPageJsonLd, localBusinessJsonLd } from "@/lib/json-ld";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -64,7 +65,12 @@ export async function generateMetadata({ params }: PageProps<"/[locale]">): Prom
 // now renders "Our Supply Network" — see README for why the old section was replaced in place.
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
+  // `[locale]/layout.tsx` already 404s on an unrecognized locale segment before this page ever
+  // renders — same as that layout's own `resolvedLocale`, this cast just satisfies the type
+  // system for the one call below (`getDictionary`) that requires `Locale`, not a plain string.
+  const resolvedLocale = locale as Locale;
   const [
+    dictionary,
     homepage,
     featuredProducts,
     facilities,
@@ -86,6 +92,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     quotationGraphics,
     settings,
   ] = await Promise.all([
+    getDictionary(resolvedLocale),
     getPublishedHomepage(locale),
     getFeaturedProducts(locale),
     getFacilities(locale),
@@ -109,7 +116,9 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
   ]);
 
   const sections: Record<HomepageSectionKey, ReactNode> = {
-    hero_slider: <HeroSlider slides={homepage.hero_slides} decorativeGraphics={decorativeGraphics} />,
+    hero_slider: (
+      <HeroSlider slides={homepage.hero_slides} decorativeGraphics={decorativeGraphics} dictionary={dictionary} />
+    ),
     partners: (
       <PartnerMarquee
         section={homepage.partners_section}
@@ -122,6 +131,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         preview={homepage.about_preview}
         highlights={homepage.highlights}
         decorativeGraphics={aboutPreviewGraphics}
+        dictionary={dictionary}
       />
     ),
     statistics: <StatisticsSection statistics={homepage.statistics} />,
@@ -135,7 +145,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       />
     ),
     featured_products: (
-      <FeaturedProductsSection products={featuredProducts} decorativeGraphics={productsGraphics} />
+      <FeaturedProductsSection products={featuredProducts} decorativeGraphics={productsGraphics} dictionary={dictionary} />
     ),
     production_process: (
       <ProcessSection
@@ -144,14 +154,24 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         decorativeGraphics={productionProcessGraphics}
       />
     ),
-    facilities: <FacilitiesPreview facilities={facilities} decorativeGraphics={facilitiesGraphics} />,
-    gallery: <GalleryPreview items={gallery} decorativeGraphics={galleryGraphics} />,
-    news_articles: <ArticlesSection articles={latestArticles} decorativeGraphics={articlesGraphics} />,
+    facilities: (
+      <FacilitiesPreview facilities={facilities} decorativeGraphics={facilitiesGraphics} dictionary={dictionary} />
+    ),
+    gallery: <GalleryPreview items={gallery} decorativeGraphics={galleryGraphics} dictionary={dictionary} />,
+    news_articles: (
+      <ArticlesSection
+        articles={latestArticles}
+        decorativeGraphics={articlesGraphics}
+        dictionary={dictionary}
+        locale={resolvedLocale}
+      />
+    ),
     export_reach: (
       <ExportReachSection
         section={homepage.export_reach_section}
         destinations={homepage.export_destinations}
         decorativeGraphics={exportReachGraphics}
+        dictionary={dictionary}
       />
     ),
     shipping_partner: (
@@ -161,8 +181,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         decorativeGraphics={shippingPartnersGraphics}
       />
     ),
-    faq: <FaqSection faqs={homepage.faqs} decorativeGraphics={faqGraphics} />,
-    contact_cta: <QuotationSection products={allProducts} decorativeGraphics={quotationGraphics} />,
+    faq: <FaqSection faqs={homepage.faqs} decorativeGraphics={faqGraphics} dictionary={dictionary} />,
+    contact_cta: (
+      <QuotationSection products={allProducts} decorativeGraphics={quotationGraphics} dictionary={dictionary} />
+    ),
   };
 
   const orderedSections = [...homepage.section_config]

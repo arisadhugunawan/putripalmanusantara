@@ -1,5 +1,6 @@
 import { Card, Container, Section } from "@ppn/ui-components";
 import type { DecorativeGraphic, ProductSummary } from "@ppn/shared-types";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { QuotationForm } from "@/components/forms/QuotationForm";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
@@ -12,9 +13,11 @@ import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
 export function QuotationSection({
   products,
   decorativeGraphics = [],
+  dictionary,
 }: {
   products: ProductSummary[];
   decorativeGraphics?: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
   return (
     <Section id="request-quotation" className="relative overflow-hidden bg-linear-to-b from-primary-700 to-neutral-900">
@@ -23,17 +26,17 @@ export function QuotationSection({
         <FadeUpSection>
           <p className="flex items-center justify-center gap-3 text-small font-medium uppercase tracking-[0.14em] text-primary-100">
             <span aria-hidden="true" className="h-px w-8 bg-primary-100/60" />
-            Let&apos;s Work Together
+            {dictionary.home.quotation.eyebrow}
             <span aria-hidden="true" className="h-px w-8 bg-primary-100/60" />
           </p>
-          <h2 className="mt-3 text-h2 text-white">Request a Quotation</h2>
+          <h2 className="mt-3 text-h2 text-white">{dictionary.home.quotation.heading}</h2>
           <p className="mt-3 text-body-lg text-primary-50/90">
-            Tell us what you need and our team will get back to you with pricing and availability.
+            {dictionary.home.quotation.description}
           </p>
         </FadeUpSection>
         <FadeUpSection style={{ transitionDelay: "100ms" }}>
           <Card className="mt-8 text-left shadow-premium">
-            <QuotationForm sourcePage="/" products={products} />
+            <QuotationForm sourcePage="/" products={products} dictionary={dictionary} />
           </Card>
         </FadeUpSection>
       </Container>

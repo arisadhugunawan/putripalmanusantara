@@ -1,5 +1,6 @@
 import type { ProductSummary } from "@ppn/shared-types";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { SafeImage } from "@/components/SafeImage";
 
 /** Featured Products redesign (Homepage UI/UX pass) — image-dominant editorial card. Hover
@@ -7,11 +8,11 @@ import { SafeImage } from "@/components/SafeImage";
  * shadow-card-hover) so this specific card can reach the brief's larger -8px lift and
  * `--shadow-premium` glow without changing `Card`'s default for every other consumer
  * (Facilities highlights, etc.). */
-export function ProductCard({ product }: { product: ProductSummary }) {
+export function ProductCard({ product, dictionary }: { product: ProductSummary; dictionary: Dictionary }) {
   return (
     <Link
       href={`/products/${product.slug}`}
-      aria-label={`View details for ${product.name}`}
+      aria-label={`${dictionary.home.products.viewDetailsAriaPrefix} ${product.name}`}
       className="group block h-full rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
     >
       <div
@@ -38,7 +39,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           <p className="mt-2 line-clamp-3 flex-1 text-body text-neutral-600">{product.short_description}</p>
           <div className="mt-5 flex items-center gap-2 text-body font-medium text-neutral-900">
             <span className="relative">
-              View Details
+              {dictionary.home.products.viewDetailsCta}
               <span
                 aria-hidden="true"
                 className="absolute inset-x-0 -bottom-0.5 h-px origin-left scale-x-0 bg-primary-600 transition-transform duration-300 ease-out group-hover:scale-x-100"

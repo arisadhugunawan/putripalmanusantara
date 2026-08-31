@@ -29,6 +29,11 @@ import type {
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { adminApi } from "@/lib/admin/client";
+// Client component — can't call the server-only `getDictionary()` — and this preview always
+// shows the default-locale (English) content anyway (no `?locale=` is ever sent to the public
+// GET endpoints below), so importing the English dictionary module directly matches exactly
+// what's already being previewed.
+import enDictionary from "@/i18n/dictionaries/en";
 import { AboutPreviewSection } from "@/components/home/AboutPreviewSection";
 import { ArticlesSection } from "@/components/home/ArticlesSection";
 import { ExportReachSection } from "@/components/home/ExportReachSection";
@@ -270,7 +275,9 @@ export default function HomepagePreviewPage() {
 function renderSection(key: HomepageSectionKey, data: PreviewData) {
   switch (key) {
     case "hero_slider":
-      return <HeroSlider slides={data.heroSlides} decorativeGraphics={data.decorativeGraphics} />;
+      return (
+        <HeroSlider slides={data.heroSlides} decorativeGraphics={data.decorativeGraphics} dictionary={enDictionary} />
+      );
     case "partners":
       return (
         <PartnerMarquee section={data.partnersSection} logos={data.partnerLogos} decorativeGraphics={data.partnersGraphics} />
@@ -281,6 +288,7 @@ function renderSection(key: HomepageSectionKey, data: PreviewData) {
           preview={data.aboutPreview}
           highlights={data.highlights}
           decorativeGraphics={data.aboutPreviewGraphics}
+          dictionary={enDictionary}
         />
       );
     case "statistics":
@@ -296,7 +304,13 @@ function renderSection(key: HomepageSectionKey, data: PreviewData) {
         />
       );
     case "featured_products":
-      return <FeaturedProductsSection products={data.featuredProducts} decorativeGraphics={data.productsGraphics} />;
+      return (
+        <FeaturedProductsSection
+          products={data.featuredProducts}
+          decorativeGraphics={data.productsGraphics}
+          dictionary={enDictionary}
+        />
+      );
     case "production_process":
       return (
         <ProcessSection
@@ -306,17 +320,27 @@ function renderSection(key: HomepageSectionKey, data: PreviewData) {
         />
       );
     case "facilities":
-      return <FacilitiesPreview facilities={data.facilities} decorativeGraphics={data.facilitiesGraphics} />;
+      return (
+        <FacilitiesPreview facilities={data.facilities} decorativeGraphics={data.facilitiesGraphics} dictionary={enDictionary} />
+      );
     case "gallery":
-      return <GalleryPreview items={data.gallery} decorativeGraphics={data.galleryGraphics} />;
+      return <GalleryPreview items={data.gallery} decorativeGraphics={data.galleryGraphics} dictionary={enDictionary} />;
     case "news_articles":
-      return <ArticlesSection articles={data.latestArticles} decorativeGraphics={data.articlesGraphics} />;
+      return (
+        <ArticlesSection
+          articles={data.latestArticles}
+          decorativeGraphics={data.articlesGraphics}
+          dictionary={enDictionary}
+          locale="en"
+        />
+      );
     case "export_reach":
       return (
         <ExportReachSection
           section={data.exportReachSection}
           destinations={data.exportDestinations}
           decorativeGraphics={data.exportReachGraphics}
+          dictionary={enDictionary}
         />
       );
     case "shipping_partner":
@@ -328,9 +352,11 @@ function renderSection(key: HomepageSectionKey, data: PreviewData) {
         />
       );
     case "faq":
-      return <FaqSection faqs={data.faqs} decorativeGraphics={data.faqGraphics} />;
+      return <FaqSection faqs={data.faqs} decorativeGraphics={data.faqGraphics} dictionary={enDictionary} />;
     case "contact_cta":
-      return <QuotationSection products={data.allProducts} decorativeGraphics={data.quotationGraphics} />;
+      return (
+        <QuotationSection products={data.allProducts} decorativeGraphics={data.quotationGraphics} dictionary={enDictionary} />
+      );
     default:
       return null;
   }

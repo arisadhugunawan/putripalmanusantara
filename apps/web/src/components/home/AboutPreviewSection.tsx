@@ -1,6 +1,7 @@
 import type { DecorativeGraphic, HomepageAboutPreview, HomepageHighlight } from "@ppn/shared-types";
 import { Container, Section, buttonVariants, cn } from "@ppn/ui-components";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
 import { CompanyVideo } from "./CompanyVideo";
@@ -16,10 +17,12 @@ export function AboutPreviewSection({
   preview,
   highlights,
   decorativeGraphics,
+  dictionary,
 }: {
   preview: HomepageAboutPreview;
   highlights: HomepageHighlight[];
   decorativeGraphics: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
   if (!preview.enabled) return null;
 
@@ -43,7 +46,7 @@ export function AboutPreviewSection({
         </FadeUpSection>
 
         <FadeUpSection className="lg:col-start-2 lg:row-start-1 lg:row-span-2">
-          <CompanyVideo preview={preview} />
+          <CompanyVideo preview={preview} dictionary={dictionary} />
         </FadeUpSection>
 
         <FadeUpSection className="lg:col-start-1 lg:row-start-2">

@@ -1,6 +1,7 @@
 import type { DecorativeGraphic, GalleryItem } from "@ppn/shared-types";
 import { Container, Section, buttonVariants } from "@ppn/ui-components";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
@@ -10,9 +11,11 @@ import { SectionBackdrop } from "./SectionBackdrop";
 export function GalleryPreview({
   items,
   decorativeGraphics = [],
+  dictionary,
 }: {
   items: GalleryItem[];
   decorativeGraphics?: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
   // GalleryGrid's own item shape predates video/YouTube/TikTok support and expects a
   // non-null `media` — the Homepage preview only ever showed real photos, so items without
@@ -32,12 +35,12 @@ export function GalleryPreview({
           <div>
             <p className="flex items-center gap-3 text-small font-medium uppercase tracking-[0.14em] text-primary-700">
               <span aria-hidden="true" className="h-px w-8 bg-primary-400" />
-              A Look Inside PPN
+              {dictionary.home.gallery.eyebrow}
             </p>
-            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">Gallery</h2>
+            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">{dictionary.home.gallery.heading}</h2>
           </div>
           <Link href="/gallery" className={buttonVariants("ghost", "md")}>
-            View All Photos →
+            {dictionary.home.gallery.viewAllCta}
           </Link>
         </FadeUpSection>
         <FadeUpSection className="mt-10" style={{ transitionDelay: "100ms" }}>

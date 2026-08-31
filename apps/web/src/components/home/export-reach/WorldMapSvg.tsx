@@ -1,3 +1,4 @@
+import type { Dictionary } from "@/i18n/dictionary.d";
 import worldMap from "@/data/world-map.json";
 
 /**
@@ -7,13 +8,19 @@ import worldMap from "@/data/world-map.json";
  * `children` and attaches event-delegated hover/click/keyboard handling on top — the ~170KB
  * of path data never enters the client JS bundle at all.
  */
-export function WorldMapSvg({ destinationCodes }: { destinationCodes: ReadonlySet<string> }) {
+export function WorldMapSvg({
+  destinationCodes,
+  dictionary,
+}: {
+  destinationCodes: ReadonlySet<string>;
+  dictionary: Dictionary;
+}) {
   return (
     <svg
       viewBox={`0 0 ${worldMap.width} ${worldMap.height}`}
       className="h-auto w-full"
       role="img"
-      aria-label="World map highlighting CV Putri Palma Nusantara's export destinations"
+      aria-label={dictionary.home.exportReach.mapAriaLabel}
     >
       {worldMap.countries.map((country) => {
         const isDestination = destinationCodes.has(country.alpha2);
@@ -26,7 +33,7 @@ export function WorldMapSvg({ destinationCodes }: { destinationCodes: ReadonlySe
             data-destination={isDestination ? "true" : undefined}
             tabIndex={isDestination ? 0 : -1}
             role={isDestination ? "button" : undefined}
-            aria-label={isDestination ? `${country.name} — Export Destination` : undefined}
+            aria-label={isDestination ? `${country.name} — ${dictionary.home.exportReach.tooltipSuffix}` : undefined}
             className={isDestination ? "export-map-country export-map-country--active" : "export-map-country"}
           />
         );

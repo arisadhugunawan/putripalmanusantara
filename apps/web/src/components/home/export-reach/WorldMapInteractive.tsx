@@ -2,6 +2,7 @@
 
 import type { ExportDestination } from "@ppn/shared-types";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { CountryInfoPanel } from "./CountryInfoPanel";
 import { DestinationChipList } from "./DestinationChipList";
 import { getFlagEmoji } from "./flag-emoji";
@@ -23,9 +24,11 @@ interface HoverState {
 export function WorldMapInteractive({
   destinations,
   children,
+  dictionary,
 }: {
   destinations: ExportDestination[];
   children: React.ReactNode;
+  dictionary: Dictionary;
 }) {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -130,7 +133,7 @@ export function WorldMapInteractive({
               {getFlagEmoji(hover.code)}
             </span>
             {hover.name}
-            <span className="ml-1 text-primary-300">— Export Destination</span>
+            <span className="ml-1 text-primary-300">— {dictionary.home.exportReach.tooltipSuffix}</span>
           </div>
         )}
       </div>
@@ -140,7 +143,7 @@ export function WorldMapInteractive({
       {destinations.length > 0 && (
         <div className="mt-6 sm:hidden">
           <label htmlFor="export-destination-select" className="text-small font-medium text-neutral-700">
-            Select Export Destination
+            {dictionary.home.exportReach.mobileSelectLabel}
           </label>
           <select
             id="export-destination-select"
@@ -148,7 +151,7 @@ export function WorldMapInteractive({
             onChange={(e) => setSelectedCode(e.target.value || null)}
             className="mt-1.5 w-full rounded-field border border-neutral-300 bg-white px-4 py-2.5 text-body text-neutral-900"
           >
-            <option value="">Choose a country…</option>
+            <option value="">{dictionary.home.exportReach.mobileSelectPlaceholder}</option>
             {destinations.map((d) => (
               <option key={d.id} value={d.country_code}>
                 {d.country_name}
@@ -159,10 +162,15 @@ export function WorldMapInteractive({
       )}
 
       <div className="mt-6">
-        <CountryInfoPanel destination={selectedDestination} />
+        <CountryInfoPanel destination={selectedDestination} dictionary={dictionary} />
       </div>
 
-      <DestinationChipList destinations={destinations} selectedCode={selectedCode} onSelect={setSelectedCode} />
+      <DestinationChipList
+        destinations={destinations}
+        selectedCode={selectedCode}
+        onSelect={setSelectedCode}
+        dictionary={dictionary}
+      />
     </div>
   );
 }

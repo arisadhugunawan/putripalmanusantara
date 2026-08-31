@@ -5,6 +5,7 @@ import { Container, Section, buttonVariants, cn } from "@ppn/ui-components";
 import useEmblaCarousel from "embla-carousel-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FacilityCard } from "@/components/facilities/FacilityCard";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
@@ -16,9 +17,11 @@ import { SectionBackdrop } from "./SectionBackdrop";
 export function FacilitiesPreview({
   facilities,
   decorativeGraphics = [],
+  dictionary,
 }: {
   facilities: Facility[];
   decorativeGraphics?: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: false, dragFree: false });
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -57,16 +60,15 @@ export function FacilitiesPreview({
           <div>
             <p className="flex items-center gap-3 text-small font-medium uppercase tracking-[0.14em] text-primary-700">
               <span aria-hidden="true" className="h-px w-8 bg-primary-500" />
-              Built for Scale
+              {dictionary.home.facilities.eyebrow}
             </p>
-            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">Our Facilities</h2>
+            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">{dictionary.home.facilities.heading}</h2>
             <p className="mt-2 max-w-lg text-body text-neutral-600">
-              Infrastructure and equipment designed to support consistent quality, efficient
-              handling, and reliable coconut supply.
+              {dictionary.home.facilities.description}
             </p>
           </div>
           <Link href="/facilities" className={buttonVariants("ghost", "md")}>
-            View All Facilities →
+            {dictionary.home.facilities.viewAllCta}
           </Link>
         </FadeUpSection>
 
@@ -85,14 +87,14 @@ export function FacilitiesPreview({
           </div>
 
           <div className="mt-8 flex items-center justify-between">
-            <div className="flex gap-2" role="tablist" aria-label="Facility slide">
+            <div className="flex gap-2" role="tablist" aria-label={dictionary.home.facilities.ariaSlide}>
               {facilities.map((facility, index) => (
                 <button
                   key={facility.id}
                   type="button"
                   role="tab"
                   aria-selected={index === selectedIndex}
-                  aria-label={`Go to facility ${index + 1}`}
+                  aria-label={`${dictionary.home.facilities.ariaGoToFacility} ${index + 1}`}
                   onClick={() => emblaApi?.scrollTo(index)}
                   className={cn(
                     "h-1.5 rounded-full transition-all duration-300",
@@ -106,7 +108,7 @@ export function FacilitiesPreview({
                 type="button"
                 onClick={() => emblaApi?.scrollPrev()}
                 disabled={!canScrollPrev}
-                aria-label="Previous facility"
+                aria-label={dictionary.home.facilities.ariaPrevFacility}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 disabled:pointer-events-none disabled:opacity-30"
               >
                 <ArrowIcon className="rotate-180" />
@@ -115,7 +117,7 @@ export function FacilitiesPreview({
                 type="button"
                 onClick={() => emblaApi?.scrollNext()}
                 disabled={!canScrollNext}
-                aria-label="Next facility"
+                aria-label={dictionary.home.facilities.ariaNextFacility}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 disabled:pointer-events-none disabled:opacity-30"
               >
                 <ArrowIcon />

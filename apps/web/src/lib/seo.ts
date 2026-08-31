@@ -15,6 +15,13 @@ const OG_LOCALE: Record<Locale, string> = {
   vi: "vi_VN",
 };
 
+/** Same region-qualified mapping as `OG_LOCALE`, reformatted with a hyphen for `Intl`/
+ * `toLocaleDateString`-style APIs (which want "en-US", not "en_US") — one source of truth for
+ * "which real-world locale does our short code correspond to" rather than a second map. */
+export function localeToBCP47(locale: Locale): string {
+  return OG_LOCALE[locale].replace("_", "-");
+}
+
 interface PageMetadataInput {
   title: string;
   description: string;

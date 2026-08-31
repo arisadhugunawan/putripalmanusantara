@@ -1,6 +1,7 @@
 import type { DecorativeGraphic, ProductSummary } from "@ppn/shared-types";
 import { Container, Section, buttonVariants } from "@ppn/ui-components";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { ProductCard } from "@/components/products/ProductCard";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
@@ -21,9 +22,11 @@ const LeafOutline = DECORATIVE_SVGS.leaf_outline;
 export function FeaturedProductsSection({
   products,
   decorativeGraphics = [],
+  dictionary,
 }: {
   products: ProductSummary[];
   decorativeGraphics?: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
   if (products.length === 0) return null;
 
@@ -40,12 +43,12 @@ export function FeaturedProductsSection({
           <div>
             <p className="flex items-center gap-3 text-small font-medium uppercase tracking-[0.14em] text-primary-700">
               <span aria-hidden="true" className="h-px w-8 bg-primary-400" />
-              What We Export
+              {dictionary.home.products.eyebrow}
             </p>
-            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">Featured Products</h2>
+            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">{dictionary.home.products.heading}</h2>
           </div>
           <Link href="/products" className={buttonVariants("ghost", "md")}>
-            View All Products →
+            {dictionary.home.products.viewAllCta}
           </Link>
         </FadeUpSection>
 
@@ -58,7 +61,7 @@ export function FeaturedProductsSection({
               className="w-[78%] shrink-0 snap-center sm:w-[45%] lg:w-auto"
               style={{ transitionDelay: `${Math.min(index * 100, 300)}ms` }}
             >
-              <ProductCard product={product} />
+              <ProductCard product={product} dictionary={dictionary} />
             </FadeUpSection>
           ))}
         </div>

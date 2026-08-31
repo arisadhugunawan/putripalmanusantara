@@ -1,5 +1,6 @@
 import type { DecorativeGraphic, ExportDestination, HomepageExportReach } from "@ppn/shared-types";
 import { Container } from "@ppn/ui-components";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
 import { WorldMapInteractive } from "./export-reach/WorldMapInteractive";
@@ -15,10 +16,12 @@ export function ExportReachSection({
   section,
   destinations,
   decorativeGraphics,
+  dictionary,
 }: {
   section: HomepageExportReach;
   destinations: ExportDestination[];
   decorativeGraphics: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
   if (!section.enabled || destinations.length === 0) return null;
 
@@ -43,13 +46,16 @@ export function ExportReachSection({
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-body-lg text-neutral-600">{section.subtitle}</p>
           <p className="mt-2 text-small font-medium uppercase tracking-wide text-primary-600">
-            Serving {destinations.length} Export Destination{destinations.length !== 1 ? "s" : ""}
+            {dictionary.home.exportReach.servingPrefix} {destinations.length}{" "}
+            {destinations.length !== 1
+              ? dictionary.home.exportReach.destinationPlural
+              : dictionary.home.exportReach.destinationSingular}
           </p>
         </FadeUpSection>
 
         <div className="mt-10 md:mt-14">
-          <WorldMapInteractive destinations={destinations}>
-            <WorldMapSvg destinationCodes={destinationCodes} />
+          <WorldMapInteractive destinations={destinations} dictionary={dictionary}>
+            <WorldMapSvg destinationCodes={destinationCodes} dictionary={dictionary} />
           </WorldMapInteractive>
         </div>
       </Container>

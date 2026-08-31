@@ -39,6 +39,8 @@ export interface Dictionary {
     quoteBody: string;
     quoteCta: string;
     rightsReserved: string;
+    /** aria-label prefix for a social icon link, e.g. "Open" + " Instagram". */
+    openSocialLinkPrefix: string;
   };
   common: {
     readMore: string;
@@ -127,5 +129,126 @@ export interface Dictionary {
     container: string;
     shipment: string;
     destination: string;
+  };
+  /** Homepage-only static UI chrome — eyebrows, headings with no CMS field, CTA labels, and
+   * carousel/map accessibility labels. Section CONTENT (hero slides, product/facility/article
+   * data, export destination details) is CMS-backed and already locale-resolved server-side via
+   * `translate()` — this namespace never duplicates that, it only covers text that has no CMS
+   * field to begin with. */
+  home: {
+    hero: {
+      /** Shown only when zero CMS hero slides are configured. */
+      fallbackTitle: string;
+      fallbackSubtitle: string;
+      ariaLabel: string;
+      ariaPrevSlide: string;
+      ariaNextSlide: string;
+      /** "Go to slide" — the slide number is appended at the call site, e.g. `${ariaGoToSlide} 2`. */
+      ariaGoToSlide: string;
+    };
+    companyVideo: {
+      /** "Play video:" — the CMS heading is appended at the call site. */
+      playVideoPrefix: string;
+    };
+    products: {
+      eyebrow: string;
+      heading: string;
+      viewAllCta: string;
+      viewDetailsCta: string;
+      /** "View details for" — the product's (already-localized) name is appended. */
+      viewDetailsAriaPrefix: string;
+    };
+    facilities: {
+      eyebrow: string;
+      heading: string;
+      description: string;
+      viewAllCta: string;
+      ariaSlide: string;
+      ariaGoToFacility: string;
+      ariaPrevFacility: string;
+      ariaNextFacility: string;
+    };
+    gallery: {
+      eyebrow: string;
+      heading: string;
+      viewAllCta: string;
+    };
+    articles: {
+      eyebrow: string;
+      heading: string;
+      viewAllCta: string;
+      ariaSlide: string;
+      ariaGoToArticle: string;
+      ariaPrevArticle: string;
+      ariaNextArticle: string;
+      instagramBadge: string;
+      readArticleCta: string;
+      viewOnInstagramCta: string;
+    };
+    /** "Global Export Reach" interactive-map section. `region`/`export_volume`/
+     * `export_frequency`/`destination_port` and every country name remain admin/data-sourced
+     * and are NOT translated here — see README "Internationalization" for why. */
+    exportReach: {
+      /** "Serving" — the destination count is appended, e.g. `${servingPrefix} 12 ${destinationPlural}`. */
+      servingPrefix: string;
+      destinationSingular: string;
+      destinationPlural: string;
+      statusActive: string;
+      statusPrevious: string;
+      statusPotential: string;
+      statusInactive: string;
+      selectCountryPrompt: string;
+      productsLabel: string;
+      exportVolumeLabel: string;
+      frequencyLabel: string;
+      destinationPortLabel: string;
+      searchPlaceholder: string;
+      searchAriaLabel: string;
+      /** "No destination matches" — the search query is appended in quotes at the call site. */
+      noMatchesPrefix: string;
+      mapAriaLabel: string;
+      /** Appended after an em dash in the map tooltip/aria-label, e.g. `${countryName} — ${tooltipSuffix}`. */
+      tooltipSuffix: string;
+      mobileSelectLabel: string;
+      mobileSelectPlaceholder: string;
+    };
+    faq: {
+      eyebrow: string;
+      heading: string;
+    };
+    quotation: {
+      eyebrow: string;
+      heading: string;
+      description: string;
+    };
+  };
+  /** `QuotationForm` — shared across the Homepage CTA, Product detail pages, and elsewhere via
+   * `sourcePage`, so it lives at the top level rather than nested under `home`. */
+  quotationForm: {
+    nameLabel: string;
+    companyLabel: string;
+    countryLabel: string;
+    emailLabel: string;
+    phoneLabel: string;
+    /** Shown when the product is fixed (e.g. on a Product detail page) as a read-only label. */
+    productFixedLabel: string;
+    productLabel: string;
+    productPlaceholder: string;
+    quantityLabel: string;
+    quantityPlaceholder: string;
+    messageLabel: string;
+    submitCta: string;
+    submittingCta: string;
+    successTitle: string;
+    successBody: string;
+    genericError: string;
+    nameRequired: string;
+    companyRequired: string;
+    countryRequired: string;
+    emailInvalid: string;
+    messageRequired: string;
+    /** Anti-spam honeypot field label — invisible to real visitors, kept translated only for
+     * consistency with every other form label. */
+    websiteHoneypotLabel: string;
   };
 }

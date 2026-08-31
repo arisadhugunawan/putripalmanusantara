@@ -6,6 +6,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/Link";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { SafeImage } from "@/components/SafeImage";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
 
@@ -27,24 +28,26 @@ const ALIGNMENT_CLASSES: Record<HeroTextAlignment, string> = {
 export function HeroSlider({
   slides,
   decorativeGraphics,
+  dictionary,
 }: {
   slides: HeroSlide[];
   decorativeGraphics: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
-  if (slides.length === 0) return <HeroFallback />;
+  if (slides.length === 0) return <HeroFallback dictionary={dictionary} />;
   if (slides.length === 1) return <StaticSlide slide={slides[0]} decorativeGraphics={decorativeGraphics} />;
-  return <Carousel slides={slides} decorativeGraphics={decorativeGraphics} />;
+  return <Carousel slides={slides} decorativeGraphics={decorativeGraphics} dictionary={dictionary} />;
 }
 
 /** No CMS slide is enabled yet — a plain on-brand section so the Homepage never opens on a
  * blank Hero. Carries no image/CTA dependency on the database at all. */
-function HeroFallback() {
+function HeroFallback({ dictionary }: { dictionary: Dictionary }) {
   return (
     <section className="relative flex min-h-[60vh] items-center justify-center overflow-hidden bg-linear-to-b from-primary-700 to-neutral-900 text-center sm:min-h-[70vh]">
       <Container className="relative z-10 py-24">
-        <h1 className="mx-auto max-w-2xl text-h1 text-white">CV Putri Palma Nusantara</h1>
+        <h1 className="mx-auto max-w-2xl text-h1 text-white">{dictionary.home.hero.fallbackTitle}</h1>
         <p className="mx-auto mt-4 max-w-xl text-body-lg text-primary-50">
-          Indonesian Coconut Product Exporter
+          {dictionary.home.hero.fallbackSubtitle}
         </p>
       </Container>
     </section>
@@ -61,7 +64,15 @@ function StaticSlide({ slide, decorativeGraphics }: { slide: HeroSlide; decorati
   );
 }
 
-function Carousel({ slides, decorativeGraphics }: { slides: HeroSlide[]; decorativeGraphics: DecorativeGraphic[] }) {
+function Carousel({
+  slides,
+  decorativeGraphics,
+  dictionary,
+}: {
+  slides: HeroSlide[];
+  decorativeGraphics: DecorativeGraphic[];
+  dictionary: Dictionary;
+}) {
   // Embla only reads plugins/options on mount, so a fresh array/object literal each render
   // is the documented usage — no useRef needed to "stabilize" it.
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 28 }, [
@@ -112,7 +123,7 @@ function Carousel({ slides, decorativeGraphics }: { slides: HeroSlide[]; decorat
       className="relative min-h-[70vh] overflow-hidden bg-neutral-900 sm:min-h-[85vh] lg:min-h-screen"
       role="region"
       aria-roledescription="carousel"
-      aria-label="Hero"
+      aria-label={dictionary.home.hero.ariaLabel}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
@@ -132,7 +143,7 @@ function Carousel({ slides, decorativeGraphics }: { slides: HeroSlide[]; decorat
 
       <button
         type="button"
-        aria-label="Previous slide"
+        aria-label={dictionary.home.hero.ariaPrevSlide}
         onClick={() => emblaApi?.scrollPrev()}
         className="absolute left-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25 sm:flex"
       >
@@ -140,7 +151,7 @@ function Carousel({ slides, decorativeGraphics }: { slides: HeroSlide[]; decorat
       </button>
       <button
         type="button"
-        aria-label="Next slide"
+        aria-label={dictionary.home.hero.ariaNextSlide}
         onClick={() => emblaApi?.scrollNext()}
         className="absolute right-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25 sm:flex"
       >
@@ -152,7 +163,7 @@ function Carousel({ slides, decorativeGraphics }: { slides: HeroSlide[]; decorat
           <button
             key={slide.id}
             type="button"
-            aria-label={`Go to slide ${index + 1}`}
+            aria-label={`${dictionary.home.hero.ariaGoToSlide} ${index + 1}`}
             aria-current={index === selectedIndex ? "true" : undefined}
             onClick={() => emblaApi?.scrollTo(index)}
             className={cn(

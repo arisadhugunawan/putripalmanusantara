@@ -49,20 +49,13 @@ const OBJECT_POSITION_CLASS: Record<string, string> = {
 };
 
 const WEEKDAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-const WEEKDAY_SHORT: Record<string, string> = {
-  mon: "Mon",
-  tue: "Tue",
-  wed: "Wed",
-  thu: "Thu",
-  fri: "Fri",
-  sat: "Sat",
-  sun: "Sun",
-};
 
 /** Collapses e.g. ["mon".."sat"] into "Mon–Sat" — same algorithm as
  * `BusinessHoursStatus.tsx`, inlined here since the Footer doesn't need that component's live
- * open/closed ticking state, just a static readable range. */
-function formatDayRange(days: string[]): string {
+ * open/closed ticking state, just a static readable range. `weekdayShort` reuses the same
+ * translated abbreviations the Contact page already shows (`dictionary.contact.weekdayShort*`)
+ * so the two surfaces can never drift into different languages for the same days. */
+function formatDayRange(days: string[], weekdayShort: Record<string, string>): string {
   const set = new Set(days);
   const ranges: string[] = [];
   let i = 0;
@@ -73,7 +66,7 @@ function formatDayRange(days: string[]): string {
     }
     let j = i;
     while (j + 1 < WEEKDAY_ORDER.length && set.has(WEEKDAY_ORDER[j + 1])) j++;
-    ranges.push(i === j ? WEEKDAY_SHORT[WEEKDAY_ORDER[i]] : `${WEEKDAY_SHORT[WEEKDAY_ORDER[i]]}–${WEEKDAY_SHORT[WEEKDAY_ORDER[j]]}`);
+    ranges.push(i === j ? weekdayShort[WEEKDAY_ORDER[i]] : `${weekdayShort[WEEKDAY_ORDER[i]]}–${weekdayShort[WEEKDAY_ORDER[j]]}`);
     i = j + 1;
   }
   return ranges.join(", ");
@@ -146,8 +139,17 @@ export async function Footer({
 
   const settings = contactPage?.settings ?? null;
   const locations = contactPage?.locations.filter((l) => l.active) ?? [];
+  const weekdayShort: Record<string, string> = {
+    mon: dictionary.contact.weekdayShortMon,
+    tue: dictionary.contact.weekdayShortTue,
+    wed: dictionary.contact.weekdayShortWed,
+    thu: dictionary.contact.weekdayShortThu,
+    fri: dictionary.contact.weekdayShortFri,
+    sat: dictionary.contact.weekdayShortSat,
+    sun: dictionary.contact.weekdayShortSun,
+  };
   const businessHoursLabel = settings
-    ? `${formatDayRange(settings.business_hours_open_days)} · ${settings.business_hours_open_time}–${settings.business_hours_close_time} (GMT${settings.business_hours_utc_offset >= 0 ? "+" : ""}${settings.business_hours_utc_offset})`
+    ? `${formatDayRange(settings.business_hours_open_days, weekdayShort)} · ${settings.business_hours_open_time}–${settings.business_hours_close_time} (GMT${settings.business_hours_utc_offset >= 0 ? "+" : ""}${settings.business_hours_utc_offset})`
     : null;
   const whatsAppMessage = settings ? buildWhatsAppMessage(settings, products.map((p) => p.name)) : "";
 
@@ -268,7 +270,7 @@ export async function Footer({
                     href={social.sanitizedUrl}
                     target={social.open_in_new_tab ? "_blank" : undefined}
                     rel={social.open_in_new_tab ? "noopener noreferrer" : undefined}
-                    aria-label={`Open ${social.display_name || social.platform}`}
+                    aria-label={`${dictionary.footer.openSocialLinkPrefix} ${social.display_name || social.platform}`}
                     title={social.display_name || social.platform}
                     className="flex h-11 w-11 items-center justify-center rounded-field border border-primary-500 text-primary-500 transition-all hover:scale-[1.08] hover:bg-primary-500 hover:text-neutral-900 hover:shadow-[0_0_16px_rgba(147,196,63,0.5)]"
                   >
@@ -320,7 +322,7 @@ export async function Footer({
           <FadeUpSection style={{ transitionDelay: "300ms" }}>
             <FooterColumn heading={dictionary.footer.contactHeading}>
               {locations.map((location) => (
-                <FooterLocationBlock key={location.id} location={location} />
+                <FooterLocationBlock key={location.id} location={location} dictionary={dictionary} />
               ))}
               {settings?.whatsapp_number && (
                 <a
@@ -400,7 +402,7 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
   );
 }
 
-function FooterLocationBlock({ location }: { location: ContactLocation }) {
+function FooterLocationBlock({ location, dictionary }: { location: ContactLocation; dictionary: Dictionary }) {
   const mapsUrl = sanitizeExternalUrl(location.google_maps_url);
   return (
     <div className="flex items-center gap-2.5 text-body text-neutral-300">
@@ -416,7 +418,7 @@ function FooterLocationBlock({ location }: { location: ContactLocation }) {
             rel="noopener noreferrer"
             className="ml-2 text-small font-medium text-primary-500 underline underline-offset-2 hover:text-primary-400"
           >
-            View on Google Maps →
+            {dictionary.contact.openInGoogleMaps} →
           </a>
         )}
       </span>

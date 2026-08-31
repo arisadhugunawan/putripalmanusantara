@@ -3,16 +3,19 @@
 import type { ExportDestination } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import { useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { getFlagEmoji } from "./flag-emoji";
 
 export function DestinationChipList({
   destinations,
   selectedCode,
   onSelect,
+  dictionary,
 }: {
   destinations: ExportDestination[];
   selectedCode: string | null;
   onSelect: (code: string) => void;
+  dictionary: Dictionary;
 }) {
   const [query, setQuery] = useState("");
   const filtered = destinations.filter((d) =>
@@ -23,22 +26,24 @@ export function DestinationChipList({
     <div className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h3 className="text-small font-semibold uppercase tracking-wide text-neutral-500">
-          Export Destinations
+          {dictionary.home.exportReach.destinationPlural}
         </h3>
         <div className="relative w-full max-w-[240px]">
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search destination..."
-            aria-label="Search export destination"
+            placeholder={dictionary.home.exportReach.searchPlaceholder}
+            aria-label={dictionary.home.exportReach.searchAriaLabel}
             className="w-full rounded-full border border-neutral-200 bg-white px-4 py-2 text-small text-neutral-900 placeholder:text-neutral-500 focus:border-primary-500 focus:outline-none"
           />
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="mt-4 text-small text-neutral-500">No destination matches &ldquo;{query}&rdquo;.</p>
+        <p className="mt-4 text-small text-neutral-500">
+          {dictionary.home.exportReach.noMatchesPrefix} &ldquo;{query}&rdquo;.
+        </p>
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
           {filtered.map((d) => (
