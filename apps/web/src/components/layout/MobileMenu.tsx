@@ -1,7 +1,7 @@
 "use client";
 
 import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale, type PublicSiteBranding } from "@ppn/shared-types";
-import { cn } from "@ppn/ui-components";
+import { buttonVariants, cn } from "@ppn/ui-components";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { Link } from "@/i18n/Link";
@@ -121,6 +121,14 @@ export function MobileMenu({
             </Link>
           ),
         )}
+
+        <Link
+          href="/#request-quotation"
+          onClick={onClose}
+          className={cn(buttonVariants("primary", "lg"), "mt-4 w-full")}
+        >
+          {dictionary.nav.requestQuotation}
+        </Link>
       </nav>
     </div>
   );

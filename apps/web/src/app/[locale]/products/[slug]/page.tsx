@@ -1,4 +1,4 @@
-import { Container } from "@ppn/ui-components";
+import { Card, Container } from "@ppn/ui-components";
 import type { Locale } from "@ppn/shared-types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -18,6 +18,7 @@ import { SpecLabDocuments } from "@/components/products/catalogue/SpecLabDocumen
 import { RelatedProducts } from "@/components/products/catalogue/RelatedProducts";
 import { PageHeader } from "@/components/page/PageHeader";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { QuotationForm } from "@/components/forms/QuotationForm";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { productJsonLd } from "@/lib/json-ld";
 import { buildPageMetadata } from "@/lib/seo";
@@ -147,6 +148,7 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
                     productName={product.name}
                     downloads={downloads}
                     whatsappNumber={contactPage?.settings.whatsapp_number}
+                    requestQuotationLabel={dictionary.nav.requestQuotation}
                     catalogueLabel={t.catalogue}
                     whatsappLabel={t.whatsappCta}
                     whatsappMessageTemplate={t.whatsappMessageTemplate}
@@ -160,6 +162,26 @@ export default async function ProductDetailPage({ params }: PageProps<"/[locale]
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* Section 4b — Request a Quotation. Product is fixed (not a picker) so the buyer
+              never re-types what they already told us by landing on this exact product page —
+              see QuotationForm's `productId` mode (FR-PROD-09). Catalogue/WhatsApp above stay
+              as secondary, direct-contact actions; this is the primary, trackable path. */}
+          <section id="request-quotation" aria-labelledby="request-quotation-heading" className="scroll-mt-24">
+            <h2 id="request-quotation-heading" className="text-h2 text-neutral-900">
+              {dictionary.nav.requestQuotation}
+            </h2>
+            <FadeUpSection>
+              <Card className="mt-6 max-w-2xl">
+                <QuotationForm
+                  sourcePage={`/products/${product.slug}`}
+                  productId={product.id}
+                  productName={product.name}
+                  dictionary={dictionary}
+                />
+              </Card>
+            </FadeUpSection>
           </section>
 
           {/* Section 5 — Specifications */}

@@ -2,7 +2,7 @@
 
 import { Button, FieldError, Input, Label, Textarea } from "@ppn/ui-components";
 import type { ProductSummary } from "@ppn/shared-types";
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import type { Dictionary } from "@/i18n/dictionary.d";
 import { ApiRequestError, submitQuotationRequest } from "@/lib/api-client";
 
@@ -56,9 +56,15 @@ export function QuotationForm({
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState(productId ?? "");
+  // A synchronous guard, not just `status === "submitting"` in the render: several submit
+  // events dispatched in the same tick (rapid/double-click, a bouncing Enter key) all run
+  // handleSubmit before React re-renders the disabled button, so a state check alone lets
+  // duplicates through — this ref is set before any await, closing that window.
+  const submittingRef = useRef(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     // Captured before any `await` — event.currentTarget is nulled out by the DOM once
     // synchronous event dispatch finishes, so reading it after an await returns null.
     const formEl = event.currentTarget;
@@ -78,6 +84,7 @@ export function QuotationForm({
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
 
+    submittingRef.current = true;
     setStatus("submitting");
     setErrorMessage(null);
     try {
@@ -96,6 +103,8 @@ export function QuotationForm({
       setErrorMessage(
         error instanceof ApiRequestError ? error.message : dictionary.quotationForm.genericError,
       );
+    } finally {
+      submittingRef.current = false;
     }
   }
 

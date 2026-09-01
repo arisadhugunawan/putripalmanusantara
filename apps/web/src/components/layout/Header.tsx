@@ -1,7 +1,7 @@
 "use client";
 
 import type { Locale, ProductSummary, PublicSiteBranding } from "@ppn/shared-types";
-import { cn } from "@ppn/ui-components";
+import { buttonVariants, cn } from "@ppn/ui-components";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@/i18n/Link";
@@ -133,7 +133,7 @@ export function Header({
             )}
           </Link>
 
-          <nav className="hidden items-center gap-7 xl:flex" aria-label={dictionary.nav.home}>
+          <nav className="hidden items-center gap-5 xl:flex" aria-label={dictionary.nav.home}>
             {entries.map((entry) =>
               isDropdown(entry) ? (
                 <NavDropdown key={entry.label} label={entry.label} items={entry.items} />
@@ -152,8 +152,11 @@ export function Header({
             )}
           </nav>
 
-          <div className="hidden items-center gap-2 xl:flex">
+          <div className="hidden items-center gap-4 xl:flex">
             <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
+            <Link href="/#request-quotation" className={cn(buttonVariants("primary", "sm"), "shrink-0 whitespace-nowrap")}>
+              {dictionary.nav.requestQuotation}
+            </Link>
           </div>
 
           <div className="flex items-center gap-1 xl:hidden">

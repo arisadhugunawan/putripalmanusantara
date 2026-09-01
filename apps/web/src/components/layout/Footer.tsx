@@ -221,22 +221,25 @@ export async function Footer({
               )}
             </div>
             <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-              <Link href="/products" className={buttonVariants("primary", "lg")}>
-                {footerSettings.cta_primary_text}
-              </Link>
               {settings?.whatsapp_number && (
                 <a
                   href={whatsAppLink(settings.whatsapp_number, whatsAppMessage)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={cn(
-                    buttonVariants("secondary", "lg"),
-                    "border-white/40 text-white hover:border-white hover:bg-white/10 hover:text-white",
-                  )}
+                  className={buttonVariants("primary", "lg")}
                 >
                   {footerSettings.cta_secondary_text}
                 </a>
               )}
+              <Link
+                href="/products"
+                className={cn(
+                  buttonVariants(settings?.whatsapp_number ? "secondary" : "primary", "lg"),
+                  settings?.whatsapp_number && "border-white/40 text-white hover:border-white hover:bg-white/10 hover:text-white",
+                )}
+              >
+                {footerSettings.cta_primary_text}
+              </Link>
             </div>
           </Container>
         </FadeUpSection>

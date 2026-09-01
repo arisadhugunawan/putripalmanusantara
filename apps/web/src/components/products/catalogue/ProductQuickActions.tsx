@@ -1,18 +1,22 @@
 import type { ProductDownload } from "@ppn/shared-types";
+import { buttonVariants } from "@ppn/ui-components";
 import { whatsAppLink } from "@/lib/whatsapp";
 
 /**
- * Section 3 "Quick Action" — the two primary buyer actions sit side by side and full width so
- * they read as the page's main call to action: **Catalogue** (only when the CMS actually holds
- * a file for this product) and **WhatsApp**, pre-filled with the product name.
+ * Section 3 "Quick Action" — **Request a Quotation** (scrolls to the on-page `QuotationForm`,
+ * product pre-filled) is the primary buyer action, full width and visually dominant.
+ * **Catalogue** (only when the CMS actually holds a file for this product) and **WhatsApp**
+ * sit below it as secondary, direct-contact actions — kept, not removed, per the conversion
+ * strategy: WhatsApp/Catalogue must remain available even with a primary quotation CTA.
  *
- * Each button only renders when its data exists, so a product without a catalogue file shows
- * one wide WhatsApp button rather than a dead control.
+ * Each secondary button only renders when its data exists, so a product without a catalogue
+ * file shows one wide WhatsApp button rather than a dead control.
  */
 export function ProductQuickActions({
   productName,
   downloads,
   whatsappNumber,
+  requestQuotationLabel = "Request a Quotation",
   catalogueLabel = "Catalogue",
   whatsappLabel = "WhatsApp",
   whatsappMessageTemplate = "Hi, I'm interested in {product}. Could you share more details?",
@@ -20,6 +24,7 @@ export function ProductQuickActions({
   productName: string;
   downloads: ProductDownload[];
   whatsappNumber: string | undefined;
+  requestQuotationLabel?: string;
   catalogueLabel?: string;
   whatsappLabel?: string;
   /** Must contain the literal "{product}" placeholder. */
@@ -28,31 +33,36 @@ export function ProductQuickActions({
   const primaryDownload = downloads[0];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {primaryDownload && (
-        <a
-          href={primaryDownload.file_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group inline-flex items-center justify-center gap-2 rounded-button bg-catalogue-500 px-6 py-3.5 text-body font-semibold text-neutral-900 shadow-[0_10px_24px_-10px_rgba(217,143,22,0.65)] transition-[transform,background-color,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:bg-catalogue-600 hover:shadow-[0_14px_30px_-10px_rgba(217,143,22,0.75)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-catalogue-600"
-        >
-          {catalogueLabel}
-          <DownloadIcon />
-        </a>
-      )}
-      {whatsappNumber && (
-        <a
-          href={whatsAppLink(whatsappNumber, whatsappMessageTemplate.replace("{product}", productName))}
-          target="_blank"
-          rel="noopener noreferrer"
-          // WhatsApp green is the platform's own brand colour, used only on this button so
-          // the action is instantly recognisable; the rest of the page stays on PPN's palette.
-          className="inline-flex items-center justify-center gap-2 rounded-button bg-[#1FA855] px-6 py-3.5 text-body font-medium text-white transition-[transform,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1a8f48] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a8f48]"
-        >
-          {whatsappLabel}
-          <WhatsAppIcon />
-        </a>
-      )}
+    <div className="flex flex-col gap-3">
+      <a href="#request-quotation" className={buttonVariants("primary", "lg")}>
+        {requestQuotationLabel}
+      </a>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {primaryDownload && (
+          <a
+            href={primaryDownload.file_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center justify-center gap-2 rounded-button bg-catalogue-500 px-6 py-3.5 text-body font-semibold text-neutral-900 shadow-[0_10px_24px_-10px_rgba(217,143,22,0.65)] transition-[transform,background-color,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:bg-catalogue-600 hover:shadow-[0_14px_30px_-10px_rgba(217,143,22,0.75)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-catalogue-600"
+          >
+            {catalogueLabel}
+            <DownloadIcon />
+          </a>
+        )}
+        {whatsappNumber && (
+          <a
+            href={whatsAppLink(whatsappNumber, whatsappMessageTemplate.replace("{product}", productName))}
+            target="_blank"
+            rel="noopener noreferrer"
+            // WhatsApp green is the platform's own brand colour, used only on this button so
+            // the action is instantly recognisable; the rest of the page stays on PPN's palette.
+            className="inline-flex items-center justify-center gap-2 rounded-button bg-[#1FA855] px-6 py-3.5 text-body font-medium text-white transition-[transform,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1a8f48] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a8f48]"
+          >
+            {whatsappLabel}
+            <WhatsAppIcon />
+          </a>
+        )}
+      </div>
     </div>
   );
 }
