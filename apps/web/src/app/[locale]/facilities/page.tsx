@@ -21,23 +21,17 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/faciliti
   // it does not summarize the MOQ/Shipment/FAQ sections further down the page, but it is real,
   // existing, translated content rather than an invented string. The `||` fallback preserves
   // today's exact English copy for any locale without an admin-entered override.
-  const aboutCompany = await getPublishedAboutCompany(locale).catch(() => null);
+  const [aboutCompany, dictionary] = await Promise.all([
+    getPublishedAboutCompany(locale).catch(() => null),
+    getDictionary(locale as Locale),
+  ]);
   return buildPageMetadata({
-    title: aboutCompany?.facilities_section.heading || "Facilities",
-    description:
-      aboutCompany?.facilities_section.description ||
-      "Explore CV Putri Palma Nusantara's production facilities, MOQ and payment terms, and shipment logistics for coconut product exports.",
+    title: aboutCompany?.facilities_section.heading || dictionary.nav.facilities,
+    description: aboutCompany?.facilities_section.description || dictionary.facilities.metaDescriptionFallback,
     path: "/facilities",
     locale,
   });
 }
-
-const SECTIONS: FacilitiesSection[] = [
-  { id: "facilities", label: "Facilities" },
-  { id: "moq-payment", label: "MOQ & Payment Terms" },
-  { id: "shipment-terms", label: "Shipment Terms" },
-  { id: "faq", label: "FAQ" },
-];
 
 export default async function FacilitiesPage({ params }: PageProps<"/[locale]/facilities">) {
   const { locale } = await params;
@@ -46,6 +40,13 @@ export default async function FacilitiesPage({ params }: PageProps<"/[locale]/fa
     getDictionary(locale as Locale),
     getPageHeader("facilities", locale),
   ]);
+  const t = dictionary.facilities;
+  const SECTIONS: FacilitiesSection[] = [
+    { id: "facilities", label: dictionary.nav.facilities },
+    { id: "moq-payment", label: dictionary.nav.facilitiesMoqPayment },
+    { id: "shipment-terms", label: dictionary.nav.facilitiesShipmentTerms },
+    { id: "faq", label: dictionary.nav.facilitiesFaq },
+  ];
   const facilities = aboutCompany.facilities;
   const facilitiesSection = aboutCompany.facilities_section;
   const moqPaymentSection = aboutCompany.moq_payment_section;
@@ -64,9 +65,9 @@ export default async function FacilitiesPage({ params }: PageProps<"/[locale]/fa
   return (
     <main>
       <PageHeader
-        breadcrumb={[{ label: "Home", href: "/" }, { label: "Facilities" }]}
-        title="Facilities"
-        description="Purpose-built infrastructure and trade terms behind every CV Putri Palma Nusantara shipment."
+        breadcrumb={[{ label: dictionary.nav.home, href: "/" }, { label: dictionary.nav.facilities }]}
+        title={dictionary.nav.facilities}
+        description={t.pageDescription}
         locale={locale}
         headerConfig={headerConfig}
       />
@@ -80,20 +81,24 @@ export default async function FacilitiesPage({ params }: PageProps<"/[locale]/fa
         doesn't eat into content width on smaller laptop screens.
       */}
       <Container className="grid w-full max-w-full grid-cols-1 gap-10 py-12 lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] lg:items-start lg:gap-10 lg:py-20 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] xl:gap-16">
-        <FacilitiesNav sections={SECTIONS} />
+        <FacilitiesNav sections={SECTIONS} ariaLabel={t.navAriaLabel} />
 
         <div className="flex min-w-0 flex-col gap-20 lg:gap-28">
           {/* Facilities */}
           <section id="facilities" className="scroll-mt-24">
             {facilities.length === 0 ? (
               <FadeUpSection>
-                <h2 className="text-h2 text-neutral-900">Facilities</h2>
-                <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">
-                  No facility information available yet.
-                </p>
+                <h2 className="text-h2 text-neutral-900">{dictionary.nav.facilities}</h2>
+                <p className="mt-6 max-w-2xl text-body-lg text-neutral-600">{t.noFacilitiesYet}</p>
               </FadeUpSection>
             ) : (
-              <FacilityShowcase facilities={facilities} section={facilitiesSection} />
+              <FacilityShowcase
+                facilities={facilities}
+                section={facilitiesSection}
+                dictionary={t}
+                carouselAriaLabel={dictionary.nav.facilities}
+                locationLabel={dictionary.contact.locationLabel}
+              />
             )}
           </section>
 
@@ -103,6 +108,7 @@ export default async function FacilitiesPage({ params }: PageProps<"/[locale]/fa
               section={moqPaymentSection}
               quickCards={moqPaymentQuickCards}
               businessTerms={moqPaymentBusinessTerms}
+              dictionary={t}
             />
           </section>
 
@@ -117,6 +123,7 @@ export default async function FacilitiesPage({ params }: PageProps<"/[locale]/fa
               documents={shipmentDocuments}
               commitmentItems={shipmentCommitmentItems}
               routeLabels={dictionary.shipmentRoute}
+              dictionary={t}
             />
           </section>
 

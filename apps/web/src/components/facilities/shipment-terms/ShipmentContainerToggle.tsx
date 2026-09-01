@@ -13,7 +13,16 @@ const WIDTH_STEP_PX = 44;
  * outline (reused from `DecorativeSvgs.tsx`'s `container_outline`) morphs width via CSS
  * transition to suggest relative length, and idles with a slow float+slight-rotate — the
  * brief's permitted CSS-transform fallback for a "3D container" (no 3D library). */
-export function ShipmentContainerToggle({ types }: { types: ShipmentContainerType[] }) {
+export function ShipmentContainerToggle({
+  types,
+  sizeAriaLabel = "Container size",
+  suffixTemplate = "{label} Container",
+}: {
+  types: ShipmentContainerType[];
+  sizeAriaLabel?: string;
+  /** Must contain the literal "{label}" placeholder. */
+  suffixTemplate?: string;
+}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const reducedMotion = useReducedMotion();
   const ContainerOutline = DECORATIVE_SVGS.container_outline;
@@ -37,7 +46,7 @@ export function ShipmentContainerToggle({ types }: { types: ShipmentContainerTyp
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2" role="tablist" aria-label="Container size">
+      <div className="flex flex-wrap items-center justify-center gap-2" role="tablist" aria-label={sizeAriaLabel}>
         {types.map((type, index) => (
           <button
             key={type.id}
@@ -56,7 +65,7 @@ export function ShipmentContainerToggle({ types }: { types: ShipmentContainerTyp
           </button>
         ))}
       </div>
-      <p className="text-small text-neutral-500">{active.label} Container</p>
+      <p className="text-small text-neutral-500">{suffixTemplate.replace("{label}", active.label)}</p>
     </div>
   );
 }

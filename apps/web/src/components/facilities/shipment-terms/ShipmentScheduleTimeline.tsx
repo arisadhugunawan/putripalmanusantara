@@ -5,13 +5,21 @@ import { SHIPMENT_ICONS } from "./ShipmentIcons";
 /** Compact "Shipping Schedule" mini-timeline — same icon-circle + connecting-line structure as
  * `ProductionTimeline.tsx` (already used just above this section on the same page), scaled
  * down and swapping the number badge for an icon. */
-export function ShipmentScheduleTimeline({ steps }: { steps: ShipmentScheduleStep[] }) {
+export function ShipmentScheduleTimeline({
+  steps,
+  title = "Shipping Schedule",
+  subtitle = "Product Availability + Order Volume + Vessel Schedule",
+}: {
+  steps: ShipmentScheduleStep[];
+  title?: string;
+  subtitle?: string;
+}) {
   if (steps.length === 0) return null;
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-6">
-      <h3 className="text-h3 text-neutral-900">Shipping Schedule</h3>
-      <p className="mt-1 text-small text-neutral-600">Product Availability + Order Volume + Vessel Schedule</p>
+      <h3 className="text-h3 text-neutral-900">{title}</h3>
+      <p className="mt-1 text-small text-neutral-600">{subtitle}</p>
       <ol
         className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[repeat(var(--steps),1fr)] lg:gap-3"
         style={{ "--steps": steps.length } as React.CSSProperties}

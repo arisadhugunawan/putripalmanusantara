@@ -124,6 +124,53 @@ const dictionary: Dictionary = {
     shipment: "शिपमेंट",
     destination: "गंतव्य",
   },
+  facilities: {
+    pageDescription:
+      "CV Putri Palma Nusantara की हर शिपमेंट के पीछे विशेष रूप से निर्मित बुनियादी ढांचा और व्यापार शर्तें।",
+    metaDescriptionFallback:
+      "नारियल उत्पादों के निर्यात के लिए CV Putri Palma Nusantara की उत्पादन सुविधाओं, MOQ और भुगतान शर्तों, तथा शिपमेंट लॉजिस्टिक्स के बारे में जानें।",
+    navAriaLabel: "सुविधा अनुभाग",
+    noFacilitiesYet: "अभी तक सुविधा की जानकारी उपलब्ध नहीं है।",
+    introDescription:
+      "कुशल प्रबंधन, व्यवस्थित भंडारण, और निर्यात के लिए तैयार संचालन का समर्थन करने हेतु डिज़ाइन किया गया।",
+    viewPhotosCta: "फ़ोटो देखें",
+    exploreOperationsCta: "हमारे संचालन के बारे में जानें",
+    scrollLeftAriaLabel: "सुविधाएं बाईं ओर स्क्रॉल करें",
+    scrollRightAriaLabel: "सुविधाएं दाईं ओर स्क्रॉल करें",
+    openPhotoFullscreenAriaTemplate: "{name} फ़ोटो पूर्ण स्क्रीन में खोलें",
+    previousPhotoAriaLabel: "पिछली फ़ोटो",
+    nextPhotoAriaLabel: "अगली फ़ोटो",
+    facilityTypeLabel: "सुविधा प्रकार",
+    facilityStatusLabel: "स्थिति",
+    imageComingSoonAriaLabel: "छवि जल्द ही उपलब्ध होगी",
+    businessTermsUnavailable: "व्यावसायिक शर्तें अनुरोध पर उपलब्ध हैं।",
+    documentationTitle: "दस्तावेज़ीकरण",
+    documentationDescription: "शिपमेंट आवश्यकताओं और लागू नियमों के अनुसार तैयार किया गया।",
+    showDocumentsLabel: "दस्तावेज़ सूची दिखाएं",
+    hideDocumentsLabel: "दस्तावेज़ सूची छुपाएं",
+    shippingScheduleTitle: "शिपिंग शेड्यूल",
+    shippingScheduleSubtitle: "उत्पाद उपलब्धता + ऑर्डर मात्रा + जहाज़ शेड्यूल",
+    containerSizeAriaLabel: "कंटेनर का आकार",
+    containerSuffixTemplate: "{label} कंटेनर",
+    lightboxZoomOutLabel: "ज़ूम आउट करें",
+    lightboxZoomInLabel: "ज़ूम इन करें",
+    lightboxFitToScreenLabel: "स्क्रीन में फ़िट करें",
+    lightboxFitShortLabel: "फ़िट",
+    lightboxExitFullscreenLabel: "पूर्ण स्क्रीन से बाहर निकलें",
+    lightboxFullscreenLabel: "पूर्ण स्क्रीन",
+    lightboxCloseLabel: "व्यूअर बंद करें",
+    lightboxPreviousLabel: "पिछली छवि",
+    lightboxNextLabel: "अगली छवि",
+    lightboxPrevShort: "पिछला",
+    lightboxNextShort: "अगला",
+    lightboxAriaTemplate: "{name} — छवि व्यूअर",
+  },
+  productionProcess: {
+    pageDescription:
+      "उत्पाद सोर्सिंग से लेकर अंतिम शिपमेंट तक गुणवत्ता, दक्षता, और विश्वसनीयता बनाए रखने के लिए डिज़ाइन की गई एक संरचित प्रक्रिया।",
+    metaDescriptionFallback:
+      "स्थानीय सोर्सिंग से लेकर वैश्विक डिलीवरी तक: CV Putri Palma Nusantara की हर शिपमेंट के पीछे की संरचित प्रक्रिया।",
+  },
   home: {
     hero: {
       fallbackTitle: "CV Putri Palma Nusantara",

@@ -124,6 +124,53 @@ const dictionary: Dictionary = {
     shipment: "Pengiriman",
     destination: "Tujuan",
   },
+  facilities: {
+    pageDescription:
+      "Infrastruktur yang dirancang khusus dan ketentuan perdagangan di balik setiap pengiriman CV Putri Palma Nusantara.",
+    metaDescriptionFallback:
+      "Jelajahi fasilitas produksi, syarat MOQ dan pembayaran, serta logistik pengiriman CV Putri Palma Nusantara untuk ekspor produk kelapa.",
+    navAriaLabel: "Bagian Fasilitas",
+    noFacilitiesYet: "Informasi fasilitas belum tersedia.",
+    introDescription:
+      "Dirancang untuk mendukung penanganan yang efisien, penyimpanan yang terorganisir, dan operasional siap ekspor.",
+    viewPhotosCta: "Lihat Foto",
+    exploreOperationsCta: "Jelajahi Operasional Kami",
+    scrollLeftAriaLabel: "Gulir fasilitas ke kiri",
+    scrollRightAriaLabel: "Gulir fasilitas ke kanan",
+    openPhotoFullscreenAriaTemplate: "Buka foto {name} layar penuh",
+    previousPhotoAriaLabel: "Foto sebelumnya",
+    nextPhotoAriaLabel: "Foto berikutnya",
+    facilityTypeLabel: "Jenis Fasilitas",
+    facilityStatusLabel: "Status",
+    imageComingSoonAriaLabel: "Gambar akan segera hadir",
+    businessTermsUnavailable: "Syarat bisnis tersedia berdasarkan permintaan.",
+    documentationTitle: "Dokumentasi",
+    documentationDescription: "Disiapkan sesuai dengan persyaratan pengiriman dan peraturan yang berlaku.",
+    showDocumentsLabel: "Lihat daftar dokumen",
+    hideDocumentsLabel: "Sembunyikan daftar dokumen",
+    shippingScheduleTitle: "Jadwal Pengiriman",
+    shippingScheduleSubtitle: "Ketersediaan Produk + Volume Pesanan + Jadwal Kapal",
+    containerSizeAriaLabel: "Ukuran kontainer",
+    containerSuffixTemplate: "Kontainer {label}",
+    lightboxZoomOutLabel: "Perkecil",
+    lightboxZoomInLabel: "Perbesar",
+    lightboxFitToScreenLabel: "Sesuaikan dengan layar",
+    lightboxFitShortLabel: "Sesuaikan",
+    lightboxExitFullscreenLabel: "Keluar layar penuh",
+    lightboxFullscreenLabel: "Layar penuh",
+    lightboxCloseLabel: "Tutup penampil",
+    lightboxPreviousLabel: "Gambar sebelumnya",
+    lightboxNextLabel: "Gambar berikutnya",
+    lightboxPrevShort: "Sebelumnya",
+    lightboxNextShort: "Berikutnya",
+    lightboxAriaTemplate: "{name} — penampil gambar",
+  },
+  productionProcess: {
+    pageDescription:
+      "Proses terstruktur yang dirancang untuk menjaga kualitas, efisiensi, dan keandalan mulai dari sumber produk hingga pengiriman akhir.",
+    metaDescriptionFallback:
+      "Dari pengadaan lokal hingga pengiriman global: proses terstruktur di balik setiap pengiriman CV Putri Palma Nusantara.",
+  },
   home: {
     hero: {
       fallbackTitle: "CV Putri Palma Nusantara",

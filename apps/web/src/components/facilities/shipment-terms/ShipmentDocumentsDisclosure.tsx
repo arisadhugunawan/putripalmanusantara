@@ -7,7 +7,19 @@ import { SHIPMENT_ICONS } from "./ShipmentIcons";
 
 /** "Documentation" panel — the expandable list renders nothing at all (no trigger, no
  * "no documents" placeholder) until the admin has added at least one real document. */
-export function ShipmentDocumentsDisclosure({ documents }: { documents: ShipmentDocument[] }) {
+export function ShipmentDocumentsDisclosure({
+  documents,
+  title = "Documentation",
+  description = "Prepared according to shipment requirements and applicable regulations.",
+  showLabel = "Show document list",
+  hideLabel = "Hide document list",
+}: {
+  documents: ShipmentDocument[];
+  title?: string;
+  description?: string;
+  showLabel?: string;
+  hideLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
   const FileCheckIcon = SHIPMENT_ICONS.file_check;
 
@@ -18,10 +30,8 @@ export function ShipmentDocumentsDisclosure({ documents }: { documents: Shipment
           <FileCheckIcon className="h-5 w-5" />
         </span>
         <div>
-          <h3 className="text-h3 text-neutral-900">Documentation</h3>
-          <p className="mt-1 text-body text-neutral-600">
-            Prepared according to shipment requirements and applicable regulations.
-          </p>
+          <h3 className="text-h3 text-neutral-900">{title}</h3>
+          <p className="mt-1 text-body text-neutral-600">{description}</p>
         </div>
       </div>
 
@@ -33,7 +43,7 @@ export function ShipmentDocumentsDisclosure({ documents }: { documents: Shipment
             aria-expanded={open}
             className="text-small font-medium text-primary-700 underline"
           >
-            {open ? "Sembunyikan daftar dokumen" : "Lihat daftar dokumen"}
+            {open ? hideLabel : showLabel}
           </button>
           {open && (
             <ul className="mt-3 flex flex-col gap-2">

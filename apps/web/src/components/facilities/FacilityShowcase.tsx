@@ -8,12 +8,15 @@ import type {
 import { buttonVariants, cn } from "@ppn/ui-components";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { Link } from "@/i18n/Link";
 import { SafeImage } from "@/components/SafeImage";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { GalleryLightbox } from "@/components/gallery/GalleryLightbox";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { FacilityIcon } from "./FacilityIcons";
+
+type FacilitiesDictionary = Dictionary["facilities"];
 
 /** How long after the visitor last interacted before auto-rotation resumes. */
 const RESUME_DELAY_MS = 4000;
@@ -59,9 +62,19 @@ function buildGalleryImages(facility: Facility): FacilityGalleryImageItem[] {
 export function FacilityShowcase({
   facilities,
   section,
+  dictionary,
+  carouselAriaLabel,
+  locationLabel,
 }: {
   facilities: Facility[];
   section: AboutCompanyFacilitiesSection;
+  dictionary: FacilitiesDictionary;
+  /** Accessible name for the facility-picker tablist — reuses the page's own "Facilities"
+   * nav label rather than duplicating it as a new dictionary key. */
+  carouselAriaLabel: string;
+  /** Reuses `dictionary.contact.locationLabel` ("Location") — same generic concept, no need
+   * for a second "Location" key scoped to this page. */
+  locationLabel: string;
 }) {
   const [activeId, setActiveId] = useState(facilities[0]?.id ?? null);
   const [imageIndex, setImageIndex] = useState(0);
@@ -139,13 +152,17 @@ export function FacilityShowcase({
         {section.description && (
           <p className="mt-4 max-w-2xl text-body-lg text-neutral-600">{section.description}</p>
         )}
-        <p className="mt-3 text-small text-neutral-400">
-          Designed to support efficient handling, organized storage, and export-ready operations.
-        </p>
+        <p className="mt-3 text-small text-neutral-400">{dictionary.introDescription}</p>
       </FadeUpSection>
 
       <FadeUpSection className="mt-10" style={{ transitionDelay: "80ms" }}>
-        <FacilityCarouselNav facilities={facilities} activeId={activeFacility.id} onSelect={selectFacility} />
+        <FacilityCarouselNav
+          facilities={facilities}
+          activeId={activeFacility.id}
+          onSelect={selectFacility}
+          dictionary={dictionary}
+          ariaLabel={carouselAriaLabel}
+        />
       </FadeUpSection>
 
       <FadeUpSection className="mt-6" style={{ transitionDelay: "150ms" }}>
@@ -159,12 +176,15 @@ export function FacilityShowcase({
           onPrev={() => goToImage(-1)}
           onNext={() => goToImage(1)}
           onOpen={() => setLightboxOpen(true)}
+          dictionary={dictionary}
+          locationLabel={locationLabel}
         />
       </FadeUpSection>
 
       <FadeUpSection className="mt-8" style={{ transitionDelay: "200ms" }}>
-        <Link href="/about" className={buttonVariants("ghost", "md")}>
-          Explore Our Operations →
+        <Link href="/about" className={cn("inline-flex items-center gap-2", buttonVariants("ghost", "md"))}>
+          {dictionary.exploreOperationsCta}
+          <span aria-hidden="true">→</span>
         </Link>
       </FadeUpSection>
 
@@ -174,6 +194,20 @@ export function FacilityShowcase({
           startIndex={imageIndex}
           onClose={() => setLightboxOpen(false)}
           fallbackAlt={activeFacility.name}
+          labels={{
+            zoomOut: dictionary.lightboxZoomOutLabel,
+            zoomIn: dictionary.lightboxZoomInLabel,
+            fitToScreen: dictionary.lightboxFitToScreenLabel,
+            fitShort: dictionary.lightboxFitShortLabel,
+            exitFullscreen: dictionary.lightboxExitFullscreenLabel,
+            fullscreen: dictionary.lightboxFullscreenLabel,
+            close: dictionary.lightboxCloseLabel,
+            previous: dictionary.lightboxPreviousLabel,
+            next: dictionary.lightboxNextLabel,
+            prevShort: dictionary.lightboxPrevShort,
+            nextShort: dictionary.lightboxNextShort,
+            ariaTemplate: dictionary.lightboxAriaTemplate,
+          }}
         />
       )}
     </div>
@@ -184,10 +218,14 @@ function FacilityCarouselNav({
   facilities,
   activeId,
   onSelect,
+  dictionary,
+  ariaLabel,
 }: {
   facilities: Facility[];
   activeId: string;
   onSelect: (id: string) => void;
+  dictionary: FacilitiesDictionary;
+  ariaLabel: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -269,7 +307,7 @@ function FacilityCarouselNav({
       <button
         type="button"
         onClick={() => scrollByCard(-1)}
-        aria-label="Scroll facilities left"
+        aria-label={dictionary.scrollLeftAriaLabel}
         className="absolute -left-3 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition-colors hover:border-primary-300 hover:text-primary-700 lg:flex"
       >
         ←
@@ -277,7 +315,7 @@ function FacilityCarouselNav({
       <button
         type="button"
         onClick={() => scrollByCard(1)}
-        aria-label="Scroll facilities right"
+        aria-label={dictionary.scrollRightAriaLabel}
         className="absolute -right-3 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition-colors hover:border-primary-300 hover:text-primary-700 lg:flex"
       >
         →
@@ -286,7 +324,7 @@ function FacilityCarouselNav({
       <div
         ref={trackRef}
         role="tablist"
-        aria-label="Facilities"
+        aria-label={ariaLabel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
@@ -363,6 +401,8 @@ function FacilityImagePanel({
   onPrev,
   onNext,
   onOpen,
+  dictionary,
+  locationLabel,
 }: {
   facility: Facility;
   image: FacilityGalleryImageItem | null;
@@ -373,6 +413,8 @@ function FacilityImagePanel({
   onPrev: () => void;
   onNext: () => void;
   onOpen: () => void;
+  dictionary: FacilitiesDictionary;
+  locationLabel: string;
 }) {
   // Reset per transition (adjusted during render — React's documented pattern for state that
   // must reset when a prop changes — rather than in an effect). Under reduced motion the
@@ -399,7 +441,7 @@ function FacilityImagePanel({
         type="button"
         onClick={onOpen}
         disabled={!image}
-        aria-label={`Open ${facility.name} photo fullscreen`}
+        aria-label={dictionary.openPhotoFullscreenAriaTemplate.replace("{name}", facility.name)}
         className="group relative block aspect-16/10 w-full overflow-hidden rounded-3xl bg-neutral-100 disabled:cursor-default lg:aspect-21/9"
       >
         {image ? (
@@ -415,14 +457,18 @@ function FacilityImagePanel({
             )}
           />
         ) : (
-          <SafeImage media={facility.cover_image} sizes="(min-width: 1024px) 1100px, 100vw" />
+          <SafeImage
+            media={facility.cover_image}
+            sizes="(min-width: 1024px) 1100px, 100vw"
+            emptyLabel={dictionary.imageComingSoonAriaLabel}
+          />
         )}
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-black/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         />
         <span className="pointer-events-none absolute inset-x-6 bottom-5 flex translate-y-1.5 items-center gap-2 text-body font-semibold text-white opacity-0 transition-[opacity,transform] duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100">
-          View Photos
+          {dictionary.viewPhotosCta}
           <span className="transition-transform duration-300 ease-out group-hover:translate-x-1.5">→</span>
         </span>
         {total > 1 && (
@@ -438,7 +484,7 @@ function FacilityImagePanel({
             type="button"
             onClick={onPrev}
             disabled={index === 0}
-            aria-label="Previous photo"
+            aria-label={dictionary.previousPhotoAriaLabel}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 transition-colors hover:border-primary-300 hover:text-primary-700 disabled:opacity-30"
           >
             ←
@@ -447,7 +493,7 @@ function FacilityImagePanel({
             type="button"
             onClick={onNext}
             disabled={index === total - 1}
-            aria-label="Next photo"
+            aria-label={dictionary.nextPhotoAriaLabel}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 transition-colors hover:border-primary-300 hover:text-primary-700 disabled:opacity-30"
           >
             →
@@ -465,18 +511,19 @@ function FacilityImagePanel({
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1.5 text-small text-neutral-500">
             {facility.facility_type && (
               <span>
-                <span className="font-semibold text-neutral-700">Facility Type</span>{" "}
+                <span className="font-semibold text-neutral-700">{dictionary.facilityTypeLabel}</span>{" "}
                 {facility.facility_type}
               </span>
             )}
             {facility.location && (
               <span>
-                <span className="font-semibold text-neutral-700">Location</span> {facility.location}
+                <span className="font-semibold text-neutral-700">{locationLabel}</span> {facility.location}
               </span>
             )}
             {facility.status && (
               <span>
-                <span className="font-semibold text-neutral-700">Status</span> {facility.status}
+                <span className="font-semibold text-neutral-700">{dictionary.facilityStatusLabel}</span>{" "}
+                {facility.status}
               </span>
             )}
           </div>

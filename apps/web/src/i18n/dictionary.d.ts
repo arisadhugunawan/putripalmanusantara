@@ -152,6 +152,59 @@ export interface Dictionary {
     shipment: string;
     destination: string;
   };
+  /** "/facilities" page UI chrome — page title reuses `nav.facilities`/`nav.facilitiesMoqPayment`/
+   * `nav.facilitiesShipmentTerms`/`nav.facilitiesFaq` for the breadcrumb and section-nav tabs
+   * (already professionally translated there); this namespace covers everything else that has
+   * no CMS field of its own. Facility/MOQ/Shipment/FAQ CONTENT is CMS-backed and already
+   * locale-resolved via `translate()`. */
+  facilities: {
+    pageDescription: string;
+    metaDescriptionFallback: string;
+    navAriaLabel: string;
+    noFacilitiesYet: string;
+    introDescription: string;
+    viewPhotosCta: string;
+    exploreOperationsCta: string;
+    scrollLeftAriaLabel: string;
+    scrollRightAriaLabel: string;
+    /** Must contain the literal "{name}" placeholder. */
+    openPhotoFullscreenAriaTemplate: string;
+    previousPhotoAriaLabel: string;
+    nextPhotoAriaLabel: string;
+    facilityTypeLabel: string;
+    facilityStatusLabel: string;
+    imageComingSoonAriaLabel: string;
+    businessTermsUnavailable: string;
+    documentationTitle: string;
+    documentationDescription: string;
+    showDocumentsLabel: string;
+    hideDocumentsLabel: string;
+    shippingScheduleTitle: string;
+    shippingScheduleSubtitle: string;
+    containerSizeAriaLabel: string;
+    /** Must contain the literal "{label}" placeholder — word order may differ per language. */
+    containerSuffixTemplate: string;
+    lightboxZoomOutLabel: string;
+    lightboxZoomInLabel: string;
+    lightboxFitToScreenLabel: string;
+    lightboxFitShortLabel: string;
+    lightboxExitFullscreenLabel: string;
+    lightboxFullscreenLabel: string;
+    lightboxCloseLabel: string;
+    lightboxPreviousLabel: string;
+    lightboxNextLabel: string;
+    lightboxPrevShort: string;
+    lightboxNextShort: string;
+    /** Must contain the literal "{name}" placeholder. */
+    lightboxAriaTemplate: string;
+  };
+  /** "/production-process" page UI chrome — title/breadcrumb reuse
+   * `nav.facilitiesProductionProcess` (already translated); step CONTENT is the shared
+   * `ProductionStep` CMS data, already locale-resolved via `translate()`. */
+  productionProcess: {
+    pageDescription: string;
+    metaDescriptionFallback: string;
+  };
   /** Homepage-only static UI chrome — eyebrows, headings with no CMS field, CTA labels, and
    * carousel/map accessibility labels. Section CONTENT (hero slides, product/facility/article
    * data, export destination details) is CMS-backed and already locale-resolved server-side via

@@ -1,4 +1,5 @@
 import type { AboutCompanyMoqPaymentSection, MoqPaymentBusinessTerm, MoqPaymentQuickCard } from "@ppn/shared-types";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { MoqPaymentBusinessTermsPanel } from "./MoqPaymentBusinessTermsPanel";
 import { MoqPaymentQuickCards } from "./MoqPaymentQuickCards";
@@ -11,10 +12,12 @@ export function MoqPaymentTermsSection({
   section,
   quickCards,
   businessTerms,
+  dictionary,
 }: {
   section: AboutCompanyMoqPaymentSection;
   quickCards: MoqPaymentQuickCard[];
   businessTerms: MoqPaymentBusinessTerm[];
+  dictionary: Dictionary["facilities"];
 }) {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-linear-to-b from-white via-primary-50/20 to-white p-6 sm:p-10">
@@ -71,7 +74,7 @@ export function MoqPaymentTermsSection({
           </div>
 
           <FadeUpSection style={{ transitionDelay: "240ms" }}>
-            <MoqPaymentBusinessTermsPanel terms={businessTerms} />
+            <MoqPaymentBusinessTermsPanel terms={businessTerms} unavailableText={dictionary.businessTermsUnavailable} />
           </FadeUpSection>
         </div>
       </div>

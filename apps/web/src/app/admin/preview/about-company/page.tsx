@@ -291,13 +291,22 @@ function renderSection(key: AboutCompanySectionKey, data: PreviewData) {
     case "factory":
       return <FactorySection factory={data.factory} facilities={data.facilities} dictionary={enDictionary} />;
     case "facilities":
-      return <FacilityShowcase facilities={data.facilities} section={data.facilitiesSection} />;
+      return (
+        <FacilityShowcase
+          facilities={data.facilities}
+          section={data.facilitiesSection}
+          dictionary={enDictionary.facilities}
+          carouselAriaLabel={enDictionary.nav.facilities}
+          locationLabel={enDictionary.contact.locationLabel}
+        />
+      );
     case "moq_payment_terms":
       return (
         <MoqPaymentTermsSection
           section={data.moqPaymentSection}
           quickCards={data.moqPaymentQuickCards}
           businessTerms={data.moqPaymentBusinessTerms}
+          dictionary={enDictionary.facilities}
         />
       );
     case "shipment_terms":
@@ -310,6 +319,7 @@ function renderSection(key: AboutCompanySectionKey, data: PreviewData) {
           scheduleSteps={data.shipmentScheduleSteps}
           documents={data.shipmentDocuments}
           commitmentItems={data.shipmentCommitmentItems}
+          dictionary={enDictionary.facilities}
         />
       );
     case "facilities_faq":

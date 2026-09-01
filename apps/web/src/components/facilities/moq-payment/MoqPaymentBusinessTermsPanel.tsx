@@ -8,13 +8,19 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
  * arbitrary-length, admin-authored list never forces horizontal scroll on narrow screens.
  * Mobile renders stacked label/value cards; `sm:` and up renders a two-column row layout with
  * a subtle per-row hover shift. */
-export function MoqPaymentBusinessTermsPanel({ terms }: { terms: MoqPaymentBusinessTerm[] }) {
+export function MoqPaymentBusinessTermsPanel({
+  terms,
+  unavailableText = "Business terms are available upon request.",
+}: {
+  terms: MoqPaymentBusinessTerm[];
+  unavailableText?: string;
+}) {
   const reducedMotion = useReducedMotion();
 
   if (terms.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center">
-        <p className="text-body text-neutral-600">Business terms are available upon request.</p>
+        <p className="text-body text-neutral-600">{unavailableText}</p>
       </div>
     );
   }

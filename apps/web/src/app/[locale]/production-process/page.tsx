@@ -1,6 +1,8 @@
 import { Container } from "@ppn/ui-components";
+import type { Locale } from "@ppn/shared-types";
 import type { Metadata } from "next";
 import { getPublishedHomepage } from "@/lib/api";
+import { getDictionary } from "@/i18n/get-dictionary";
 import { PageHeader } from "@/components/page/PageHeader";
 import { ProcessFlowchart } from "@/components/home/process/ProcessFlowchart";
 import { buildPageMetadata } from "@/lib/seo";
@@ -15,12 +17,13 @@ export async function generateMetadata({
   // for this exact subject (Homepage renders the identical section under "Our Supply & Export
   // Process") and is already locale-resolved via `translate()`; the `||` fallback preserves
   // today's exact English copy for any locale without an admin-entered override.
-  const homepage = await getPublishedHomepage(locale).catch(() => null);
+  const [homepage, dictionary] = await Promise.all([
+    getPublishedHomepage(locale).catch(() => null),
+    getDictionary(locale as Locale),
+  ]);
   return buildPageMetadata({
-    title: homepage?.process_section.heading || "Our Supply & Export Process",
-    description:
-      homepage?.process_section.description ||
-      "From local sourcing to global delivery: the structured process behind every CV Putri Palma Nusantara shipment.",
+    title: homepage?.process_section.heading || dictionary.nav.facilitiesProductionProcess,
+    description: homepage?.process_section.description || dictionary.productionProcess.metaDescriptionFallback,
     path: "/production-process",
     locale,
   });
@@ -33,14 +36,20 @@ export default async function ProductionProcessPage({
   params,
 }: PageProps<"/[locale]/production-process">) {
   const { locale } = await params;
-  const homepage = await getPublishedHomepage(locale);
+  const [homepage, dictionary] = await Promise.all([
+    getPublishedHomepage(locale),
+    getDictionary(locale as Locale),
+  ]);
 
   return (
     <main>
       <PageHeader
-        breadcrumb={[{ label: "Home", href: "/" }, { label: "Our Supply & Export Process" }]}
-        title="Our Supply & Export Process"
-        description="A structured process designed to maintain quality, efficiency, and reliability from product sourcing to final shipment."
+        breadcrumb={[
+          { label: dictionary.nav.home, href: "/" },
+          { label: dictionary.nav.facilitiesProductionProcess },
+        ]}
+        title={dictionary.nav.facilitiesProductionProcess}
+        description={dictionary.productionProcess.pageDescription}
         locale={locale}
       />
       <section className="relative overflow-hidden bg-linear-to-b from-white via-primary-50/20 to-white py-(--spacing-section-y-comfortable)">

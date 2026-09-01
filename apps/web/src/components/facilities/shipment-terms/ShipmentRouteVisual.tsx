@@ -47,10 +47,15 @@ export function ShipmentRouteVisual({
   locations,
   containerTypes,
   labels = DEFAULT_LABELS,
+  containerSizeAriaLabel,
+  containerSuffixTemplate,
 }: {
   locations: ShipmentLoadingLocation[];
   containerTypes: ShipmentContainerType[];
   labels?: ShipmentRouteLabels;
+  containerSizeAriaLabel?: string;
+  /** Must contain the literal "{label}" placeholder. */
+  containerSuffixTemplate?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [revealed, setRevealed] = useState(false);
@@ -141,7 +146,11 @@ export function ShipmentRouteVisual({
           style={{ left: pctX(STOPS_X[1]) }}
         >
           <p className="text-small font-semibold uppercase tracking-wide text-neutral-700">{labels.container}</p>
-          <ShipmentContainerToggle types={containerTypes} />
+          <ShipmentContainerToggle
+            types={containerTypes}
+            sizeAriaLabel={containerSizeAriaLabel}
+            suffixTemplate={containerSuffixTemplate}
+          />
         </div>
 
         {/* Shipment */}
@@ -179,7 +188,12 @@ export function ShipmentRouteVisual({
       </div>
 
       {/* Mobile/tablet — vertical timeline */}
-      <MobileShipmentTimeline containerTypes={containerTypes} labels={labels} />
+      <MobileShipmentTimeline
+        containerTypes={containerTypes}
+        labels={labels}
+        containerSizeAriaLabel={containerSizeAriaLabel}
+        containerSuffixTemplate={containerSuffixTemplate}
+      />
     </div>
   );
 }
@@ -187,9 +201,13 @@ export function ShipmentRouteVisual({
 function MobileShipmentTimeline({
   containerTypes,
   labels,
+  containerSizeAriaLabel,
+  containerSuffixTemplate,
 }: {
   containerTypes: ShipmentContainerType[];
   labels: ShipmentRouteLabels;
+  containerSizeAriaLabel?: string;
+  containerSuffixTemplate?: string;
 }) {
   const reducedMotion = useReducedMotion();
   const ShipIcon = SHIPMENT_ICONS.ship;
@@ -197,7 +215,17 @@ function MobileShipmentTimeline({
 
   const stops = [
     { key: "loading", label: labels.loading, icon: <SHIPMENT_ICONS.warehouse className="h-5 w-5" /> },
-    { key: "container", label: labels.container, content: <ShipmentContainerToggle types={containerTypes} /> },
+    {
+      key: "container",
+      label: labels.container,
+      content: (
+        <ShipmentContainerToggle
+          types={containerTypes}
+          sizeAriaLabel={containerSizeAriaLabel}
+          suffixTemplate={containerSuffixTemplate}
+        />
+      ),
+    },
     { key: "shipment", label: labels.shipment, icon: <ShipIcon className="h-5 w-5" /> },
     { key: "destination", label: labels.destination, icon: <WorldMapOutline className="h-6 w-6 opacity-80" /> },
   ];

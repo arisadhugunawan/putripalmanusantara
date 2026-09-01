@@ -124,6 +124,53 @@ const dictionary: Dictionary = {
     shipment: "Vận chuyển",
     destination: "Điểm đến",
   },
+  facilities: {
+    pageDescription:
+      "Cơ sở hạ tầng được xây dựng chuyên biệt và các điều khoản thương mại đằng sau mỗi lô hàng của CV Putri Palma Nusantara.",
+    metaDescriptionFallback:
+      "Khám phá các cơ sở sản xuất, điều khoản MOQ và thanh toán, cùng hậu cần vận chuyển của CV Putri Palma Nusantara cho hoạt động xuất khẩu sản phẩm dừa.",
+    navAriaLabel: "Các mục Cơ sở vật chất",
+    noFacilitiesYet: "Chưa có thông tin về cơ sở vật chất.",
+    introDescription:
+      "Được thiết kế để hỗ trợ xử lý hiệu quả, lưu trữ có tổ chức và vận hành sẵn sàng cho xuất khẩu.",
+    viewPhotosCta: "Xem Ảnh",
+    exploreOperationsCta: "Khám Phá Hoạt Động Của Chúng Tôi",
+    scrollLeftAriaLabel: "Cuộn danh sách cơ sở sang trái",
+    scrollRightAriaLabel: "Cuộn danh sách cơ sở sang phải",
+    openPhotoFullscreenAriaTemplate: "Mở ảnh {name} toàn màn hình",
+    previousPhotoAriaLabel: "Ảnh trước",
+    nextPhotoAriaLabel: "Ảnh tiếp theo",
+    facilityTypeLabel: "Loại Cơ Sở",
+    facilityStatusLabel: "Trạng Thái",
+    imageComingSoonAriaLabel: "Hình ảnh sẽ sớm được cập nhật",
+    businessTermsUnavailable: "Điều khoản kinh doanh có sẵn theo yêu cầu.",
+    documentationTitle: "Tài Liệu",
+    documentationDescription: "Được chuẩn bị theo yêu cầu vận chuyển và các quy định hiện hành.",
+    showDocumentsLabel: "Hiện danh sách tài liệu",
+    hideDocumentsLabel: "Ẩn danh sách tài liệu",
+    shippingScheduleTitle: "Lịch Trình Vận Chuyển",
+    shippingScheduleSubtitle: "Tình Trạng Sẵn Có Sản Phẩm + Khối Lượng Đơn Hàng + Lịch Tàu",
+    containerSizeAriaLabel: "Kích thước container",
+    containerSuffixTemplate: "Container {label}",
+    lightboxZoomOutLabel: "Thu nhỏ",
+    lightboxZoomInLabel: "Phóng to",
+    lightboxFitToScreenLabel: "Vừa màn hình",
+    lightboxFitShortLabel: "Vừa khít",
+    lightboxExitFullscreenLabel: "Thoát toàn màn hình",
+    lightboxFullscreenLabel: "Toàn màn hình",
+    lightboxCloseLabel: "Đóng trình xem",
+    lightboxPreviousLabel: "Hình trước",
+    lightboxNextLabel: "Hình tiếp theo",
+    lightboxPrevShort: "Trước",
+    lightboxNextShort: "Tiếp",
+    lightboxAriaTemplate: "{name} — trình xem hình ảnh",
+  },
+  productionProcess: {
+    pageDescription:
+      "Một quy trình có cấu trúc được thiết kế để duy trì chất lượng, hiệu quả và độ tin cậy từ khâu tìm nguồn sản phẩm đến khâu giao hàng cuối cùng.",
+    metaDescriptionFallback:
+      "Từ nguồn cung địa phương đến giao hàng toàn cầu: quy trình có cấu trúc đằng sau mỗi lô hàng của CV Putri Palma Nusantara.",
+  },
   home: {
     hero: {
       fallbackTitle: "CV Putri Palma Nusantara",

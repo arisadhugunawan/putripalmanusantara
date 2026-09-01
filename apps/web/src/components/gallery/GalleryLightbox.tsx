@@ -30,24 +30,61 @@ export interface GalleryLightboxImage {
   alt_text: string | null;
 }
 
+export interface GalleryLightboxLabels {
+  zoomOut: string;
+  zoomIn: string;
+  fitToScreen: string;
+  fitShort: string;
+  exitFullscreen: string;
+  fullscreen: string;
+  close: string;
+  previous: string;
+  next: string;
+  prevShort: string;
+  nextShort: string;
+  /** Must contain the literal "{name}" placeholder. */
+  ariaTemplate: string;
+}
+
+const DEFAULT_LABELS: GalleryLightboxLabels = {
+  zoomOut: "Zoom out",
+  zoomIn: "Zoom in",
+  fitToScreen: "Fit to screen",
+  fitShort: "Fit",
+  exitFullscreen: "Exit fullscreen",
+  fullscreen: "Fullscreen",
+  close: "Close viewer",
+  previous: "Previous image",
+  next: "Next image",
+  prevShort: "Prev",
+  nextShort: "Next",
+  ariaTemplate: "{name} — image viewer",
+};
+
 /**
  * Fullscreen premium lightbox — originally built for the Factory gallery (adapted from the
  * Legal & Certificates `DocumentViewer`, minus the PDF branch and the preview/full-res
  * two-layer load), generalized here so any gallery of `{ id, media, title?, caption?,
  * category?, alt_text? }` items can reuse the same zoom/pinch/swipe/keyboard/focus-trap/
  * fullscreen mechanics — e.g. the Factory gallery and the Facilities gallery.
+ *
+ * `labels` is optional (defaults to English) — the standalone Gallery page and the Factory
+ * carousel keep their original English toolbar text; the Facilities page passes its own
+ * translated labels via this prop.
  */
 export function GalleryLightbox<T extends GalleryLightboxImage>({
   images,
   startIndex,
   onClose,
   fallbackAlt = "Photo",
+  labels = DEFAULT_LABELS,
 }: {
   images: T[];
   startIndex: number;
   onClose: () => void;
   /** Alt text used when an image has neither its own `alt_text` nor a `title`. */
   fallbackAlt?: string;
+  labels?: GalleryLightboxLabels;
 }) {
   const [index, setIndex] = useState(startIndex);
   const [zoom, setZoom] = useState(1);
@@ -188,7 +225,7 @@ export function GalleryLightbox<T extends GalleryLightboxImage>({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`${image.title ?? fallbackAlt} — image viewer`}
+        aria-label={labels.ariaTemplate.replace("{name}", image.title ?? fallbackAlt)}
         className="flex h-full flex-col"
         onClick={(event) => event.stopPropagation()}
       >
@@ -204,24 +241,24 @@ export function GalleryLightbox<T extends GalleryLightboxImage>({
 
           {isImage && (
             <>
-              <ToolbarButton label="Zoom out" onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))} disabled={zoom <= ZOOM_MIN}>
+              <ToolbarButton label={labels.zoomOut} onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))} disabled={zoom <= ZOOM_MIN}>
                 −
               </ToolbarButton>
               <span className="min-w-[3.2rem] text-center text-small tabular-nums text-white/80">
                 {Math.round(zoom * 100)}%
               </span>
-              <ToolbarButton label="Zoom in" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))} disabled={zoom >= ZOOM_MAX}>
+              <ToolbarButton label={labels.zoomIn} onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))} disabled={zoom >= ZOOM_MAX}>
                 +
               </ToolbarButton>
-              <ToolbarButton label="Fit to screen" onClick={() => setZoom(1)} disabled={zoom === 1}>
-                Fit
+              <ToolbarButton label={labels.fitToScreen} onClick={() => setZoom(1)} disabled={zoom === 1}>
+                {labels.fitShort}
               </ToolbarButton>
             </>
           )}
-          <ToolbarButton label={isFullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={toggleFullscreen}>
+          <ToolbarButton label={isFullscreen ? labels.exitFullscreen : labels.fullscreen} onClick={toggleFullscreen}>
             {isFullscreen ? "⤢" : "⛶"}
           </ToolbarButton>
-          <ToolbarButton label="Close viewer" onClick={onClose} ref={closeRef}>
+          <ToolbarButton label={labels.close} onClick={onClose} ref={closeRef}>
             ✕
           </ToolbarButton>
         </div>
@@ -268,11 +305,11 @@ export function GalleryLightbox<T extends GalleryLightboxImage>({
 
         {images.length > 1 && (
           <div className="flex items-center justify-center gap-3 pb-4">
-            <ToolbarButton label="Previous image" onClick={() => go(-1)} disabled={index === 0}>
-              ← Prev
+            <ToolbarButton label={labels.previous} onClick={() => go(-1)} disabled={index === 0}>
+              ← {labels.prevShort}
             </ToolbarButton>
-            <ToolbarButton label="Next image" onClick={() => go(1)} disabled={index === images.length - 1}>
-              Next →
+            <ToolbarButton label={labels.next} onClick={() => go(1)} disabled={index === images.length - 1}>
+              {labels.nextShort} →
             </ToolbarButton>
           </div>
         )}

@@ -124,6 +124,53 @@ const dictionary: Dictionary = {
     shipment: "การขนส่ง",
     destination: "ปลายทาง",
   },
+  facilities: {
+    pageDescription:
+      "โครงสร้างพื้นฐานที่ออกแบบมาโดยเฉพาะและเงื่อนไขทางการค้าเบื้องหลังการจัดส่งทุกครั้งของ CV Putri Palma Nusantara",
+    metaDescriptionFallback:
+      "สำรวจโรงงานผลิต เงื่อนไข MOQ และการชำระเงิน รวมถึงโลจิสติกส์การจัดส่งของ CV Putri Palma Nusantara สำหรับการส่งออกผลิตภัณฑ์มะพร้าว",
+    navAriaLabel: "ส่วนต่าง ๆ ของสิ่งอำนวยความสะดวก",
+    noFacilitiesYet: "ยังไม่มีข้อมูลสิ่งอำนวยความสะดวก",
+    introDescription:
+      "ออกแบบมาเพื่อรองรับการจัดการที่มีประสิทธิภาพ การจัดเก็บอย่างเป็นระบบ และการดำเนินงานที่พร้อมส่งออก",
+    viewPhotosCta: "ดูภาพถ่าย",
+    exploreOperationsCta: "สำรวจการดำเนินงานของเรา",
+    scrollLeftAriaLabel: "เลื่อนรายการสิ่งอำนวยความสะดวกไปทางซ้าย",
+    scrollRightAriaLabel: "เลื่อนรายการสิ่งอำนวยความสะดวกไปทางขวา",
+    openPhotoFullscreenAriaTemplate: "เปิดภาพ {name} แบบเต็มจอ",
+    previousPhotoAriaLabel: "ภาพก่อนหน้า",
+    nextPhotoAriaLabel: "ภาพถัดไป",
+    facilityTypeLabel: "ประเภทสิ่งอำนวยความสะดวก",
+    facilityStatusLabel: "สถานะ",
+    imageComingSoonAriaLabel: "ภาพกำลังจะมาเร็ว ๆ นี้",
+    businessTermsUnavailable: "เงื่อนไขทางธุรกิจสามารถสอบถามได้ตามคำขอ",
+    documentationTitle: "เอกสารประกอบ",
+    documentationDescription: "จัดเตรียมตามข้อกำหนดการจัดส่งและกฎระเบียบที่เกี่ยวข้อง",
+    showDocumentsLabel: "แสดงรายการเอกสาร",
+    hideDocumentsLabel: "ซ่อนรายการเอกสาร",
+    shippingScheduleTitle: "ตารางการจัดส่ง",
+    shippingScheduleSubtitle: "ความพร้อมของสินค้า + ปริมาณคำสั่งซื้อ + ตารางเรือ",
+    containerSizeAriaLabel: "ขนาดตู้คอนเทนเนอร์",
+    containerSuffixTemplate: "ตู้คอนเทนเนอร์ {label}",
+    lightboxZoomOutLabel: "ซูมออก",
+    lightboxZoomInLabel: "ซูมเข้า",
+    lightboxFitToScreenLabel: "พอดีหน้าจอ",
+    lightboxFitShortLabel: "พอดี",
+    lightboxExitFullscreenLabel: "ออกจากโหมดเต็มจอ",
+    lightboxFullscreenLabel: "เต็มจอ",
+    lightboxCloseLabel: "ปิดตัวแสดงภาพ",
+    lightboxPreviousLabel: "ภาพก่อนหน้า",
+    lightboxNextLabel: "ภาพถัดไป",
+    lightboxPrevShort: "ก่อนหน้า",
+    lightboxNextShort: "ถัดไป",
+    lightboxAriaTemplate: "{name} — ตัวแสดงภาพ",
+  },
+  productionProcess: {
+    pageDescription:
+      "กระบวนการที่มีโครงสร้างชัดเจน ออกแบบมาเพื่อรักษาคุณภาพ ประสิทธิภาพ และความน่าเชื่อถือ ตั้งแต่การจัดหาผลิตภัณฑ์จนถึงการจัดส่งขั้นสุดท้าย",
+    metaDescriptionFallback:
+      "จากการจัดหาในท้องถิ่นสู่การจัดส่งทั่วโลก กระบวนการที่มีโครงสร้างเบื้องหลังการจัดส่งทุกครั้งของ CV Putri Palma Nusantara",
+  },
   home: {
     hero: {
       fallbackTitle: "CV Putri Palma Nusantara",

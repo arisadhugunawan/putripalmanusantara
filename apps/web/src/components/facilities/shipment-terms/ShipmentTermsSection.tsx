@@ -8,6 +8,7 @@ import type {
   ShippingArrangementItem,
 } from "@ppn/shared-types";
 import { buttonVariants } from "@ppn/ui-components";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { Link } from "@/i18n/Link";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { DECORATIVE_SVGS } from "@/components/decorative/DecorativeSvgs";
@@ -30,6 +31,7 @@ export function ShipmentTermsSection({
   documents,
   commitmentItems,
   routeLabels,
+  dictionary,
 }: {
   section: AboutCompanyShipmentTermsSection;
   arrangementItems: ShippingArrangementItem[];
@@ -39,6 +41,7 @@ export function ShipmentTermsSection({
   documents: ShipmentDocument[];
   commitmentItems: ShipmentCommitmentItem[];
   routeLabels?: ShipmentRouteLabels;
+  dictionary: Dictionary["facilities"];
 }) {
   const LeafOutline = DECORATIVE_SVGS.leaf_outline;
 
@@ -79,7 +82,13 @@ export function ShipmentTermsSection({
         </FadeUpSection>
 
         <FadeUpSection style={{ transitionDelay: "80ms" }} className="mt-12">
-          <ShipmentRouteVisual locations={loadingLocations} containerTypes={containerTypes} labels={routeLabels} />
+          <ShipmentRouteVisual
+            locations={loadingLocations}
+            containerTypes={containerTypes}
+            labels={routeLabels}
+            containerSizeAriaLabel={dictionary.containerSizeAriaLabel}
+            containerSuffixTemplate={dictionary.containerSuffixTemplate}
+          />
         </FadeUpSection>
 
         <FadeUpSection style={{ transitionDelay: "200ms" }} className="mt-12">
@@ -88,10 +97,20 @@ export function ShipmentTermsSection({
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <FadeUpSection style={{ transitionDelay: "240ms" }}>
-            <ShipmentScheduleTimeline steps={scheduleSteps} />
+            <ShipmentScheduleTimeline
+              steps={scheduleSteps}
+              title={dictionary.shippingScheduleTitle}
+              subtitle={dictionary.shippingScheduleSubtitle}
+            />
           </FadeUpSection>
           <FadeUpSection style={{ transitionDelay: "280ms" }}>
-            <ShipmentDocumentsDisclosure documents={documents} />
+            <ShipmentDocumentsDisclosure
+              documents={documents}
+              title={dictionary.documentationTitle}
+              description={dictionary.documentationDescription}
+              showLabel={dictionary.showDocumentsLabel}
+              hideLabel={dictionary.hideDocumentsLabel}
+            />
           </FadeUpSection>
         </div>
 
