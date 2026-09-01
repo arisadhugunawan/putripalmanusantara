@@ -60,6 +60,11 @@ export function MobileMenu({
   const normalizedPath = stripLocale(pathname, locale);
   const entries = withProductsGroup(getMainNavEntries(dictionary, aboutNav), productsGroup);
 
+  // Same reasoning as Header.tsx's desktop CTA: a product detail page already has its own
+  // pre-filled #request-quotation section, so scroll there instead of navigating away to the
+  // homepage's generic quotation form at the same anchor id.
+  const isProductDetailPage = /^\/products\/[^/]+$/.test(normalizedPath);
+
   useEffect(() => {
     if (!open) return;
     function onKeyDown(event: KeyboardEvent) {
@@ -122,13 +127,26 @@ export function MobileMenu({
           ),
         )}
 
-        <Link
-          href="/#request-quotation"
-          onClick={onClose}
-          className={cn(buttonVariants("primary", "lg"), "mt-4 w-full")}
-        >
-          {dictionary.nav.requestQuotation}
-        </Link>
+        {/* A plain anchor on the product-detail branch — see Header.tsx's identical comment:
+            Next's `Link` updates the URL hash but doesn't scroll when the pathname itself
+            isn't changing, so a same-page jump needs the browser's native anchor behavior. */}
+        {isProductDetailPage ? (
+          <a
+            href="#request-quotation"
+            onClick={onClose}
+            className={cn(buttonVariants("primary", "lg"), "mt-4 w-full")}
+          >
+            {dictionary.nav.requestQuotation}
+          </a>
+        ) : (
+          <Link
+            href="/#request-quotation"
+            onClick={onClose}
+            className={cn(buttonVariants("primary", "lg"), "mt-4 w-full")}
+          >
+            {dictionary.nav.requestQuotation}
+          </Link>
+        )}
       </nav>
     </div>
   );

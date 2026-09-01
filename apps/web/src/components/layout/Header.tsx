@@ -84,6 +84,12 @@ export function Header({
   };
   const entries = withProductsGroup(getMainNavEntries(dictionary, aboutNav), productsGroup);
 
+  // A product detail page hosts its own #request-quotation section with the product already
+  // pre-filled (see ProductDetailPage) — on that page the nav CTA should scroll there instead
+  // of navigating to the homepage's generic, product-picker quotation form at the same anchor
+  // id. Every other route falls back to the homepage section, as before.
+  const isProductDetailPage = new RegExp(`^/${locale}/products/[^/]+$`).test(pathname);
+
   return (
     <>
       <header
@@ -154,9 +160,19 @@ export function Header({
 
           <div className="hidden items-center gap-4 xl:flex">
             <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
-            <Link href="/#request-quotation" className={cn(buttonVariants("primary", "sm"), "shrink-0 whitespace-nowrap")}>
-              {dictionary.nav.requestQuotation}
-            </Link>
+            {/* A plain anchor on the product-detail branch, not the i18n `Link` — Next's
+                `Link` intercepts the click and updates the URL hash via History without
+                actually scrolling when the pathname itself isn't changing, so a same-page
+                jump needs the browser's own native fragment-navigation behavior instead. */}
+            {isProductDetailPage ? (
+              <a href="#request-quotation" className={cn(buttonVariants("primary", "sm"), "shrink-0 whitespace-nowrap")}>
+                {dictionary.nav.requestQuotation}
+              </a>
+            ) : (
+              <Link href="/#request-quotation" className={cn(buttonVariants("primary", "sm"), "shrink-0 whitespace-nowrap")}>
+                {dictionary.nav.requestQuotation}
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-1 xl:hidden">
