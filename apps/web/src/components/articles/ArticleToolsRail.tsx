@@ -99,16 +99,38 @@ const TOOL_BUTTON =
  * tools below title"), so the two surfaces can never drift out of sync on which channels are
  * offered.
  */
+export interface ArticleToolsRailLabels {
+  shareWhatsappLabel: string;
+  shareFacebookLabel: string;
+  shareLinkedinLabel: string;
+  shareXLabel: string;
+  copyLinkLabel: string;
+  linkCopiedLabel: string;
+  printArticleLabel: string;
+}
+
+const DEFAULT_LABELS: ArticleToolsRailLabels = {
+  shareWhatsappLabel: "Share on WhatsApp",
+  shareFacebookLabel: "Share on Facebook",
+  shareLinkedinLabel: "Share on LinkedIn",
+  shareXLabel: "Share on X",
+  copyLinkLabel: "Copy link",
+  linkCopiedLabel: "Link copied",
+  printArticleLabel: "Print article",
+};
+
 export function ArticleToolsRail({
   url,
   title,
   orientation = "horizontal",
   className,
+  labels = DEFAULT_LABELS,
 }: {
   url: string;
   title: string;
   orientation?: "vertical" | "horizontal";
   className?: string;
+  labels?: ArticleToolsRailLabels;
 }) {
   const [copied, setCopied] = useState(false);
   const encodedUrl = encodeURIComponent(url);
@@ -125,10 +147,10 @@ export function ArticleToolsRail({
   }
 
   const links = [
-    { label: "Share on WhatsApp", href: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`, Icon: WhatsAppIcon },
-    { label: "Share on Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, Icon: FacebookIcon },
-    { label: "Share on LinkedIn", href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, Icon: LinkedInIcon },
-    { label: "Share on X", href: `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`, Icon: XIcon },
+    { label: labels.shareWhatsappLabel, href: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`, Icon: WhatsAppIcon },
+    { label: labels.shareFacebookLabel, href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, Icon: FacebookIcon },
+    { label: labels.shareLinkedinLabel, href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, Icon: LinkedInIcon },
+    { label: labels.shareXLabel, href: `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`, Icon: XIcon },
   ];
 
   return (
@@ -149,8 +171,8 @@ export function ArticleToolsRail({
       <button
         type="button"
         onClick={() => void handleCopy()}
-        aria-label={copied ? "Link copied" : "Copy link"}
-        title={copied ? "Link copied" : "Copy link"}
+        aria-label={copied ? labels.linkCopiedLabel : labels.copyLinkLabel}
+        title={copied ? labels.linkCopiedLabel : labels.copyLinkLabel}
         className={TOOL_BUTTON}
       >
         {copied ? <CheckIcon className="h-4.5 w-4.5 text-primary-600" /> : <LinkIcon className="h-4.5 w-4.5" />}
@@ -158,8 +180,8 @@ export function ArticleToolsRail({
       <button
         type="button"
         onClick={() => window.print()}
-        aria-label="Print article"
-        title="Print article"
+        aria-label={labels.printArticleLabel}
+        title={labels.printArticleLabel}
         className={cn(TOOL_BUTTON, "hidden sm:flex")}
       >
         <PrintIcon className="h-4.5 w-4.5" />

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin/client";
+import enDictionary from "@/i18n/dictionaries/en";
 import { ArticleDetailView } from "@/components/articles/ArticleDetailView";
 
 /**
@@ -51,7 +52,9 @@ export default function ArticlePreviewPage() {
 
       {error && <p className="p-8 text-center text-body text-red-600">Gagal memuat preview. Silakan coba lagi.</p>}
       {!error && !article && <p className="p-8 text-center text-body text-neutral-500">Memuat preview...</p>}
-      {article && <ArticleDetailView article={article} relatedArticles={related} locale="en" />}
+      {article && (
+        <ArticleDetailView article={article} relatedArticles={related} locale="en" dictionary={enDictionary} />
+      )}
     </div>
   );
 }

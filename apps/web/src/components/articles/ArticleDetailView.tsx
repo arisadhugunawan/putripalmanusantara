@@ -1,9 +1,10 @@
 "use client";
 
 import { Container, Section, cn } from "@ppn/ui-components";
-import type { ArticleDetail, ArticleSummary } from "@ppn/shared-types";
+import type { ArticleDetail, ArticleSummary, Locale } from "@ppn/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SITE_URL } from "@/lib/seo";
+import type { Dictionary } from "@/i18n/dictionary.d";
+import { SITE_URL, localeToBCP47 } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/json-ld";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/page/Breadcrumb";
@@ -27,11 +28,14 @@ export function ArticleDetailView({
   article,
   relatedArticles,
   locale,
+  dictionary,
 }: {
   article: ArticleDetail;
   relatedArticles: ArticleSummary[];
-  locale: string;
+  locale: Locale;
+  dictionary: Dictionary;
 }) {
+  const t = dictionary.articles;
   const contentRef = useRef<HTMLDivElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
@@ -64,12 +68,12 @@ export function ArticleDetailView({
 
   const activeGalleryImage = lightboxIndex !== null ? article.gallery_images[lightboxIndex] : null;
   const dateLabel = new Date(article.published_at)
-    .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    .toLocaleDateString(localeToBCP47(locale), { month: "short", day: "numeric", year: "numeric" })
     .toUpperCase();
   const shareUrl = `${SITE_URL}/${locale}/articles/${article.slug}`;
   const breadcrumbItems = [
-    { label: "Home", href: "/" },
-    { label: "Insights", href: "/articles" },
+    { label: dictionary.nav.home, href: "/" },
+    { label: t.breadcrumbInsights, href: "/articles" },
     // Category has no dedicated listing page in this project (yet) — shown as a plain,
     // non-clickable crumb per brief item 4's own conditional ("category page if available").
     ...(article.category ? [{ label: article.category.name }] : []),
@@ -106,10 +110,11 @@ export function ArticleDetailView({
                 <p className="mt-5 max-w-xl text-body-lg text-neutral-600">{article.excerpt}</p>
                 <p className="mt-6 text-small uppercase tracking-wide text-neutral-500">
                   {article.author} <span aria-hidden="true">·</span> {dateLabel}{" "}
-                  <span aria-hidden="true">·</span> {article.reading_time_minutes} MIN READ
+                  <span aria-hidden="true">·</span>{" "}
+                  {t.minReadTemplate.replace("{minutes}", String(article.reading_time_minutes))}
                 </p>
                 <div className="mt-6 lg:hidden">
-                  <ArticleToolsRail url={shareUrl} title={article.title} orientation="horizontal" />
+                  <ArticleToolsRail url={shareUrl} title={article.title} orientation="horizontal" labels={t} />
                 </div>
               </div>
 
@@ -134,7 +139,7 @@ export function ArticleDetailView({
             <div className="lg:grid lg:grid-cols-[3rem_1fr] lg:gap-8">
               <aside className="hidden lg:block">
                 <div className="sticky top-28">
-                  <ArticleToolsRail url={shareUrl} title={article.title} orientation="vertical" />
+                  <ArticleToolsRail url={shareUrl} title={article.title} orientation="vertical" labels={t} />
                 </div>
               </aside>
 
@@ -145,12 +150,12 @@ export function ArticleDetailView({
                 />
 
                 <QuoteBlock text={article.quote_text} author={article.quote_author} />
-                <KeyTakeaways items={article.key_takeaways} />
-                <StatisticsBlock statistics={article.statistics} />
+                <KeyTakeaways items={article.key_takeaways} label={t.keyTakeawaysLabel} />
+                <StatisticsBlock statistics={article.statistics} locale={locale} />
 
                 {article.gallery_images.length > 0 && (
                   <div className="mt-10">
-                    <h2 className="text-h3 text-neutral-900">Gallery</h2>
+                    <h2 className="text-h3 text-neutral-900">{t.galleryHeading}</h2>
                     <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {article.gallery_images.map((item, index) => (
                         <RevealOnScroll key={item.id} delayMs={index * 80}>
@@ -158,7 +163,7 @@ export function ArticleDetailView({
                             <button
                               type="button"
                               onClick={() => setLightboxIndex(index)}
-                              aria-label={`Lihat foto penuh: ${item.media.alt_text}`}
+                              aria-label={t.lightboxImageAriaTemplate.replace("{name}", item.media.alt_text)}
                               className="absolute inset-0 h-full w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600"
                             >
                               <SafeImage
@@ -179,18 +184,18 @@ export function ArticleDetailView({
 
                 <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-neutral-200 pt-6">
                   <div className="lg:hidden">
-                    <ArticleToolsRail url={shareUrl} title={article.title} orientation="horizontal" />
+                    <ArticleToolsRail url={shareUrl} title={article.title} orientation="horizontal" labels={t} />
                   </div>
                   {article.instagram_url && (
                     <div className="text-small text-neutral-600">
-                      <span>Also shared on Instagram — </span>
+                      <span>{t.alsoSharedOnInstagramText} </span>
                       <a
                         href={article.instagram_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-medium text-primary-700 underline"
                       >
-                        View on Instagram →
+                        {dictionary.home.articles.viewOnInstagramCta} <span aria-hidden="true">→</span>
                       </a>
                     </div>
                   )}
@@ -214,12 +219,14 @@ export function ArticleDetailView({
       {relatedArticles.length > 0 && (
         <Section tone="soft">
           <Container>
-            <p className="text-small font-semibold uppercase tracking-wide text-primary-700">Related Insights</p>
-            <h2 className="mt-1 text-h2 text-neutral-900">Discover More from PPN</h2>
+            <p className="text-small font-semibold uppercase tracking-wide text-primary-700">
+              {t.relatedInsightsEyebrow}
+            </p>
+            <h2 className="mt-1 text-h2 text-neutral-900">{t.relatedInsightsHeading}</h2>
             <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {relatedArticles.map((related, index) => (
                 <RevealOnScroll key={related.id} delayMs={index * 100}>
-                  <ArticleCard article={related} />
+                  <ArticleCard article={related} dictionary={dictionary} locale={locale} />
                 </RevealOnScroll>
               ))}
             </div>
@@ -228,10 +235,10 @@ export function ArticleDetailView({
       )}
 
       <Container className="max-w-3xl py-10">
-        <BackToInsightsLink href="/articles">Back to Insights</BackToInsightsLink>
+        <BackToInsightsLink href="/articles">{t.backToInsightsCta}</BackToInsightsLink>
       </Container>
 
-      <BackToTop />
+      <BackToTop ariaLabel={t.backToTopAriaLabel} />
 
       {activeGalleryImage && (
         <div
@@ -244,7 +251,7 @@ export function ArticleDetailView({
           <button
             type="button"
             onClick={closeLightbox}
-            aria-label="Tutup"
+            aria-label={t.lightboxCloseLabel}
             className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/10"
           >
             <CloseIcon />
@@ -257,7 +264,7 @@ export function ArticleDetailView({
                 event.stopPropagation();
                 showPrevImage();
               }}
-              aria-label="Foto sebelumnya"
+              aria-label={t.lightboxPreviousLabel}
               className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white hover:bg-white/10 sm:left-4"
             >
               <ChevronIcon direction="left" />
@@ -278,7 +285,7 @@ export function ArticleDetailView({
                 event.stopPropagation();
                 showNextImage();
               }}
-              aria-label="Foto berikutnya"
+              aria-label={t.lightboxNextLabel}
               className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white hover:bg-white/10 sm:right-4"
             >
               <ChevronIcon direction="right" />

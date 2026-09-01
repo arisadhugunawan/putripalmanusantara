@@ -205,6 +205,47 @@ export interface Dictionary {
     pageDescription: string;
     metaDescriptionFallback: string;
   };
+  /** "/articles" listing + "/articles/[slug]" detail page UI chrome. Reuses `nav.home` for the
+   * breadcrumb's first crumb and `home.articles.readArticleCta`/`viewOnInstagramCta`/
+   * `instagramBadge` (already translated for the Homepage carousel) via `ArticleCard`'s own
+   * optional dictionary prop — this namespace only covers strings with no existing equivalent.
+   * Article CONTENT (title/excerpt/body/category/tags) is CMS-backed and already
+   * locale-resolved via `translate()`. */
+  articles: {
+    pageTitle: string;
+    metaDescription: string;
+    breadcrumbArticles: string;
+    breadcrumbInsights: string;
+    featuredBadge: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    searchButton: string;
+    allCategoriesLabel: string;
+    noResultsMessage: string;
+    noArticlesMessage: string;
+    paginationAriaLabel: string;
+    /** Must contain the literal "{minutes}" placeholder. */
+    minReadTemplate: string;
+    galleryHeading: string;
+    /** Must contain the literal "{name}" placeholder. */
+    lightboxImageAriaTemplate: string;
+    lightboxCloseLabel: string;
+    lightboxPreviousLabel: string;
+    lightboxNextLabel: string;
+    alsoSharedOnInstagramText: string;
+    relatedInsightsEyebrow: string;
+    relatedInsightsHeading: string;
+    backToInsightsCta: string;
+    keyTakeawaysLabel: string;
+    backToTopAriaLabel: string;
+    shareWhatsappLabel: string;
+    shareFacebookLabel: string;
+    shareLinkedinLabel: string;
+    shareXLabel: string;
+    copyLinkLabel: string;
+    linkCopiedLabel: string;
+    printArticleLabel: string;
+  };
   /** Homepage-only static UI chrome — eyebrows, headings with no CMS field, CTA labels, and
    * carousel/map accessibility labels. Section CONTENT (hero slides, product/facility/article
    * data, export destination details) is CMS-backed and already locale-resolved server-side via

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 const SHOW_AFTER_PX = 800;
 
 /** Brief item 34 — mobile "Back to top" once the article is long enough to scroll past. */
-export function BackToTop() {
+export function BackToTop({ ariaLabel = "Back to top" }: { ariaLabel?: string }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function BackToTop() {
     <button
       type="button"
       onClick={handleClick}
-      aria-label="Back to top"
+      aria-label={ariaLabel}
       className={cn(
         "fixed bottom-6 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-card transition-all duration-300 hover:bg-primary-50 hover:text-primary-700 sm:right-8",
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",

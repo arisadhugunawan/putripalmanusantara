@@ -1,7 +1,9 @@
 import { Container, Section, buttonVariants, cn } from "@ppn/ui-components";
+import type { Locale } from "@ppn/shared-types";
 import type { Metadata } from "next";
 import { Link } from "@/i18n/Link";
 import { getArticleCategories, getArticles, getPageHeader } from "@/lib/api";
+import { getDictionary } from "@/i18n/get-dictionary";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { SafeImage } from "@/components/SafeImage";
 import { PageHeader } from "@/components/page/PageHeader";
@@ -9,9 +11,10 @@ import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/articles">): Promise<Metadata> {
   const { locale } = await params;
+  const dictionary = await getDictionary(locale as Locale);
   return buildPageMetadata({
-    title: "Insight & Articles",
-    description: "Industry insight and updates from CV Putri Palma Nusantara.",
+    title: dictionary.articles.pageTitle,
+    description: dictionary.articles.metaDescription,
     path: "/articles",
     locale,
   });
@@ -29,10 +32,12 @@ export default async function ArticlesPage({
   const page = Number(pageParam) > 0 ? Number(pageParam) : 1;
   const q = typeof qParam === "string" ? qParam : "";
 
-  const [categories, headerConfig] = await Promise.all([
+  const [categories, headerConfig, dictionary] = await Promise.all([
     getArticleCategories(locale),
     getPageHeader("news", locale),
+    getDictionary(locale as Locale),
   ]);
+  const t = dictionary.articles;
   const activeCategory =
     typeof categorySlug === "string" ? categories.find((c) => c.slug === categorySlug) : undefined;
 
@@ -60,8 +65,8 @@ export default async function ArticlesPage({
   return (
     <main>
       <PageHeader
-        breadcrumb={[{ label: "Home", href: "/" }, { label: "Articles" }]}
-        title="Insight & Articles"
+        breadcrumb={[{ label: dictionary.nav.home, href: "/" }, { label: t.breadcrumbArticles }]}
+        title={t.pageTitle}
         locale={locale}
         headerConfig={headerConfig}
       />
@@ -82,12 +87,12 @@ export default async function ArticlesPage({
               </div>
               <div className="flex flex-col justify-center p-6 lg:p-10">
                 <p className="text-small font-medium uppercase tracking-wide text-primary-700">
-                  Featured{hero.category ? ` · ${hero.category.name}` : ""}
+                  {t.featuredBadge}{hero.category ? ` · ${hero.category.name}` : ""}
                 </p>
                 <h2 className="mt-2 text-h2 text-neutral-900">{hero.title}</h2>
                 <p className="mt-3 text-body-lg text-neutral-600">{hero.excerpt}</p>
                 <span className="mt-6 flex items-center gap-2 text-body font-medium text-primary-700">
-                  Read Article
+                  {dictionary.home.articles.readArticleCta}
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -115,18 +120,18 @@ export default async function ArticlesPage({
               <input type="hidden" name="category" value={categorySlug} />
             )}
             <label htmlFor="article-search" className="sr-only">
-              Search articles
+              {t.searchLabel}
             </label>
             <input
               id="article-search"
               type="search"
               name="q"
               defaultValue={q}
-              placeholder="Search articles..."
+              placeholder={t.searchPlaceholder}
               className="min-w-[16rem] flex-1 rounded-field border border-neutral-300 px-4 py-2.5 text-body focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
             />
             <button type="submit" className={buttonVariants("secondary", "md")}>
-              Search
+              {t.searchButton}
             </button>
           </form>
 
@@ -141,7 +146,7 @@ export default async function ArticlesPage({
                     : "border-neutral-300 text-neutral-600 hover:border-primary-300 hover:text-primary-700",
                 )}
               >
-                All
+                {t.allCategoriesLabel}
               </Link>
               {categories.map((category) => {
                 const params = new URLSearchParams({ category: category.slug });
@@ -166,18 +171,18 @@ export default async function ArticlesPage({
 
           {gridItems.length === 0 ? (
             <p className="mt-10 text-body text-neutral-600">
-              {q || activeCategory ? "No articles match this search/filter." : "No articles published yet."}
+              {q || activeCategory ? t.noResultsMessage : t.noArticlesMessage}
             </p>
           ) : (
             <>
               <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {gridItems.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
+                  <ArticleCard key={article.id} article={article} dictionary={dictionary} locale={locale as Locale} />
                 ))}
               </div>
 
               {meta.total_pages > 1 && (
-                <nav aria-label="Pagination" className="mt-10 flex justify-center gap-2">
+                <nav aria-label={t.paginationAriaLabel} className="mt-10 flex justify-center gap-2">
                   {Array.from({ length: meta.total_pages }, (_, i) => i + 1).map((pageNumber) => (
                     <Link
                       key={pageNumber}

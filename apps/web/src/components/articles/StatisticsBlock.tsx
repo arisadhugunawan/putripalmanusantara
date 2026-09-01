@@ -1,7 +1,8 @@
 "use client";
 
-import type { ArticleStatistic } from "@ppn/shared-types";
+import type { ArticleStatistic, Locale } from "@ppn/shared-types";
 import { useEffect, useRef, useState } from "react";
+import { localeToBCP47 } from "@/lib/seo";
 
 const COUNT_UP_MS = 900;
 
@@ -16,7 +17,7 @@ function parseNumeric(value: string): { number: number; prefix: string; suffix: 
   return { number, prefix: match[1], suffix: match[3] };
 }
 
-function StatValue({ value }: { value: string }) {
+function StatValue({ value, locale }: { value: string; locale: Locale }) {
   const parsed = parseNumeric(value);
   const [display, setDisplay] = useState(parsed ? 0 : null);
   const ref = useRef<HTMLSpanElement>(null);
@@ -56,7 +57,7 @@ function StatValue({ value }: { value: string }) {
   return (
     <span ref={ref}>
       {parsed.prefix}
-      {(display ?? 0).toLocaleString("en-US")}
+      {(display ?? 0).toLocaleString(localeToBCP47(locale))}
       {parsed.suffix}
     </span>
   );
@@ -64,7 +65,13 @@ function StatValue({ value }: { value: string }) {
 
 /** Brief item 23 "Insight Numbers" — Admin-controlled (`Article.statistics`), values are never
  * fabricated here: whatever the Admin enters is shown verbatim, only the reveal is animated. */
-export function StatisticsBlock({ statistics }: { statistics: ArticleStatistic[] }) {
+export function StatisticsBlock({
+  statistics,
+  locale,
+}: {
+  statistics: ArticleStatistic[];
+  locale: Locale;
+}) {
   if (statistics.length === 0) return null;
 
   return (
@@ -72,7 +79,7 @@ export function StatisticsBlock({ statistics }: { statistics: ArticleStatistic[]
       {statistics.map((stat, index) => (
         <div key={index} className="text-center">
           <p className="font-heading text-h2 text-primary-700">
-            <StatValue value={stat.value} />
+            <StatValue value={stat.value} locale={locale} />
           </p>
           <p className="mt-1 text-small uppercase tracking-wide text-neutral-600">{stat.label}</p>
         </div>

@@ -1,6 +1,8 @@
+import type { Locale } from "@ppn/shared-types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getArticleBySlug, getArticles, getRelatedArticles } from "@/lib/api";
+import { getDictionary } from "@/i18n/get-dictionary";
 import { ArticleDetailView } from "@/components/articles/ArticleDetailView";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { articleJsonLd } from "@/lib/json-ld";
@@ -34,16 +36,22 @@ export async function generateMetadata({
 // FR-ART-02 — unique slug URL with its own SEO meta.
 export default async function ArticleDetailPage({ params }: PageProps<"/[locale]/articles/[slug]">) {
   const { slug, locale } = await params;
-  const [article, relatedArticles] = await Promise.all([
+  const [article, relatedArticles, dictionary] = await Promise.all([
     getArticleBySlug(slug, locale),
     getRelatedArticles(slug, locale),
+    getDictionary(locale as Locale),
   ]);
   if (!article) notFound();
 
   return (
     <>
       <JsonLd data={articleJsonLd(article, locale)} />
-      <ArticleDetailView article={article} relatedArticles={relatedArticles} locale={locale} />
+      <ArticleDetailView
+        article={article}
+        relatedArticles={relatedArticles}
+        locale={locale as Locale}
+        dictionary={dictionary}
+      />
     </>
   );
 }
