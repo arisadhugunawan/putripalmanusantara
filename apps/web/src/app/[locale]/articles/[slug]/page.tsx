@@ -38,7 +38,10 @@ export default async function ArticleDetailPage({ params }: PageProps<"/[locale]
   const { slug, locale } = await params;
   const [article, relatedArticles, dictionary] = await Promise.all([
     getArticleBySlug(slug, locale),
-    getRelatedArticles(slug, locale),
+    // Unlike getArticleBySlug (requestOrNull), this throws on a 404 from the backend — an
+    // invalid slug would otherwise reject the whole Promise.all before the `if (!article)`
+    // check below ever runs, turning a should-be 404 into an uncaught 500.
+    getRelatedArticles(slug, locale).catch(() => []),
     getDictionary(locale as Locale),
   ]);
   if (!article) notFound();
