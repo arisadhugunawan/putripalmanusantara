@@ -57,11 +57,11 @@ export function GalleryCard({
         type="button"
         onClick={onOpen}
         aria-label={dictionary.viewFullscreenAriaTemplate.replace("{name}", item.title ?? item.category.name)}
-        className="block w-full break-inside-avoid overflow-hidden rounded-[20px] text-left"
+        className="block w-full break-inside-avoid overflow-hidden rounded-card text-left"
       >
         <div
           ref={innerRef}
-          className="relative w-full overflow-hidden rounded-[20px] bg-neutral-100 shadow-[0_16px_40px_-20px_rgba(24,61,43,0.3)] transition-transform duration-300 ease-out"
+          className="relative w-full overflow-hidden rounded-card bg-neutral-100 shadow-[0_16px_40px_-20px_rgba(24,61,43,0.3)] transition-transform duration-300 ease-out"
           style={{ aspectRatio }}
         >
           <CardThumbnail item={item} sizes={sizes} priority={priority} dictionary={dictionary} />

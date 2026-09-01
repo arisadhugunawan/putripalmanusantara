@@ -31,7 +31,7 @@ export function ShippingPartnerCard({
   const card = (
     <div
       className={cn(
-        "flex h-24 w-52 shrink-0 items-center justify-center rounded-[20px] border border-neutral-200 bg-white p-6 shadow-[0_1px_3px_rgba(31,36,33,0.04)] transition-all duration-300 sm:h-28 sm:w-56 sm:p-8 md:h-36 md:w-72 md:p-10",
+        "flex h-24 w-52 shrink-0 items-center justify-center rounded-card border border-neutral-200 bg-white p-6 shadow-[0_1px_3px_rgba(31,36,33,0.04)] transition-all duration-300 sm:h-28 sm:w-56 sm:p-8 md:h-36 md:w-72 md:p-10",
         "group-hover/ship:scale-[1.02] group-hover/ship:border-primary-300 group-hover/ship:shadow-[0_6px_16px_rgba(31,36,33,0.1)]",
       )}
     >
@@ -59,7 +59,7 @@ export function ShippingPartnerCard({
       target={partner.open_in_new_tab ? "_blank" : undefined}
       rel={partner.open_in_new_tab ? "noopener noreferrer" : undefined}
       aria-label={partner.partner_name}
-      className="rounded-[20px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+      className="rounded-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
     >
       {card}
     </a>

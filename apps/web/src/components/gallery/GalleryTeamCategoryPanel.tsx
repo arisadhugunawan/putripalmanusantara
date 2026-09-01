@@ -20,7 +20,7 @@ export function GalleryTeamCategoryPanel({ members }: { members: TeamMember[] })
           <Link
             key={member.id}
             href="/about/team"
-            className="group block overflow-hidden rounded-[20px] bg-neutral-100 shadow-[0_16px_40px_-20px_rgba(24,61,43,0.3)]"
+            className="group block overflow-hidden rounded-card bg-neutral-100 shadow-[0_16px_40px_-20px_rgba(24,61,43,0.3)]"
           >
             <div className="relative aspect-4/5 w-full bg-linear-to-br from-primary-50 to-neutral-100">
               {member.photo ? (

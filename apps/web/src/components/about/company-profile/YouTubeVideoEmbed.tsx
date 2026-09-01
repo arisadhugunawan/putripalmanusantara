@@ -74,7 +74,7 @@ export function YouTubeVideoEmbed({ url, dictionary }: { url: string | null; dic
   return (
     <div
       ref={ref}
-      className="relative aspect-video w-full overflow-hidden rounded-[20px] bg-neutral-900 shadow-[0_24px_48px_-20px_rgba(24,61,43,0.35)] transition-[opacity,transform] duration-[800ms] ease-out"
+      className="relative aspect-video w-full overflow-hidden rounded-card bg-neutral-900 shadow-[0_24px_48px_-20px_rgba(24,61,43,0.35)] transition-[opacity,transform] duration-[800ms] ease-out"
       style={{
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0) scale(1)" : "translateY(30px) scale(0.98)",

@@ -18,7 +18,7 @@ export function GalleryProductCategoryPanel({ products }: { products: ProductSum
           <Link
             key={product.id}
             href={`/products/${product.slug}`}
-            className="group block overflow-hidden rounded-[20px] bg-neutral-100 shadow-[0_16px_40px_-20px_rgba(24,61,43,0.3)]"
+            className="group block overflow-hidden rounded-card bg-neutral-100 shadow-[0_16px_40px_-20px_rgba(24,61,43,0.3)]"
           >
             <div className="relative aspect-4/5 w-full">
               <SafeImage media={product.cover_image} sizes="(min-width: 1024px) 24vw, 46vw" />
