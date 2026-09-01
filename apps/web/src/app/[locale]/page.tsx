@@ -134,7 +134,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         dictionary={dictionary}
       />
     ),
-    statistics: <StatisticsSection statistics={homepage.statistics} />,
+    statistics: <StatisticsSection statistics={homepage.statistics} locale={resolvedLocale} />,
     why_choose_us: (
       <SupplyNetworkSection
         section={homepage.supply_network_section}

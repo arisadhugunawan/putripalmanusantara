@@ -1,9 +1,15 @@
 import { Container, Section } from "@ppn/ui-components";
-import type { HomepageStatistic } from "@ppn/shared-types";
+import type { HomepageStatistic, Locale } from "@ppn/shared-types";
 import { StatCounter } from "./StatCounter";
 
 /** FR-HOME-02 — company statistics, fully CMS-driven. */
-export function StatisticsSection({ statistics }: { statistics: HomepageStatistic[] }) {
+export function StatisticsSection({
+  statistics,
+  locale,
+}: {
+  statistics: HomepageStatistic[];
+  locale?: Locale;
+}) {
   if (statistics.length === 0) return null;
 
   return (
@@ -14,7 +20,7 @@ export function StatisticsSection({ statistics }: { statistics: HomepageStatisti
             <div key={stat.id} className="text-center sm:text-left">
               <dt className="text-small text-neutral-600">{stat.label}</dt>
               <dd className="mt-1 text-h2 font-heading font-bold text-neutral-900">
-                <StatCounter value={stat.value} />
+                <StatCounter value={stat.value} locale={locale} />
               </dd>
             </div>
           ))}

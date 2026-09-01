@@ -17,6 +17,41 @@ function extractProductSlug(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+// Same lightweight per-locale map pattern as AiChatWindow.tsx's `t()` helper — this widget
+// pair has no `dictionary` prop of its own (mounted once in `[locale]/layout.tsx` with only
+// `{ locale, logoUrl }`), so a small local table is the least invasive way to translate these
+// two accessible names rather than threading a new prop through every layout.
+const OPEN_ASSISTANT_LABEL: Record<string, string> = {
+  en: "Open PPN Assistant",
+  id: "Buka PPN Assistant",
+  zh: "打开 PPN 助手",
+  th: "เปิด PPN Assistant",
+  hi: "PPN Assistant खोलें",
+  vi: "Mở PPN Assistant",
+};
+
+const CLOSE_ASSISTANT_LABEL: Record<string, string> = {
+  en: "Close PPN Assistant",
+  id: "Tutup PPN Assistant",
+  zh: "关闭 PPN 助手",
+  th: "ปิด PPN Assistant",
+  hi: "PPN Assistant बंद करें",
+  vi: "Đóng PPN Assistant",
+};
+
+const WHATSAPP_CHAT_LABEL: Record<string, string> = {
+  en: "Chat with PPN Team on WhatsApp",
+  id: "Chat dengan Tim PPN di WhatsApp",
+  zh: "在 WhatsApp 上与 PPN 团队聊天",
+  th: "แชทกับทีม PPN ทาง WhatsApp",
+  hi: "WhatsApp पर PPN टीम से चैट करें",
+  vi: "Trò chuyện với Đội ngũ PPN qua WhatsApp",
+};
+
+function t(dict: Record<string, string>, locale: string) {
+  return dict[locale] ?? dict.en;
+}
+
 /**
  * Global floating widget pair (brief §J: AI Assistant above WhatsApp, bottom-right) — mounted
  * once in `[locale]/layout.tsx` so it's available on every public page, including `/contact`.
@@ -145,7 +180,7 @@ export function AiFloatingWidgets({ locale, logoUrl }: { locale: string; logoUrl
           <button
             type="button"
             onClick={() => (chatOpen ? setChatOpen(false) : openChat())}
-            aria-label={chatOpen ? "Close PPN Assistant" : "Open PPN Assistant"}
+            aria-label={chatOpen ? t(CLOSE_ASSISTANT_LABEL, locale) : t(OPEN_ASSISTANT_LABEL, locale)}
             className={cn(
               "flex h-14 w-14 items-center justify-center rounded-full bg-(--color-footer) text-white shadow-[0_12px_30px_-8px_rgba(15,42,28,0.5)] transition-transform duration-200 hover:scale-105 motion-reduce:transition-none",
               aiVisibilityClass,
@@ -160,7 +195,7 @@ export function AiFloatingWidgets({ locale, logoUrl }: { locale: string; logoUrl
             href={whatsappUrl || "#"}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Chat with PPN Team on WhatsApp"
+            aria-label={t(WHATSAPP_CHAT_LABEL, locale)}
             onMouseEnter={prepareWhatsApp}
             onFocus={prepareWhatsApp}
             onTouchStart={prepareWhatsApp}

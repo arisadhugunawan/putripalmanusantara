@@ -68,7 +68,6 @@ export function LocationsWithMap({
                 href={openHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Open PPN location in Google Maps"
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-button bg-[#183D2B] px-4 py-2 text-small font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#245C3A]"
               >
                 {openInGoogleMapsLabel} <span aria-hidden="true">→</span>

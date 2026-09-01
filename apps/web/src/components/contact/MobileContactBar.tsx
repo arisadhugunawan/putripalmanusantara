@@ -31,7 +31,6 @@ export function MobileContactBar({
           href={whatsAppLink(settings.whatsapp_number, whatsappMessage)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Contact PPN via WhatsApp"
           className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[#245C3A] active:bg-[#EEF5E8]"
         >
           <WhatsAppIcon size={20} />

@@ -44,7 +44,7 @@ export function ContactActionCards({
         <Tile
           href={whatsAppLink(settings.whatsapp_number, whatsappMessage)}
           external
-          ariaLabel="Contact PPN via WhatsApp"
+          ariaLabel={`${labels.whatsappLabel}: +${formatWhatsAppDisplay(settings.whatsapp_number)}`}
         >
           <TileIcon>
             <WhatsAppIcon size={22} />

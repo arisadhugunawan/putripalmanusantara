@@ -1,6 +1,8 @@
 "use client";
 
+import type { Locale } from "@ppn/shared-types";
 import { useEffect, useRef, useState } from "react";
+import { localeToBCP47 } from "@/lib/seo";
 
 /** Splits "1,200+ containers" style values into an animatable number plus prefix/suffix text. */
 function parseValue(value: string) {
@@ -12,9 +14,12 @@ function parseValue(value: string) {
   return { prefix, number, suffix, decimals: numberPart.includes(".") ? numberPart.split(".")[1].length : 0 };
 }
 
-/** Count-up animation on scroll into view — docs/03-design.md §5.4, §7 (1–1.5s). */
-export function StatCounter({ value }: { value: string }) {
+/** Count-up animation on scroll into view — docs/03-design.md §5.4, §7 (1–1.5s).
+ * `locale` is optional and defaults to English grouping/decimal style when omitted, same
+ * fallback convention as `ArticleCard.tsx`'s date formatting. */
+export function StatCounter({ value, locale }: { value: string; locale?: Locale }) {
   const parsed = parseValue(value);
+  const bcp47 = locale ? localeToBCP47(locale) : "en-US";
   const ref = useRef<HTMLSpanElement>(null);
   // null = not yet animated (render the static starting value below); set only from
   // IntersectionObserver/rAF callbacks, never synchronously in the effect body.
@@ -41,7 +46,7 @@ export function StatCounter({ value }: { value: string }) {
           const progress = Math.min((now - start) / durationMs, 1);
           const eased = 1 - Math.pow(1 - progress, 3);
           const current = number * eased;
-          const formatted = current.toLocaleString("en-US", {
+          const formatted = current.toLocaleString(bcp47, {
             minimumFractionDigits: decimals,
             maximumFractionDigits: decimals,
           });
@@ -55,7 +60,7 @@ export function StatCounter({ value }: { value: string }) {
     observer.observe(el);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, bcp47]);
 
   const initialDisplay = parsed.number === null ? value : `${parsed.prefix}0${parsed.suffix}`;
 

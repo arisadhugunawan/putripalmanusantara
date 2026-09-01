@@ -44,6 +44,33 @@ const WHATSAPP_CONTINUE_TEXT: Record<string, string> = {
   vi: "Tiếp tục trên WhatsApp",
 };
 
+const MINIMIZE_LABEL: Record<string, string> = {
+  en: "Minimize",
+  id: "Perkecil",
+  zh: "最小化",
+  th: "ย่อเล็กสุด",
+  hi: "छोटा करें",
+  vi: "Thu nhỏ",
+};
+
+const CLOSE_LABEL: Record<string, string> = {
+  en: "Close",
+  id: "Tutup",
+  zh: "关闭",
+  th: "ปิด",
+  hi: "बंद करें",
+  vi: "Đóng",
+};
+
+const SEND_LABEL: Record<string, string> = {
+  en: "Send",
+  id: "Kirim",
+  zh: "发送",
+  th: "ส่ง",
+  hi: "भेजें",
+  vi: "Gửi",
+};
+
 function t(dict: Record<string, string>, language: string) {
   return dict[language] ?? dict.en;
 }
@@ -142,7 +169,7 @@ export function AiChatWindow({
           <button
             type="button"
             onClick={onMinimize}
-            aria-label="Minimize"
+            aria-label={t(MINIMIZE_LABEL, language)}
             className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 transition-colors hover:bg-white/10 hover:text-white"
           >
             <MinimizeIcon className="h-4 w-4" />
@@ -150,7 +177,7 @@ export function AiChatWindow({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t(CLOSE_LABEL, language)}
             className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 transition-colors hover:bg-white/10 hover:text-white"
           >
             <CloseIcon className="h-4 w-4" />
@@ -252,7 +279,7 @@ export function AiChatWindow({
         <button
           type="submit"
           disabled={!input.trim() || sending}
-          aria-label="Send"
+          aria-label={t(SEND_LABEL, language)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-500 text-neutral-900 transition-colors hover:bg-primary-600 disabled:opacity-40"
         >
           <SendIcon className="h-4 w-4" />
