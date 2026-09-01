@@ -232,6 +232,100 @@ describe('toProductDetail — ProductSpecification locale resolution', () => {
   });
 });
 
+// Test fixtures below deliberately use a bracketed `[LOCALE]` suffix (matching this file's own
+// existing `sizes: '... [ID]'` convention above) rather than real foreign-language commercial
+// terminology — these tests verify locale-resolution LOGIC only, never real translated content.
+describe('toProductDetail — ProductSpecification variant_label locale resolution', () => {
+  it('returns the original English variant_label for the default locale', () => {
+    const product = stubProduct({
+      specifications: [
+        stubSpec({
+          variantLabel: 'Edible (White Copra)',
+          translations: { id: { variantLabel: 'Edible (White Copra) [ID]' } },
+        }),
+      ],
+    });
+    expect(
+      toProductDetail(product as never, 'en').specifications[0].variant_label,
+    ).toBe('Edible (White Copra)');
+  });
+
+  it.each(['id', 'zh', 'th', 'hi', 'vi'])(
+    'resolves the translated variant_label for %s when present',
+    (locale) => {
+      const translated = `Edible (White Copra) [${locale.toUpperCase()}]`;
+      const product = stubProduct({
+        specifications: [
+          stubSpec({
+            variantLabel: 'Edible (White Copra)',
+            translations: { [locale]: { variantLabel: translated } },
+          }),
+        ],
+      });
+      expect(
+        toProductDetail(product as never, locale).specifications[0]
+          .variant_label,
+      ).toBe(translated);
+    },
+  );
+
+  it('falls back to the base (English) variant_label when the requested locale has no translation', () => {
+    const product = stubProduct({
+      specifications: [
+        stubSpec({
+          variantLabel: 'Edible (White Copra)',
+          translations: { id: { variantLabel: 'Edible (White Copra) [ID]' } },
+        }),
+      ],
+    });
+    // zh has no translation entry at all for this row.
+    expect(
+      toProductDetail(product as never, 'zh').specifications[0].variant_label,
+    ).toBe('Edible (White Copra)');
+  });
+
+  it('keeps variant_label null when the row has no variant (untranslated, ungrouped rows)', () => {
+    const product = stubProduct({
+      specifications: [stubSpec({ variantLabel: null, translations: null })],
+    });
+    for (const locale of ['en', 'id', 'zh', 'th', 'hi', 'vi']) {
+      expect(
+        toProductDetail(product as never, locale).specifications[0]
+          .variant_label,
+      ).toBeNull();
+    }
+  });
+
+  it('translating variant_label does not affect spec_key/spec_value for the same row', () => {
+    const product = stubProduct({
+      specifications: [
+        stubSpec({
+          variantLabel: 'Edible (White Copra)',
+          translations: { id: { variantLabel: 'Edible (White Copra) [ID]' } },
+        }),
+      ],
+    });
+    const result = toProductDetail(product as never, 'id').specifications[0];
+    expect(result.variant_label).toBe('Edible (White Copra) [ID]');
+    expect(result.spec_key).toBe('Moisture Content');
+    expect(result.spec_value).toBe('≤ 6%');
+  });
+
+  it('translating spec_key/spec_value does not affect variant_label for the same row', () => {
+    const product = stubProduct({
+      specifications: [
+        stubSpec({
+          variantLabel: 'Edible (White Copra)',
+          translations: { id: { specKey: 'Kadar Air' } },
+        }),
+      ],
+    });
+    const result = toProductDetail(product as never, 'id').specifications[0];
+    expect(result.spec_key).toBe('Kadar Air');
+    expect(result.variant_label).toBe('Edible (White Copra)');
+  });
+});
+
 describe('toProductDetail — ProductPackagingApplication locale resolution', () => {
   it('resolves the requested locale for title/description', () => {
     const product = stubProduct({

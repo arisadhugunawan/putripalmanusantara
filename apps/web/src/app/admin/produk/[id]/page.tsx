@@ -637,7 +637,7 @@ function ProductSpecificationsSection({
   async function handleUpdateTranslation(
     spec: ProductDetail["specifications"][number],
     locale: Exclude<Locale, "en">,
-    field: "specKey" | "specValue",
+    field: "specKey" | "specValue" | "variantLabel",
     value: string,
   ) {
     const current = spec.translations ?? {};
@@ -761,7 +761,7 @@ function SpecTable({
   onUpdateTranslation: (
     spec: ProductDetail["specifications"][number],
     locale: Exclude<Locale, "en">,
-    field: "specKey" | "specValue",
+    field: "specKey" | "specValue" | "variantLabel",
     value: string,
   ) => void;
 }) {
@@ -810,7 +810,11 @@ function SpecTable({
                           🌐 Translations
                           <TranslationStatusBadges
                             translations={spec.translations}
-                            base={{ specKey: spec.spec_key, specValue: spec.spec_value }}
+                            base={{
+                              specKey: spec.spec_key,
+                              specValue: spec.spec_value,
+                              variantLabel: spec.variant_label,
+                            }}
                           />
                         </summary>
                         <div className="mt-2">
@@ -822,6 +826,18 @@ function SpecTable({
                                 </p>
                               ) : (
                                 <div className="flex flex-col gap-3">
+                                  {spec.variant_label && (
+                                    <div>
+                                      <Label className="text-small">Grade/Varian</Label>
+                                      <Input
+                                        defaultValue={spec.translations?.[locale]?.variantLabel ?? ""}
+                                        placeholder={spec.variant_label}
+                                        onBlur={(e) =>
+                                          onUpdateTranslation(spec, locale, "variantLabel", e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                  )}
                                   <div>
                                     <Label className="text-small">Nama</Label>
                                     <Input

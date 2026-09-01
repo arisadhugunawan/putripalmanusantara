@@ -81,6 +81,7 @@ export function toProductDetail(
       const specT = translate(spec, spec.translations, locale, [
         'specKey',
         'specValue',
+        'variantLabel',
       ]);
       return {
         id: spec.id,
@@ -88,7 +89,7 @@ export function toProductDetail(
         spec_value: specT.specValue,
         order: spec.order,
         group: spec.group,
-        variant_label: spec.variantLabel,
+        variant_label: specT.variantLabel,
         translations:
           spec.translations as SharedProductSpecification['translations'],
       };
