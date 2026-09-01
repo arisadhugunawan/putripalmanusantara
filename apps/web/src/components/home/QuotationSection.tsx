@@ -35,7 +35,11 @@ export function QuotationSection({
           </p>
         </FadeUpSection>
         <FadeUpSection style={{ transitionDelay: "100ms" }}>
-          <Card className="mt-8 text-left shadow-premium">
+          {/* mb-24 sm:mb-0 — this is the last interactive content before the Footer, so on
+              mobile (where the submit button is full-width, `w-full` below `sm`) it can rest
+              at the exact viewport position the floating WhatsApp/AI widgets occupy; the extra
+              margin keeps the submit button clear of that fixed bottom-right zone. */}
+          <Card className="mt-8 mb-24 text-left shadow-premium sm:mb-0">
             <QuotationForm sourcePage="/" products={products} dictionary={dictionary} />
           </Card>
         </FadeUpSection>
