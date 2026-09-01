@@ -9,7 +9,7 @@ import { MobileContactBar } from "@/components/contact/MobileContactBar";
 import { FadeUpSection } from "@/components/about/FadeUpSection";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getDictionary } from "@/i18n/get-dictionary";
-import { contactPageLocalBusinessJsonLd } from "@/lib/json-ld";
+import { breadcrumbJsonLd, contactPageLocalBusinessJsonLd } from "@/lib/json-ld";
 import { buildPageMetadata } from "@/lib/seo";
 import { buildWhatsAppMessage, buildWhatsAppProductMessage } from "@/lib/whatsapp";
 
@@ -91,6 +91,15 @@ export default async function ContactPage({
   return (
     <main className="pb-[calc(4.25rem+env(safe-area-inset-bottom))] sm:pb-0">
       <JsonLd data={contactPageLocalBusinessJsonLd(settings, mainMapLocation, locale)} />
+      <JsonLd
+        data={breadcrumbJsonLd(
+          [
+            { name: dictionary.nav.home, path: "/" },
+            { name: dictionary.nav.contact, path: "/contact" },
+          ],
+          locale,
+        )}
+      />
 
       <ContactHero settings={settings} navHomeLabel={dictionary.nav.home} navContactLabel={dictionary.nav.contact} />
 

@@ -1,7 +1,7 @@
 import type { ContactPageSettings } from "@ppn/shared-types";
 import { Container } from "@ppn/ui-components";
 import Image from "next/image";
-import { Link } from "@/i18n/Link";
+import { Breadcrumb } from "@/components/page/Breadcrumb";
 import { ContactDecorative } from "./ContactDecorative";
 
 /**
@@ -47,19 +47,12 @@ export function ContactHero({
       />
 
       <Container className="relative py-20 text-center lg:py-28">
-        <nav aria-label="Breadcrumb" className="flex justify-center">
-          <ol className="flex items-center gap-2 text-small text-white/60">
-            <li>
-              <Link href="/" className="transition-colors hover:text-white">
-                {navHomeLabel}
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li aria-current="page" className="font-medium text-white">
-              {navContactLabel}
-            </li>
-          </ol>
-        </nav>
+        <div className="flex justify-center">
+          <Breadcrumb
+            items={[{ label: navHomeLabel, href: "/" }, { label: navContactLabel }]}
+            color="#ffffff"
+          />
+        </div>
 
         {settings.hero_eyebrow && (
           <p className="animate-fade-in-up mt-7 text-small font-semibold tracking-[0.16em] text-[#A8D85A] uppercase">

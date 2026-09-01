@@ -7,10 +7,10 @@ export interface BreadcrumbItem {
 
 /** NFR-SEO-05 — breadcrumb navigation; structured data added in Phase 6.
  *
- * `color` is optional and, when omitted, renders byte-identical to before it existed (every
- * existing caller) — only `PageHeader.tsx`'s image-mode passes it, to satisfy the Inner Page
- * Header's admin-editable "Breadcrumb Color" field against a photo background instead of the
- * default flat surface. */
+ * `color` is optional and, when omitted, renders byte-identical to the default flat-surface
+ * styling (`PageHeader.tsx`'s callers) — pass it for a breadcrumb sitting over a dark/photo
+ * background (e.g. `ContactHero.tsx`'s green hero) instead of hand-rolling a second breadcrumb
+ * implementation. */
 export function Breadcrumb({ items, color }: { items: BreadcrumbItem[]; color?: string }) {
   return (
     <nav aria-label="Breadcrumb">
@@ -28,7 +28,13 @@ export function Breadcrumb({ items, color }: { items: BreadcrumbItem[]; color?: 
             ) : (
               <span
                 aria-current={index === items.length - 1 ? "page" : undefined}
-                className={color ? undefined : index === items.length - 1 ? "text-neutral-900" : undefined}
+                className={
+                  index === items.length - 1
+                    ? color
+                      ? "font-medium"
+                      : "text-neutral-900"
+                    : undefined
+                }
               >
                 {item.label}
               </span>

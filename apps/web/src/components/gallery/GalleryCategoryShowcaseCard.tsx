@@ -28,7 +28,7 @@ export function GalleryCategoryShowcaseCard({
   dictionary: Dictionary["gallery"];
 }) {
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_24px_60px_-30px_rgba(24,61,43,0.35)]">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-card bg-white shadow-[0_24px_60px_-30px_rgba(24,61,43,0.35)]">
       <div className="relative aspect-4/3 w-full shrink-0">
         {previewImage || itemCount > 0 ? (
           <SafeImage
