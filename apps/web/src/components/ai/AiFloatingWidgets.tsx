@@ -58,9 +58,9 @@ function t(dict: Record<string, string>, locale: string) {
  * The Contact page previously had its OWN, desktop-only, non-product-aware WhatsApp floating
  * button (`components/contact/WhatsAppFloatingButton.tsx`); that usage was removed in favor of
  * this global one so there's exactly one floating WhatsApp affordance site-wide, not two. On
- * `/contact` specifically, the WhatsApp bubble still hides on mobile — `MobileContactBar`
- * already gives that page its own full-width mobile contact bar, and stacking a second floating
- * WhatsApp control on top of it would be redundant, not helpful.
+ * `/contact` specifically, both bubbles still hide on mobile — `MobileContactBar` already gives
+ * that page its own full-width mobile contact bar, and stacking a floating control on top of it
+ * would cover one of that bar's own tap targets instead of adding anything useful.
  *
  * Both widgets fetch their own settings client-side after mount (brief §AC "lazy loaded... not
  * blocking page rendering") rather than being fed through the server-rendered layout.
@@ -147,13 +147,23 @@ export function AiFloatingWidgets({ locale, logoUrl }: { locale: string; logoUrl
   const aiVisibilityClass = cn(
     !aiSettings.desktop_enabled && "sm:hidden",
     !aiSettings.mobile_enabled && "hidden sm:flex",
+    isContactPage && "hidden sm:flex",
   );
   const whatsappVisibilityClass = cn(isContactPage && "hidden sm:flex");
 
   return (
     <>
       {chatOpen && showAiButton && (
-        <div className="fixed inset-x-4 bottom-4 z-40 flex justify-end sm:inset-x-auto sm:right-6 sm:bottom-24">
+        <div
+          className={cn(
+            "fixed inset-x-4 bottom-4 z-40 flex justify-end sm:inset-x-auto sm:right-6 sm:bottom-24",
+            // Same reasoning as `aiVisibilityClass` above — if the chat was opened on another
+            // page and the visitor then navigates to /contact client-side (this component stays
+            // mounted across route changes), the open window shouldn't cover MobileContactBar
+            // either.
+            isContactPage && "hidden sm:flex",
+          )}
+        >
           <AiChatWindow
             settings={aiSettings}
             quickQuestions={quickQuestions}
