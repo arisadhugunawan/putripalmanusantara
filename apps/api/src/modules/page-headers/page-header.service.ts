@@ -65,13 +65,18 @@ export class PageHeaderService {
     });
   }
 
+  // P1-6 — `upsert()` on the existing `pageKey` unique constraint closes the
+  // findUnique()-then-create() TOCTOU race: two concurrent first-touch requests for the same
+  // key (e.g. two admins opening "Page Header Management" before any row has ever been
+  // created) now resolve to the SAME database-enforced row instead of racing to create two,
+  // which would otherwise surface as an unhandled P2002 to the second caller.
   private async getOrCreateRow(
     pageKey: string,
   ): Promise<PageHeaderWithRelations> {
-    const existing = await this.findRow(pageKey);
-    if (existing) return existing;
-    return this.prisma.pageHeader.create({
-      data: { pageKey },
+    return this.prisma.pageHeader.upsert({
+      where: { pageKey },
+      create: { pageKey },
+      update: {},
       include: INCLUDE,
     });
   }

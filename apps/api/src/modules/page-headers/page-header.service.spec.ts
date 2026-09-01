@@ -7,7 +7,7 @@ import type { PrismaService } from '../../prisma/prisma.service';
 function buildService() {
   const pageHeader = {
     findUnique: jest.fn<Promise<unknown>, unknown[]>(),
-    create: jest.fn<Promise<unknown>, unknown[]>(),
+    upsert: jest.fn<Promise<unknown>, unknown[]>(),
     update: jest.fn<Promise<unknown>, unknown[]>(),
   };
   const service = new PageHeaderService(
@@ -44,6 +44,58 @@ function stubRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+// P1-6 — `getOrCreateRow()` previously did `findUnique()` then, if missing, `create()`: two
+// concurrent first-touch requests for the same never-yet-seen `pageKey` (e.g. two admins
+// opening "Page Header Management" for the first time) could both pass the `!existing` check
+// and both call `create()`, and since `pageKey` is `@unique`, the second caller would hit an
+// unhandled P2002. Fixed by upserting on the existing `pageKey` unique constraint instead —
+// no schema change needed, `pageKey` was already the row's natural identity.
+describe('PageHeaderService — getOrCreateRow() singleton-per-key concurrency (P1-6)', () => {
+  it('creates a new row keyed by pageKey on first touch', async () => {
+    const { service, pageHeader } = buildService();
+    pageHeader.upsert.mockResolvedValue(
+      stubRow({ pageKey: 'news', customTitle: null }),
+    );
+
+    await service.findOneForAdmin('news');
+
+    expect(pageHeader.upsert).toHaveBeenCalledWith({
+      where: { pageKey: 'news' },
+      create: { pageKey: 'news' },
+      update: {},
+      include: { backgroundImage: true, mobileBackgroundImage: true },
+    });
+  });
+
+  it('an existing row is returned unchanged — the upsert update clause never overwrites saved data', async () => {
+    const { service, pageHeader } = buildService();
+    const existing = stubRow({ customTitle: 'Already Configured' });
+    pageHeader.upsert.mockResolvedValue(existing);
+
+    const result = await service.findOneForAdmin('facilities');
+
+    // `update: {}` in the upsert call (asserted above) is itself the guarantee: Prisma only
+    // applies an empty patch when the row already exists, so no field can be clobbered.
+    expect(result.custom_title).toBe('Already Configured');
+  });
+
+  it('repeated calls for the same key keep resolving to one row, never duplicating', async () => {
+    const { service, pageHeader } = buildService();
+    const row = stubRow({ pageKey: 'gallery' });
+    pageHeader.upsert.mockResolvedValue(row);
+
+    await service.findOneForAdmin('gallery');
+    await service.findOneForAdmin('gallery');
+
+    expect(pageHeader.upsert).toHaveBeenCalledTimes(2);
+    for (const call of pageHeader.upsert.mock.calls) {
+      expect((call[0] as { where: { pageKey: string } }).where).toEqual({
+        pageKey: 'gallery',
+      });
+    }
+  });
+});
+
 // Phase P0.3-B2 — `update()` now merges `translations` via `mergeTranslations()` (the same
 // helper every other translation-bearing module's update path already uses), instead of
 // wholesale-replacing the column. These prove a single-locale partial payload against a row
@@ -51,7 +103,7 @@ function stubRow(overrides: Record<string, unknown> = {}) {
 describe('PageHeaderService.update — translation merge safety (Phase P0.3-B2)', () => {
   it('a single-locale partial payload preserves every other locale already saved', async () => {
     const { service, pageHeader } = buildService();
-    pageHeader.findUnique.mockResolvedValue(
+    pageHeader.upsert.mockResolvedValue(
       stubRow({
         translations: {
           id: { customTitle: 'Fasilitas Kami' },
@@ -83,7 +135,7 @@ describe('PageHeaderService.update — translation merge safety (Phase P0.3-B2)'
 
   it('updating one field within a locale preserves the other field already saved for that same locale', async () => {
     const { service, pageHeader } = buildService();
-    pageHeader.findUnique.mockResolvedValue(
+    pageHeader.upsert.mockResolvedValue(
       stubRow({
         translations: {
           id: { customTitle: 'Fasilitas Kami', subtitle: 'Subtitle lama.' },
@@ -107,7 +159,7 @@ describe('PageHeaderService.update — translation merge safety (Phase P0.3-B2)'
 
   it('does not touch translations when the caller omits it from the patch', async () => {
     const { service, pageHeader } = buildService();
-    pageHeader.findUnique.mockResolvedValue(stubRow());
+    pageHeader.upsert.mockResolvedValue(stubRow());
     pageHeader.update.mockResolvedValue(stubRow());
 
     await service.update('facilities', { custom_title: 'Renamed' });
@@ -120,7 +172,7 @@ describe('PageHeaderService.update — translation merge safety (Phase P0.3-B2)'
 
   it('a legacy row with no translations object at all still updates successfully (backward compatibility)', async () => {
     const { service, pageHeader } = buildService();
-    pageHeader.findUnique.mockResolvedValue(stubRow({ translations: null }));
+    pageHeader.upsert.mockResolvedValue(stubRow({ translations: null }));
     pageHeader.update.mockResolvedValue(stubRow());
 
     await expect(
@@ -139,7 +191,7 @@ describe('PageHeaderService.update — translation merge safety (Phase P0.3-B2)'
 
   it('does not change unrelated fields (background, overlay, colors) when only translations are patched', async () => {
     const { service, pageHeader } = buildService();
-    pageHeader.findUnique.mockResolvedValue(stubRow());
+    pageHeader.upsert.mockResolvedValue(stubRow());
     pageHeader.update.mockResolvedValue(stubRow());
 
     await service.update('facilities', {
@@ -164,7 +216,7 @@ describe('PageHeaderService.update — translation merge safety (Phase P0.3-B2)'
 describe('PageHeaderService.reset — clears translations along with the base title/subtitle', () => {
   it('resets translations to JsonNull so a cleared title cannot resurrect via a stale translation', async () => {
     const { service, pageHeader } = buildService();
-    pageHeader.findUnique.mockResolvedValue(
+    pageHeader.upsert.mockResolvedValue(
       stubRow({ translations: { id: { customTitle: 'Fasilitas Kami' } } }),
     );
     pageHeader.update.mockResolvedValue(
