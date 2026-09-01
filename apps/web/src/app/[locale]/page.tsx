@@ -179,6 +179,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         section={homepage.shipping_section}
         partners={homepage.shipping_partners}
         decorativeGraphics={shippingPartnersGraphics}
+        dictionary={dictionary}
       />
     ),
     faq: <FaqSection faqs={homepage.faqs} decorativeGraphics={faqGraphics} dictionary={dictionary} />,

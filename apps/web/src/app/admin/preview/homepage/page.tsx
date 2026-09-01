@@ -349,6 +349,7 @@ function renderSection(key: HomepageSectionKey, data: PreviewData) {
           section={data.shippingSection}
           partners={data.shippingPartners}
           decorativeGraphics={data.shippingPartnersGraphics}
+          dictionary={enDictionary}
         />
       );
     case "faq":

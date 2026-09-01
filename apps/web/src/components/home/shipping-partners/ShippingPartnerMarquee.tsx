@@ -2,6 +2,7 @@
 
 import type { HomepageShippingSection, ShippingPartner } from "@ppn/shared-types";
 import { useRef } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { ShippingPartnerCard } from "./ShippingPartnerCard";
 
 /**
@@ -21,9 +22,11 @@ import { ShippingPartnerCard } from "./ShippingPartnerCard";
 export function ShippingPartnerMarquee({
   section,
   partners,
+  dictionary,
 }: {
   section: HomepageShippingSection;
   partners: ShippingPartner[];
+  dictionary: Dictionary;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +52,7 @@ export function ShippingPartnerMarquee({
                 partner={partner}
                 showName={section.show_partner_name}
                 showRelationshipType={section.show_relationship_type}
+                dictionary={dictionary}
               />
             </div>
           ))}
@@ -73,6 +77,7 @@ export function ShippingPartnerMarquee({
               partner={partner}
               showName={section.show_partner_name}
               showRelationshipType={section.show_relationship_type}
+              dictionary={dictionary}
             />
           ))}
         </div>

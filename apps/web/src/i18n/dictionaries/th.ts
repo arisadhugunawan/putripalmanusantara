@@ -451,6 +451,17 @@ const dictionary: Dictionary = {
     messageRequired: "กรุณาบอกเราว่าคุณต้องการอะไร",
     websiteHoneypotLabel: "เว็บไซต์",
   },
+  shippingPartner: {
+    relationshipTypes: {
+      shipping_partner: "พันธมิตรด้านการขนส่ง",
+      shipping_line: "สายการเดินเรือ",
+      carrier: "ผู้ให้บริการขนส่ง",
+      logistics_partner: "พันธมิตรด้านโลจิสติกส์",
+      freight_network: "เครือข่ายขนส่งสินค้า",
+      service_provider: "ผู้ให้บริการ",
+      other: "อื่นๆ",
+    },
+  },
 };
 
 export default dictionary;

@@ -450,6 +450,17 @@ const dictionary: Dictionary = {
     messageRequired: "Please tell us what you need.",
     websiteHoneypotLabel: "Website",
   },
+  shippingPartner: {
+    relationshipTypes: {
+      shipping_partner: "Shipping Partner",
+      shipping_line: "Shipping Line",
+      carrier: "Carrier",
+      logistics_partner: "Logistics Partner",
+      freight_network: "Freight Network",
+      service_provider: "Service Provider",
+      other: "Other",
+    },
+  },
 };
 
 export default dictionary;

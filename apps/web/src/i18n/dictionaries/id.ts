@@ -453,6 +453,17 @@ const dictionary: Dictionary = {
     messageRequired: "Silakan beri tahu kami kebutuhan Anda.",
     websiteHoneypotLabel: "Situs Web",
   },
+  shippingPartner: {
+    relationshipTypes: {
+      shipping_partner: "Mitra Pengiriman",
+      shipping_line: "Jalur Pelayaran",
+      carrier: "Pengangkut",
+      logistics_partner: "Mitra Logistik",
+      freight_network: "Jaringan Kargo",
+      service_provider: "Penyedia Layanan",
+      other: "Lainnya",
+    },
+  },
 };
 
 export default dictionary;

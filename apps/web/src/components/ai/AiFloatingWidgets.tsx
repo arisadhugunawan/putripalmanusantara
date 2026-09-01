@@ -2,7 +2,7 @@
 
 import type { AiQuickQuestion, PublicAiSettings } from "@ppn/shared-types";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@ppn/ui-components";
 import { generateWhatsAppMessage, getAiQuickQuestions, getAiSettings, recordAiAnalyticsEvent } from "@/lib/api-client";
 import { AiChatWindow } from "./AiChatWindow";
@@ -77,6 +77,26 @@ export function AiFloatingWidgets({ locale, logoUrl }: { locale: string; logoUrl
 
   const prepareWhatsApp = useCallback(() => setWhatsappReady(true), []);
 
+  // On touch devices, `onTouchStart` and the click land close enough together that
+  // `whatsappUrl` usually hasn't resolved yet, so without this the anchor's `href="#"`
+  // fallback wins the first tap and opens a dead blank tab instead of WhatsApp — a second tap
+  // is then required. Deferring the actual `window.open` until the URL resolves fixes the
+  // first tap without changing the lazy-fetch strategy above.
+  const pendingWhatsAppOpenRef = useRef(false);
+  useEffect(() => {
+    if (whatsappUrl && pendingWhatsAppOpenRef.current) {
+      pendingWhatsAppOpenRef.current = false;
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    }
+  }, [whatsappUrl]);
+
+  const handleWhatsAppClick = useCallback(() => {
+    if (!whatsappUrl) {
+      pendingWhatsAppOpenRef.current = true;
+      prepareWhatsApp();
+    }
+  }, [whatsappUrl, prepareWhatsApp]);
+
   const openChat = useCallback(() => {
     setChatOpen(true);
     setWhatsappReady(true);
@@ -144,7 +164,11 @@ export function AiFloatingWidgets({ locale, logoUrl }: { locale: string; logoUrl
             onMouseEnter={prepareWhatsApp}
             onFocus={prepareWhatsApp}
             onTouchStart={prepareWhatsApp}
-            onClick={() => void recordAiAnalyticsEvent("whatsapp_clicked", chat.sessionId || "anon", locale).catch(() => undefined)}
+            onClick={(event) => {
+              if (!whatsappUrl) event.preventDefault();
+              handleWhatsAppClick();
+              void recordAiAnalyticsEvent("whatsapp_clicked", chat.sessionId || "anon", locale).catch(() => undefined);
+            }}
             className={cn(
               "relative flex h-14 w-14 items-center justify-center rounded-full bg-[#A8D85A] text-[#183D2B] shadow-[0_12px_30px_-8px_rgba(24,61,43,0.45)] transition-transform duration-200 hover:scale-105 motion-reduce:transition-none",
               whatsappVisibilityClass,

@@ -544,4 +544,18 @@ export interface Dictionary {
      * consistency with every other form label. */
     websiteHoneypotLabel: string;
   };
+  /** Labels for `ShippingRelationshipType` (packages/shared-types), shown under a partner's
+   * logo in the homepage "Global Shipping Partner" carousel when the Admin enables
+   * `show_relationship_type`. Keys mirror `SHIPPING_RELATIONSHIP_TYPE_LABELS` exactly. */
+  shippingPartner: {
+    relationshipTypes: {
+      shipping_partner: string;
+      shipping_line: string;
+      carrier: string;
+      logistics_partner: string;
+      freight_network: string;
+      service_provider: string;
+      other: string;
+    };
+  };
 }

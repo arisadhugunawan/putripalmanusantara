@@ -442,6 +442,17 @@ const dictionary: Dictionary = {
     messageRequired: "请告诉我们您的需求。",
     websiteHoneypotLabel: "网站",
   },
+  shippingPartner: {
+    relationshipTypes: {
+      shipping_partner: "航运合作伙伴",
+      shipping_line: "航运公司",
+      carrier: "承运商",
+      logistics_partner: "物流合作伙伴",
+      freight_network: "货运网络",
+      service_provider: "服务提供商",
+      other: "其他",
+    },
+  },
 };
 
 export default dictionary;

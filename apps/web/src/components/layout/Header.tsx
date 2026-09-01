@@ -133,7 +133,7 @@ export function Header({
             )}
           </Link>
 
-          <nav className="hidden items-center gap-7 lg:flex" aria-label={dictionary.nav.home}>
+          <nav className="hidden items-center gap-7 xl:flex" aria-label={dictionary.nav.home}>
             {entries.map((entry) =>
               isDropdown(entry) ? (
                 <NavDropdown key={entry.label} label={entry.label} items={entry.items} />
@@ -152,11 +152,11 @@ export function Header({
             )}
           </nav>
 
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className="hidden items-center gap-2 xl:flex">
             <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
           </div>
 
-          <div className="flex items-center gap-1 lg:hidden">
+          <div className="flex items-center gap-1 xl:hidden">
             <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
             <button
               type="button"

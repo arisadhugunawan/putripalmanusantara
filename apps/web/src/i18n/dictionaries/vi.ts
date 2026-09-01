@@ -452,6 +452,17 @@ const dictionary: Dictionary = {
     messageRequired: "Vui lòng cho chúng tôi biết bạn cần gì.",
     websiteHoneypotLabel: "Trang web",
   },
+  shippingPartner: {
+    relationshipTypes: {
+      shipping_partner: "Đối tác vận chuyển",
+      shipping_line: "Hãng tàu",
+      carrier: "Đơn vị vận chuyển",
+      logistics_partner: "Đối tác logistics",
+      freight_network: "Mạng lưới vận tải hàng hóa",
+      service_provider: "Nhà cung cấp dịch vụ",
+      other: "Khác",
+    },
+  },
 };
 
 export default dictionary;

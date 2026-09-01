@@ -75,7 +75,7 @@ export function MobileMenu({
       aria-modal="true"
       aria-label={dictionary.nav.openMenu}
       className={cn(
-        "fixed inset-0 z-[60] flex w-full flex-col overflow-y-auto bg-white transition-transform duration-300 ease-out lg:hidden",
+        "fixed inset-0 z-[60] flex w-full flex-col overflow-y-auto bg-white transition-transform duration-300 ease-out xl:hidden",
         open ? "translate-x-0" : "translate-x-full",
       )}
     >

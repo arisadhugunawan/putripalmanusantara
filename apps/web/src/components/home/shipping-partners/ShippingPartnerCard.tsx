@@ -1,10 +1,10 @@
 "use client";
 
 import type { ShippingPartner } from "@ppn/shared-types";
-import { SHIPPING_RELATIONSHIP_TYPE_LABELS } from "@ppn/shared-types";
 import { cn } from "@ppn/ui-components";
 import Image from "next/image";
 import { useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 
 /**
  * One shipping/logistics partner logo inside the Global Shipping Partner carousel — large
@@ -17,14 +17,16 @@ export function ShippingPartnerCard({
   partner,
   showName,
   showRelationshipType,
+  dictionary,
 }: {
   partner: ShippingPartner;
   showName: boolean;
   showRelationshipType: boolean;
+  dictionary: Dictionary;
 }) {
   const [broken, setBroken] = useState(false);
   const altText = partner.alt_text || partner.partner_name;
-  const relationshipLabel = SHIPPING_RELATIONSHIP_TYPE_LABELS[partner.relationship_type];
+  const relationshipLabel = dictionary.shippingPartner.relationshipTypes[partner.relationship_type];
 
   const card = (
     <div

@@ -1,6 +1,7 @@
 import type { DecorativeGraphic, HomepageShippingSection, ShippingPartner } from "@ppn/shared-types";
 import { Container } from "@ppn/ui-components";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { ShippingPartnerMarquee } from "./shipping-partners/ShippingPartnerMarquee";
 
 /**
@@ -14,10 +15,12 @@ export function GlobalShippingPartnerSection({
   section,
   partners,
   decorativeGraphics,
+  dictionary,
 }: {
   section: HomepageShippingSection;
   partners: ShippingPartner[];
   decorativeGraphics: DecorativeGraphic[];
+  dictionary: Dictionary;
 }) {
   if (!section.enabled || partners.length === 0) return null;
 
@@ -45,7 +48,7 @@ export function GlobalShippingPartnerSection({
         </div>
 
         <div className="mt-10 md:mt-14">
-          <ShippingPartnerMarquee section={section} partners={partners} />
+          <ShippingPartnerMarquee section={section} partners={partners} dictionary={dictionary} />
         </div>
       </Container>
     </section>
