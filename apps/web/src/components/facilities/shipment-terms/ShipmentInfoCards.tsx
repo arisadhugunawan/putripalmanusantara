@@ -1,15 +1,13 @@
-"use client";
-
 import type { ShippingArrangementItem } from "@ppn/shared-types";
-import { Card, cn } from "@ppn/ui-components";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { Card } from "@ppn/ui-components";
 import { SHIPMENT_ICONS } from "./ShipmentIcons";
 
 /** The 7-card "Information Cards" grid — same dataset that drives the route journey's node
  * labels, presented as quick-glance cards. New dedicated component (not `InfoCardGrid`, which
- * is shared with the product page's Export Information block). */
+ * is shared with the product page's Export Information block). A server component: the hover
+ * lift is `motion-safe:` CSS, not a `useReducedMotion()` JS hook, so no client boundary is
+ * needed. */
 export function ShipmentInfoCards({ items }: { items: ShippingArrangementItem[] }) {
-  const reducedMotion = useReducedMotion();
   if (items.length === 0) return null;
 
   return (
@@ -19,10 +17,7 @@ export function ShipmentInfoCards({ items }: { items: ShippingArrangementItem[] 
         return (
           <Card
             key={item.id}
-            className={cn(
-              "border border-neutral-200 bg-white transition-transform duration-200",
-              !reducedMotion && "hover:-translate-y-0.5 hover:scale-[1.01]",
-            )}
+            className="border border-neutral-200 bg-white transition-transform duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:scale-[1.01]"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-50 text-primary-700">
               <Icon className="h-5 w-5" />

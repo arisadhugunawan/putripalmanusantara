@@ -21,13 +21,16 @@ export function GalleryMasonryGrid({
 }) {
   return (
     <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 [&>*]:mb-4">
+      {/* No `priority` here — `GalleryFeaturedSection` above this grid already marks its own
+          main card `priority`, and that's the section actually visible above the fold; giving
+          more images `priority` too just makes them compete with the real LCP candidate for
+          bandwidth instead of loading lazily as the visitor scrolls to them. */}
       {items.map((item, index) => (
         <GalleryCard
           key={item.id}
           item={item}
           onOpen={() => onOpen(index)}
           fallbackAspectRatio={FALLBACK_RATIOS[index % FALLBACK_RATIOS.length]}
-          priority={index < 4}
           dictionary={dictionary}
         />
       ))}

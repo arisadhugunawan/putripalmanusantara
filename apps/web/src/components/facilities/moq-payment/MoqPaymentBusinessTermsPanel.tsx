@@ -1,13 +1,10 @@
-"use client";
-
 import type { MoqPaymentBusinessTerm } from "@ppn/shared-types";
-import { cn } from "@ppn/ui-components";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 /** Open-ended list of business terms — deliberately never a `<table>` (per brief) so an
  * arbitrary-length, admin-authored list never forces horizontal scroll on narrow screens.
  * Mobile renders stacked label/value cards; `sm:` and up renders a two-column row layout with
- * a subtle per-row hover shift. */
+ * a subtle per-row hover shift. A server component: the hover shift is `motion-safe:` CSS, not
+ * a `useReducedMotion()` JS hook, so no client boundary is needed. */
 export function MoqPaymentBusinessTermsPanel({
   terms,
   unavailableText = "Business terms are available upon request.",
@@ -15,8 +12,6 @@ export function MoqPaymentBusinessTermsPanel({
   terms: MoqPaymentBusinessTerm[];
   unavailableText?: string;
 }) {
-  const reducedMotion = useReducedMotion();
-
   if (terms.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center">
@@ -42,10 +37,7 @@ export function MoqPaymentBusinessTermsPanel({
         {terms.map((term) => (
           <div
             key={term.id}
-            className={cn(
-              "grid grid-cols-2 gap-4 px-5 py-4 transition-transform duration-300 ease-out",
-              !reducedMotion && "hover:translate-x-1",
-            )}
+            className="grid grid-cols-2 gap-4 px-5 py-4 transition-transform duration-300 ease-out motion-safe:hover:translate-x-1"
           >
             <p className="text-body font-medium uppercase tracking-wide text-primary-700">{term.label}</p>
             <p className="text-body text-neutral-900">{term.value}</p>

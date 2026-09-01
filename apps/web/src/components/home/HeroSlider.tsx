@@ -7,6 +7,7 @@ import Autoplay from "embla-carousel-autoplay";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/Link";
 import type { Dictionary } from "@/i18n/dictionary.d";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { SafeImage } from "@/components/SafeImage";
 import { DecorativeGraphics } from "@/components/decorative/DecorativeGraphics";
 
@@ -82,6 +83,7 @@ function Carousel({
   // listeners below keep it in sync from then on, so no synchronous setState-on-mount call
   // is needed here.
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const reducedMotion = useReducedMotion();
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -112,6 +114,19 @@ function Carousel({
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [emblaApi]);
+
+  // Same stop/play toggle as the visibilitychange effect above, driven by the OS-level
+  // reduced-motion preference instead — every other autoplaying carousel in this codebase
+  // (WhatWeSupplyCarousel, FactoryGalleryCarousel) already gates its autoplay this way; the
+  // Hero was the one gap. `useReducedMotion` is itself reactive (`useSyncExternalStore`), so
+  // this also responds live if the visitor changes the OS setting mid-session.
+  useEffect(() => {
+    if (!emblaApi) return;
+    const autoplay = emblaApi.plugins().autoplay;
+    if (!autoplay) return;
+    if (reducedMotion) autoplay.stop();
+    else autoplay.play();
+  }, [emblaApi, reducedMotion]);
 
   function handleKeyDown(event: React.KeyboardEvent) {
     if (event.key === "ArrowLeft") emblaApi?.scrollPrev();

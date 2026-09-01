@@ -296,7 +296,7 @@ export function GalleryLightbox<T extends GalleryLightboxImage>({
                 <YouTubeVideoEmbed url={image.external_url ?? null} />
               </div>
             ) : mediaType === "tiktok" && image.external_url ? (
-              <div className="w-full max-w-sm">
+              <div className="aspect-9/16 w-full max-w-sm">
                 <TikTokEmbed url={image.external_url} />
               </div>
             ) : null}

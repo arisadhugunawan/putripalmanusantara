@@ -1,15 +1,13 @@
-"use client";
-
 import type { MoqPaymentQuickCard } from "@ppn/shared-types";
-import { Card, cn } from "@ppn/ui-components";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { Card } from "@ppn/ui-components";
 import { MOQ_PAYMENT_QUICK_CARD_ICONS } from "./MoqPaymentIcons";
 
 /** Compact highlight-card row above the Business Terms panel. Filters on `value.trim() !== ""`
  * here — the single source of truth for the "blank value hides the card" rule, reused by both
- * the public page and the admin draft preview. Renders nothing when every card is hidden. */
+ * the public page and the admin draft preview. Renders nothing when every card is hidden.
+ * A server component: the hover lift is `motion-safe:` CSS, not a `useReducedMotion()` JS hook
+ * (see ShippingPartnerMarquee.tsx for the same convention), so no client boundary is needed. */
 export function MoqPaymentQuickCards({ cards }: { cards: MoqPaymentQuickCard[] }) {
-  const reducedMotion = useReducedMotion();
   const visible = cards.filter((card) => card.value.trim() !== "");
   if (visible.length === 0) return null;
 
@@ -20,10 +18,7 @@ export function MoqPaymentQuickCards({ cards }: { cards: MoqPaymentQuickCard[] }
         return (
           <Card
             key={card.id}
-            className={cn(
-              "border border-neutral-200 bg-white transition-transform duration-200",
-              !reducedMotion && "hover:-translate-y-0.5 hover:scale-[1.02]",
-            )}
+            className="border border-neutral-200 bg-white transition-transform duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:scale-[1.02]"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-50 text-primary-700">
               <Icon className="h-5 w-5" />
