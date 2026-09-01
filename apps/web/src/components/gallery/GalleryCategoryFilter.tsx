@@ -4,6 +4,7 @@ import { cn } from "@ppn/ui-components";
 import type { GalleryCategory } from "@ppn/shared-types";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 
 /** Pill filter bar for the masonry grid below — reuses the exact active/inactive visual
  * convention already established by the site's other pill filters (`bg-primary-500
@@ -14,10 +15,12 @@ export function GalleryCategoryFilter({
   categories,
   active,
   onChange,
+  dictionary,
 }: {
   categories: GalleryCategory[];
   active: string;
   onChange: (slug: string) => void;
+  dictionary: Dictionary["gallery"];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -36,7 +39,7 @@ export function GalleryCategoryFilter({
   );
 
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+    <div className="flex flex-wrap gap-2" role="group" aria-label={dictionary.filterAriaLabel}>
       <button
         type="button"
         onClick={() => select("all")}
@@ -46,7 +49,7 @@ export function GalleryCategoryFilter({
           active === "all" ? "bg-primary-500 text-neutral-900" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
         )}
       >
-        All
+        {dictionary.allFilterLabel}
       </button>
       {categories.map((category) => (
         <button

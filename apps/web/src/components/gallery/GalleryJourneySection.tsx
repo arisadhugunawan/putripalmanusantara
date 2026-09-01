@@ -3,6 +3,7 @@
 import { Container } from "@ppn/ui-components";
 import type { Media } from "@ppn/shared-types";
 import { useEffect, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { GalleryCategoryShowcaseCard } from "./GalleryCategoryShowcaseCard";
 
 export interface JourneyPanel {
@@ -25,9 +26,11 @@ export interface JourneyPanel {
 export function GalleryJourneySection({
   panels,
   onViewCategory,
+  dictionary,
 }: {
   panels: JourneyPanel[];
   onViewCategory: (id: string) => void;
+  dictionary: Dictionary["gallery"];
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -59,9 +62,9 @@ export function GalleryJourneySection({
           <div>
             <p className="flex items-center gap-3 text-small font-medium uppercase tracking-[0.14em] text-primary-700">
               <span aria-hidden="true" className="h-px w-8 bg-primary-400" />
-              The PPN Journey
+              {dictionary.journeyEyebrow}
             </p>
-            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">From warehouse to worldwide</h2>
+            <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">{dictionary.journeyHeading}</h2>
           </div>
           <div className="text-right">
             <p className="text-body font-semibold text-neutral-900">{active.name}</p>
@@ -98,6 +101,7 @@ export function GalleryJourneySection({
               previewImage={panel.previewImage}
               itemCount={panel.itemCount}
               onView={() => onViewCategory(panel.id)}
+              dictionary={dictionary}
             />
           </div>
         ))}

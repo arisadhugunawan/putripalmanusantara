@@ -246,6 +246,67 @@ export interface Dictionary {
     linkCopiedLabel: string;
     printArticleLabel: string;
   };
+  /** "/gallery" page UI chrome — reuses `nav.gallery` ("Gallery") for the breadcrumb second
+   * crumb and the SEO title fallback. Gallery ITEM content (media, captions, category names)
+   * is CMS-backed and already locale-resolved via `translate()`; the "Products"/"Team" virtual
+   * categories reuse the real Products/Team data (already locale-resolved elsewhere) — this
+   * namespace only covers static UI chrome with no CMS field of its own. */
+  gallery: {
+    metaDescription: string;
+    heroEyebrow: string;
+    /** Shown only when the Admin hasn't set a custom Page Header title for Gallery. */
+    heroFallbackTitle: string;
+    heroFallbackDescription: string;
+    /** Appended after `heroFallbackDescription` when at least one photo exists. Must contain
+     * the literal "{count}" placeholder. */
+    heroMomentsCapturedTemplate: string;
+    comingSoonHeading: string;
+    comingSoonDescription: string;
+    /** Must contain the literal "{category}" placeholder. */
+    categoryEmptyTemplate: string;
+    categoryEmptyDescription: string;
+    /** Lowercase word substituted into `categoryEmptyTemplate` for the unfiltered "All" view. */
+    allCategoryFallbackName: string;
+    /** "Products" virtual category card description (real Products data, never duplicated
+     * into GalleryItem rows). */
+    productsCategoryDescription: string;
+    /** "Team" virtual category card description (real Team data, never duplicated into
+     * GalleryItem rows). */
+    teamCategoryDescription: string;
+    featuredEyebrow: string;
+    featuredHeading: string;
+    journeyEyebrow: string;
+    journeyHeading: string;
+    filterAriaLabel: string;
+    allFilterLabel: string;
+    /** Must contain the literal "{name}" placeholder. */
+    viewFullscreenAriaTemplate: string;
+    viewGalleryCta: string;
+    tiktokVideoLabel: string;
+    videoLabel: string;
+    itemCountComingSoonLabel: string;
+    /** aria-label on the placeholder graphic when a category preview has no image yet. */
+    imageComingSoonAriaLabel: string;
+    /** Used when a gallery item has neither its own alt text nor a title. */
+    lightboxFallbackAlt: string;
+    /** Must contain the literal "{count}" placeholder. */
+    photoCountSingularTemplate: string;
+    /** Must contain the literal "{count}" placeholder. */
+    photoCountPluralTemplate: string;
+    lightboxZoomOutLabel: string;
+    lightboxZoomInLabel: string;
+    lightboxFitToScreenLabel: string;
+    lightboxFitShortLabel: string;
+    lightboxExitFullscreenLabel: string;
+    lightboxFullscreenLabel: string;
+    lightboxCloseLabel: string;
+    lightboxPreviousLabel: string;
+    lightboxNextLabel: string;
+    lightboxPrevShort: string;
+    lightboxNextShort: string;
+    /** Must contain the literal "{name}" placeholder. */
+    lightboxAriaTemplate: string;
+  };
   /** Homepage-only static UI chrome — eyebrows, headings with no CMS field, CTA labels, and
    * carousel/map accessibility labels. Section CONTENT (hero slides, product/facility/article
    * data, export destination details) is CMS-backed and already locale-resolved server-side via

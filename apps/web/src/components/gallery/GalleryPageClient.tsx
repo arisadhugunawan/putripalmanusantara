@@ -3,6 +3,7 @@
 import type { GalleryCategory, GalleryItem, ProductSummary, TeamMember } from "@ppn/shared-types";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { GalleryCategoryFilter } from "./GalleryCategoryFilter";
 import { GalleryCategoryEmptyState, GalleryEmptyState } from "./GalleryEmptyState";
 import { GalleryFeaturedSection } from "./GalleryFeaturedSection";
@@ -26,12 +27,15 @@ export function GalleryPageClient({
   items,
   products,
   teamMembers,
+  dictionary,
 }: {
   categories: GalleryCategory[];
   items: GalleryItem[];
   products: ProductSummary[];
   teamMembers: TeamMember[];
+  dictionary: Dictionary;
 }) {
+  const t = dictionary.gallery;
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") ?? "all";
   const [activeCategory, setActiveCategory] = useState(initialCategory);
@@ -47,7 +51,7 @@ export function GalleryPageClient({
         return {
           id: category.slug,
           name: category.name,
-          description: "Every product we export, ready for your order.",
+          description: t.productsCategoryDescription,
           previewImage: products[0]?.cover_image ?? null,
           itemCount: products.length,
         };
@@ -56,7 +60,7 @@ export function GalleryPageClient({
         return {
           id: category.slug,
           name: category.name,
-          description: "The people behind every shipment.",
+          description: t.teamCategoryDescription,
           previewImage: activeMembers[0]?.photo ?? null,
           itemCount: activeMembers.length,
         };
@@ -69,7 +73,7 @@ export function GalleryPageClient({
         itemCount: categoryItems.length,
       };
     });
-  }, [categories, items, products, activeMembers]);
+  }, [categories, items, products, activeMembers, t]);
 
   const totalRealItems = items.length;
   const hasAnyContent = totalRealItems > 0 || products.length > 0 || activeMembers.length > 0;
@@ -85,20 +89,26 @@ export function GalleryPageClient({
     return items.filter((item) => item.category.slug === activeCategory);
   }, [items, activeCategory]);
 
-  if (!hasAnyContent) return <GalleryEmptyState />;
+  if (!hasAnyContent) return <GalleryEmptyState dictionary={t} />;
 
   return (
     <div>
-      <GalleryJourneySection panels={journeyPanels} onViewCategory={handleViewCategory} />
+      <GalleryJourneySection panels={journeyPanels} onViewCategory={handleViewCategory} dictionary={t} />
 
       <GalleryFeaturedSection
         items={featuredItems}
         onOpen={(item) => setLightbox({ source: "featured", index: featuredItems.findIndex((i) => i.id === item.id) })}
+        dictionary={t}
       />
 
       <div ref={gridAnchorRef} className="scroll-mt-24 px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <GalleryCategoryFilter categories={categories} active={activeCategory} onChange={setActiveCategory} />
+          <GalleryCategoryFilter
+            categories={categories}
+            active={activeCategory}
+            onChange={setActiveCategory}
+            dictionary={t}
+          />
 
           <div className="mt-8">
             {activeCategory === PRODUCTS_SLUG ? (
@@ -108,13 +118,17 @@ export function GalleryPageClient({
             ) : filteredItems.length === 0 ? (
               <GalleryCategoryEmptyState
                 categoryName={
-                  activeCategory === "all" ? "gallery" : (categories.find((c) => c.slug === activeCategory)?.name ?? "gallery")
+                  activeCategory === "all"
+                    ? t.allCategoryFallbackName
+                    : (categories.find((c) => c.slug === activeCategory)?.name ?? t.allCategoryFallbackName)
                 }
+                dictionary={t}
               />
             ) : (
               <GalleryMasonryGrid
                 items={filteredItems}
                 onOpen={(index) => setLightbox({ source: "grid", index })}
+                dictionary={t}
               />
             )}
           </div>
@@ -135,7 +149,21 @@ export function GalleryPageClient({
           }))}
           startIndex={lightbox.index}
           onClose={() => setLightbox(null)}
-          fallbackAlt="PPN gallery photo"
+          fallbackAlt={t.lightboxFallbackAlt}
+          labels={{
+            zoomOut: t.lightboxZoomOutLabel,
+            zoomIn: t.lightboxZoomInLabel,
+            fitToScreen: t.lightboxFitToScreenLabel,
+            fitShort: t.lightboxFitShortLabel,
+            exitFullscreen: t.lightboxExitFullscreenLabel,
+            fullscreen: t.lightboxFullscreenLabel,
+            close: t.lightboxCloseLabel,
+            previous: t.lightboxPreviousLabel,
+            next: t.lightboxNextLabel,
+            prevShort: t.lightboxPrevShort,
+            nextShort: t.lightboxNextShort,
+            ariaTemplate: t.lightboxAriaTemplate,
+          }}
         />
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import type { GalleryItem } from "@ppn/shared-types";
 import { useRef } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { SafeImage } from "@/components/SafeImage";
 import { extractYouTubeId } from "@/components/about/company-profile/YouTubeVideoEmbed";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -17,12 +18,14 @@ export function GalleryCard({
   fallbackAspectRatio = "4 / 5",
   sizes = "(min-width: 1024px) 24vw, (min-width: 640px) 46vw, 92vw",
   priority = false,
+  dictionary,
 }: {
   item: GalleryItem;
   onOpen: () => void;
   fallbackAspectRatio?: string;
   sizes?: string;
   priority?: boolean;
+  dictionary: Dictionary["gallery"];
 }) {
   const reducedMotion = useReducedMotion();
   const innerRef = useRef<HTMLDivElement>(null);
@@ -53,7 +56,7 @@ export function GalleryCard({
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`View ${item.title ?? item.category.name} in full screen`}
+        aria-label={dictionary.viewFullscreenAriaTemplate.replace("{name}", item.title ?? item.category.name)}
         className="block w-full break-inside-avoid overflow-hidden rounded-[20px] text-left"
       >
         <div
@@ -61,7 +64,7 @@ export function GalleryCard({
           className="relative w-full overflow-hidden rounded-[20px] bg-neutral-100 shadow-[0_16px_40px_-20px_rgba(24,61,43,0.3)] transition-transform duration-300 ease-out"
           style={{ aspectRatio }}
         >
-          <CardThumbnail item={item} sizes={sizes} priority={priority} />
+          <CardThumbnail item={item} sizes={sizes} priority={priority} dictionary={dictionary} />
           <div className="absolute inset-0 bg-neutral-900/0 opacity-0 transition-[opacity,background-color] duration-300 ease-out group-hover:bg-neutral-900/35 group-hover:opacity-100" />
           {isVideo ? (
             <span className="absolute inset-0 flex items-center justify-center">
@@ -72,8 +75,9 @@ export function GalleryCard({
               </span>
             </span>
           ) : (
-            <span className="absolute inset-x-3 bottom-3 translate-y-1.5 text-small font-semibold uppercase tracking-[0.1em] text-white opacity-0 transition-[opacity,transform] duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100">
-              View Gallery →
+            <span className="absolute inset-x-3 bottom-3 flex translate-y-1.5 items-center gap-1 text-small font-semibold uppercase tracking-[0.1em] text-white opacity-0 transition-[opacity,transform] duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100">
+              {dictionary.viewGalleryCta}
+              <span aria-hidden="true">→</span>
             </span>
           )}
         </div>
@@ -86,10 +90,12 @@ function CardThumbnail({
   item,
   sizes,
   priority,
+  dictionary,
 }: {
   item: GalleryItem;
   sizes: string;
   priority: boolean;
+  dictionary: Dictionary["gallery"];
 }) {
   if (item.media_type === "image" || item.media_type === "video") {
     if (item.media_type === "video" && item.media) {
@@ -103,7 +109,7 @@ function CardThumbnail({
         />
       );
     }
-    return <SafeImage media={item.media} sizes={sizes} priority={priority} />;
+    return <SafeImage media={item.media} sizes={sizes} priority={priority} emptyLabel={dictionary.imageComingSoonAriaLabel} />;
   }
 
   if (item.media_type === "youtube") {
@@ -123,7 +129,7 @@ function CardThumbnail({
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-linear-to-br from-primary-50 to-neutral-100">
       <span className="text-small font-medium text-primary-700/60">
-        {item.media_type === "tiktok" ? "TikTok Video" : "Video"}
+        {item.media_type === "tiktok" ? dictionary.tiktokVideoLabel : dictionary.videoLabel}
       </span>
     </div>
   );

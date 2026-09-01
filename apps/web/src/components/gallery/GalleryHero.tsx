@@ -4,6 +4,7 @@ import { DEFAULT_LOCALE, isLocale, type ResolvedPageHeader } from "@ppn/shared-t
 import { Container } from "@ppn/ui-components";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/page/Breadcrumb";
 import { DECORATIVE_SVGS } from "@/components/decorative/DecorativeSvgs";
@@ -30,12 +31,15 @@ export function GalleryHero({
   locale,
   totalPhotoCount,
   headerConfig,
+  dictionary,
 }: {
   locale?: string;
   totalPhotoCount: number;
   headerConfig?: ResolvedPageHeader | null;
+  dictionary: Dictionary;
 }) {
   const resolvedLocale = locale && isLocale(locale) ? locale : DEFAULT_LOCALE;
+  const t = dictionary.gallery;
   const reducedMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
 
@@ -51,10 +55,10 @@ export function GalleryHero({
   const backgroundImage = headerConfig?.background_image ?? null;
   const mobileBackgroundImage = headerConfig?.mobile_background_image ?? backgroundImage;
   const showBreadcrumb = headerConfig ? headerConfig.show_breadcrumb : true;
-  const resolvedTitle = headerConfig?.custom_title?.trim() || "A Look Inside PPN";
+  const resolvedTitle = headerConfig?.custom_title?.trim() || t.heroFallbackTitle;
   const resolvedDescription =
     headerConfig?.subtitle?.trim() ||
-    `Real photos and videos from our warehouse, sorting lines, loading yard, and shipments — an honest look at how PPN prepares every export order.${totalPhotoCount > 0 ? ` ${totalPhotoCount}+ moments captured so far.` : ""}`;
+    `${t.heroFallbackDescription}${totalPhotoCount > 0 ? ` ${t.heroMomentsCapturedTemplate.replace("{count}", String(totalPhotoCount))}` : ""}`;
 
   const overlayOpacity = backgroundImage && headerConfig?.overlay_enabled ? headerConfig.overlay_opacity / 100 : 0;
   const altText = headerConfig?.alt_text?.trim() || resolvedTitle;
@@ -70,8 +74,8 @@ export function GalleryHero({
       <JsonLd
         data={breadcrumbJsonLd(
           [
-            { name: "Home", path: "/" },
-            { name: "Gallery", path: "/gallery" },
+            { name: dictionary.nav.home, path: "/" },
+            { name: dictionary.nav.gallery, path: "/gallery" },
           ],
           resolvedLocale,
         )}
@@ -125,7 +129,7 @@ export function GalleryHero({
       <Container className="relative py-14 lg:py-20">
         {showBreadcrumb && (
           <Breadcrumb
-            items={[{ label: "Home", href: "/" }, { label: "Gallery" }]}
+            items={[{ label: dictionary.nav.home, href: "/" }, { label: dictionary.nav.gallery }]}
             color={backgroundImage ? headerConfig!.breadcrumb_color : undefined}
           />
         )}
@@ -144,7 +148,7 @@ export function GalleryHero({
               className="h-px w-8 bg-primary-400"
               style={{ backgroundColor: backgroundImage ? headerConfig!.subtitle_color : undefined }}
             />
-            PPN Visual Archive
+            {t.heroEyebrow}
           </p>
           <h1
             className="mt-3 text-h1 text-neutral-900 transition-[opacity,transform,filter] duration-700 ease-out"

@@ -1,6 +1,7 @@
 "use client";
 
 import type { GalleryItem } from "@ppn/shared-types";
+import type { Dictionary } from "@/i18n/dictionary.d";
 import { GalleryCard } from "./GalleryCard";
 
 const FALLBACK_RATIOS = ["4 / 5", "1 / 1", "16 / 9", "3 / 4"];
@@ -12,9 +13,11 @@ const FALLBACK_RATIOS = ["4 / 5", "1 / 1", "16 / 9", "3 / 4"];
 export function GalleryMasonryGrid({
   items,
   onOpen,
+  dictionary,
 }: {
   items: GalleryItem[];
   onOpen: (index: number) => void;
+  dictionary: Dictionary["gallery"];
 }) {
   return (
     <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 [&>*]:mb-4">
@@ -25,6 +28,7 @@ export function GalleryMasonryGrid({
           onOpen={() => onOpen(index)}
           fallbackAspectRatio={FALLBACK_RATIOS[index % FALLBACK_RATIOS.length]}
           priority={index < 4}
+          dictionary={dictionary}
         />
       ))}
     </div>
