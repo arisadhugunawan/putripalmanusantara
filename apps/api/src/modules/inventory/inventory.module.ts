@@ -1,9 +1,0 @@
-import { Module } from '@nestjs/common';
-import { AdminInventoryController } from './admin-inventory.controller';
-import { InventoryService } from './inventory.service';
-
-@Module({
-  controllers: [AdminInventoryController],
-  providers: [InventoryService],
-})
-export class InventoryModule {}
