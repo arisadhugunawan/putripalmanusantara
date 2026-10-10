@@ -11,7 +11,6 @@ import { ActivityLogModule } from './common/activity-log/activity-log.module';
 import { ActivityLogInterceptor } from './common/activity-log/activity-log.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { EmailModule } from './email/email.module';
-import { ExternalAuthModule } from './external-auth/external-auth.module';
 import { AboutCompanyModule } from './modules/about-company/about-company.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ArticlesModule } from './modules/articles/articles.module';
@@ -46,7 +45,6 @@ import { RevalidationModule } from './revalidation/revalidation.module';
     EmailModule,
     RevalidationModule,
     AuthModule,
-    ExternalAuthModule,
     ProductsModule,
     ArticlesModule,
     GalleryModule,
