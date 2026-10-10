@@ -169,7 +169,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             collapsed ? "lg:ml-[72px]" : "lg:ml-[280px]",
           )}
         >
-          <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6">
+          <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6">
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -193,7 +193,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               Keluar
             </button>
           </header>
-          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-10">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">{children}</main>
         </div>
       </div>
     </ToastProvider>

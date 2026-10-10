@@ -172,7 +172,7 @@ export default function AdminArticlesPage() {
 
       {showImportModal && <InstagramImportModal onClose={() => setShowImportModal(false)} />}
 
-      <div className="mt-6 flex flex-wrap gap-2 border-b border-neutral-200">
+      <div className="mt-4 flex flex-wrap gap-2 border-b border-neutral-200">
         {TABS.map((t) => (
           <button
             key={t.key}

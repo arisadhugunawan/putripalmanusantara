@@ -19,4 +19,5 @@ export * from "./page-header";
 export * from "./footer";
 export * from "./ai";
 export * from "./admin";
+export * from "./external-account";
 export * from "./i18n";

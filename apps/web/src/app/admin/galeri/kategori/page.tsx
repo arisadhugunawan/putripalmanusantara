@@ -129,7 +129,7 @@ export default function AdminGalleryCategoriesPage() {
         menghapus isinya.
       </p>
 
-      <Card className="mt-6">
+      <Card className="mt-4">
         <div className="flex flex-col gap-3">
           {categories.length === 0 && (
             <div className="rounded-field border border-dashed border-neutral-300 p-6 text-center">

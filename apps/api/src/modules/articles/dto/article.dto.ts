@@ -31,6 +31,13 @@ export class ArticleStatisticDto {
   @MinLength(1)
   @MaxLength(60)
   label!: string;
+
+  /** Key into the fixed, hand-authored icon set (see `ArticleStatIcons.tsx`) — optional, never
+   * a free-form URL/SVG, so this can never become an XSS vector. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  icon?: string;
 }
 
 export class CreateArticleDto {

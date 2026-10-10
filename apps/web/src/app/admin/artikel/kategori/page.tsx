@@ -109,7 +109,7 @@ export default function ArticleCategoriesPage() {
         </Link>
       </div>
 
-      <Card className="mt-6">
+      <Card className="mt-4">
         <h2 className="text-h3 text-neutral-900">Kategori</h2>
         <p className="mt-1 text-small text-neutral-600">
           Kategori yang bisa dipilih tiap artikel dan dipakai sebagai filter di Admin. Seret untuk mengubah

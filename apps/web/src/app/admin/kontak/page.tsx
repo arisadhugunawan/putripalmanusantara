@@ -56,7 +56,7 @@ export default function AdminContactsPage() {
         ))}
       </div>
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-3">
         {items?.map((item) => (
           <QuotationRow
             key={item.id}

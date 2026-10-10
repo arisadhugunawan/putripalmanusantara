@@ -60,16 +60,16 @@ export function SectionEditorShell({
 
   return (
     <div>
-      <div className="sticky top-0 z-40 border-b border-neutral-200 bg-white px-6 py-4">
+      <div className="sticky top-0 z-40 border-b border-neutral-200 bg-white px-6 py-3">
         <Link href="/admin/homepage" className="text-small text-neutral-500 underline">
           ← Kembali ke Homepage Manager
         </Link>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-h3 text-neutral-900">{section.label}</h1>
             <p className="text-small text-neutral-600">{section.description}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             {config && (
               <label className="flex items-center gap-2 text-small text-neutral-700">
                 <input type="checkbox" checked={config.visible} onChange={() => void toggleVisible()} className="h-4 w-4" />
@@ -90,7 +90,7 @@ export function SectionEditorShell({
         </div>
       </div>
 
-      <div className="max-w-4xl px-6 py-6">{children}</div>
+      <div className="max-w-4xl px-6 py-5">{children}</div>
     </div>
   );
 }

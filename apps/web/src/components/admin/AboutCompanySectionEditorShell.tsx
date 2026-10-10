@@ -120,11 +120,11 @@ export function AboutCompanySectionEditorShell({
   return (
     <AboutCompanyDraftBufferContext.Provider value={contextValue}>
       <div>
-        <div className="sticky top-0 z-40 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6">
+        <div className="sticky top-0 z-40 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6">
           <Link href="/admin/about-company" onClick={handleBack} className="text-small text-neutral-500 underline">
             ← Kembali ke About Company Manager
           </Link>
-          <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+          <div className="mt-1.5 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-h3 text-neutral-900">{section.label}</h1>
@@ -140,7 +140,7 @@ export function AboutCompanySectionEditorShell({
               <p className="text-small text-neutral-600">{section.description}</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 lg:gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               {config && (
                 <label className="flex items-center gap-2 text-small text-neutral-700">
                   <input
@@ -192,7 +192,7 @@ export function AboutCompanySectionEditorShell({
           />
         </div>
 
-        <div className="max-w-4xl px-4 py-6 sm:px-6">{children}</div>
+        <div className="max-w-4xl px-4 py-5 sm:px-6">{children}</div>
       </div>
 
       {pendingLeave && (

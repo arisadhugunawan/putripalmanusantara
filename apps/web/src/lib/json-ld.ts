@@ -2,10 +2,11 @@ import type {
   ArticleDetail,
   ContactLocation,
   ContactPageSettings,
+  Locale,
   ProductDetail,
   PublicSiteSettings,
 } from "@ppn/shared-types";
-import { SITE_NAME, SITE_URL } from "./seo";
+import { SITE_NAME, SITE_URL, localeToBCP47 } from "./seo";
 
 /** NFR-SEO-01 — Organization schema, present on every page. */
 export function organizationJsonLd() {
@@ -99,7 +100,7 @@ export function productJsonLd(product: ProductDetail, locale: string) {
 }
 
 /** NFR-SEO-01 — Article schema on detail pages. */
-export function articleJsonLd(article: ArticleDetail, locale: string) {
+export function articleJsonLd(article: ArticleDetail, locale: Locale) {
   return {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -111,6 +112,7 @@ export function articleJsonLd(article: ArticleDetail, locale: string) {
     author: { "@type": "Organization", name: article.author },
     publisher: { "@type": "Organization", name: SITE_NAME },
     mainEntityOfPage: `${SITE_URL}/${locale}/articles/${article.slug}`,
+    inLanguage: localeToBCP47(locale),
   };
 }
 

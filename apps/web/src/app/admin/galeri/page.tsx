@@ -54,7 +54,7 @@ export default function AdminGalleryPage() {
         Kelola foto, video, dan kategori yang tampil di halaman Galeri publik.
       </p>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
           <Card key={card.label}>
             <p className="text-small text-neutral-600">{card.label}</p>

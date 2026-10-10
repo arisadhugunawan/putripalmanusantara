@@ -255,16 +255,35 @@ function SlideContent({ slide }: { slide: HeroSlide }) {
                 href={slide.button_2_link!}
                 className={cn(
                   buttonVariants(slide.button_2_style, "lg"),
+                  "group/cta hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]",
                   slide.button_2_style === "secondary" && "border-white/40 text-white hover:border-white",
                 )}
               >
                 {slide.button_2_text}
+                <CtaArrowIcon className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover/cta:translate-x-1 group-active/cta:translate-x-0.5" />
               </Link>
             )}
           </div>
         )}
       </div>
     </Container>
+  );
+}
+
+/** Decorative — the Link's own text carries the accessible name, this just nudges forward on
+ * hover/press so the primary Hero CTA feels responsive (brief: "subtle premium micro-interaction"). */
+function CtaArrowIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
+      <path
+        d="M3 8h10M9 4l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

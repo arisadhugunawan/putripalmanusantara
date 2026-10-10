@@ -165,7 +165,7 @@ export default function EditProductPage() {
         </div>
       </div>
 
-      <Card className="mt-6">
+      <Card className="mt-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-h3 text-neutral-900">Product Status</h2>

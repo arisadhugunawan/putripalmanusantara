@@ -41,6 +41,37 @@ describe('deriveAction', () => {
     );
   });
 
+  it('labels business relationship lifecycle routes with lowercase snake_case actions', () => {
+    expect(
+      deriveAction(
+        'POST',
+        '/api/v1/admin/business-relationships/1/approve',
+        'business-relationships',
+      ),
+    ).toBe('relationship_approved');
+    expect(
+      deriveAction(
+        'POST',
+        '/api/v1/admin/business-relationships/1/reject',
+        'business-relationships',
+      ),
+    ).toBe('relationship_rejected');
+    expect(
+      deriveAction(
+        'POST',
+        '/api/v1/admin/business-relationships/1/suspend',
+        'business-relationships',
+      ),
+    ).toBe('relationship_suspended');
+    expect(
+      deriveAction(
+        'POST',
+        '/api/v1/admin/business-relationships/1/reactivate',
+        'business-relationships',
+      ),
+    ).toBe('relationship_reactivated');
+  });
+
   it('labels a /status endpoint as STATUS_UPDATE', () => {
     expect(
       deriveAction(

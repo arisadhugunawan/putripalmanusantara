@@ -59,6 +59,1639 @@ model AdminActivityLog {
   @@map("admin_activity_logs")
 }
 
+// ── Business Network — external identity & company (Database Implementation Plan Migration 2)
+// ────────────────────────────────────────────────────────────────────────
+// Deliberately separate from `Admin` above: no shared table, no shared column, no relation in
+// either direction. This is the load-bearing guarantee behind the approved hybrid identity
+// architecture — a credential/session bug on the external-facing surface can never reach
+// internal admin auth, and vice versa. See PPN Platform Extension Architecture §6.
+
+enum ExternalAccountStatus {
+  pending
+  active
+  suspended
+}
+
+/// A person, not a company — see `CompanyUser` for how an account is scoped to one or more
+/// companies. Self-service signup is expected (unlike `Admin`, which is seed-only), hence the
+/// extra `phone`/`emailVerifiedAt` fields `Admin` has no equivalent of.
+model ExternalAccount {
+  id              String                @id @default(cuid())
+  email           String                @unique
+  passwordHash    String                @map("password_hash")
+  fullName        String                @map("full_name")
+  phone           String?
+  status          ExternalAccountStatus @default(pending)
+  /// State, not a token — no separate verification-token table exists yet (Database Gap
+  /// Analysis did not specify one; not invented here per the standing "don't invent what
+  /// wasn't approved" rule). Set once the account's email has been confirmed by whatever
+  /// verification flow is built when the external auth service is implemented.
+  emailVerifiedAt DateTime?             @map("email_verified_at")
+  lastLoginAt     DateTime?             @map("last_login_at")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @default(now()) @updatedAt @map("updated_at")
+
+  companyMemberships CompanyUser[]
+
+  @@map("external_accounts")
+}
+
+enum CompanyStatus {
+  pending
+  active
+  suspended
+}
+
+/// A business organization participating in the Business Network — buyer, supplier, vendor, or
+/// partner (see `BusinessRelationship`). NOT the same concept as the existing
+/// `AboutCompanyProfile`/`Facility`/`ContactLocation` models, which are PPN's own public-website
+/// content; this table has no relation to any of them. Profile fields are folded directly into
+/// this one table rather than split into a separate `CompanyProfile` (same reasoning as
+/// `AboutCompanyProfile` being one singleton row) — split out later only if a real need for
+/// profile-specific versioning appears.
+model Company {
+  id        String        @id @default(cuid())
+  name      String
+  legalName String?       @map("legal_name")
+  country   String
+  address   String?
+  website   String?
+  status    CompanyStatus @default(pending)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  users              CompanyUser[]
+  relationships      BusinessRelationship[]
+  inquiries          Inquiry[]
+  leads              Lead[]
+  opportunities      Opportunity[]
+  activities         Activity[]
+  rfqs               RFQ[]
+  quotations         Quotation[]
+  salesOrders        SalesOrder[]
+  supplierRfqs       SupplierRFQ[]
+  supplierQuotations SupplierQuotation[]
+  purchaseOrders     PurchaseOrder[]
+  receivings         Receiving[]
+  inventoryLots      InventoryLot[]
+  invoices           Invoice[]
+  conversations      Conversation[]
+
+  @@index([status])
+  @@map("companies")
+}
+
+enum CompanyUserRole {
+  owner
+  member
+}
+
+enum CompanyUserStatus {
+  pending
+  active
+  suspended
+}
+
+/// The membership join between a person and a company — deliberately many-to-many (one
+/// ExternalAccount may belong to more than one Company, e.g. a trading agent representing
+/// several buyers), not a single `primaryCompanyId` on ExternalAccount. `status` gates access
+/// independently per membership: a person can be `active` at one company and `pending` at
+/// another. Authorization always resolves through THIS table from the authenticated account —
+/// a request's own claimed `companyId` is never trusted on its own (see the Authorization
+/// Principle in the Migration 2 brief).
+model CompanyUser {
+  id                String            @id @default(cuid())
+  externalAccountId String            @map("external_account_id")
+  externalAccount   ExternalAccount   @relation(fields: [externalAccountId], references: [id], onDelete: Restrict)
+  companyId         String            @map("company_id")
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  role              CompanyUserRole   @default(member)
+  status            CompanyUserStatus @default(pending)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([externalAccountId, companyId])
+  @@index([companyId])
+  @@index([status])
+  @@map("company_users")
+}
+
+enum BusinessRelationshipType {
+  buyer
+  supplier
+  vendor
+  partner
+}
+
+enum BusinessRelationshipStatus {
+  pending
+  active
+  suspended
+}
+
+/// PPN stays the center of the graph — a Company doesn't gain platform access by existing; it
+/// gains access only through an explicit, admin-approved relationship of a specific type. A
+/// company may hold more than one relationship type at once (buyer AND partner), which is why
+/// the unique constraint below is per `(companyId, relationshipType)`, not per company.
+/// `approvedById`/`approvedByName` are plain denormalized strings, never a live relation to
+/// `Admin` — identical reasoning to `AdminActivityLog.actorName`/
+/// `ProductPublishedSnapshot.publishedByName`: this record must stay readable even if the
+/// approving admin's account is later renamed or removed, and it keeps `Admin` itself free of
+/// any inbound relation from the Business Network side entirely.
+model BusinessRelationship {
+  id               String                      @id @default(cuid())
+  companyId        String                      @map("company_id")
+  company          Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  relationshipType BusinessRelationshipType    @map("relationship_type")
+  status           BusinessRelationshipStatus  @default(pending)
+  /// Migration 15 (additive): symmetric with `approvedById`/`approvedByName`/`approvedAt`
+  /// below — same plain-string, no-live-FK convention (never to ExternalAccount or Admin),
+  /// since the requester may be either an external actor or an admin entering it manually.
+  requestedById    String?                     @map("requested_by_id")
+  requestedByName  String?                     @map("requested_by_name")
+  requestedAt      DateTime?                   @map("requested_at")
+  approvedById     String?                     @map("approved_by_id")
+  approvedByName   String?                     @map("approved_by_name")
+  approvedAt       DateTime?                   @map("approved_at")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([companyId, relationshipType])
+  @@index([status])
+  @@map("business_relationships")
+}
+
+// ── CRM Foundation (Database Implementation Plan Migration 3) ───────────────
+// Inquiry → Lead → Opportunity → Activity only. RFQ/Quotation/SalesOrder and every
+// Procurement/Warehouse/Operations/Finance/Documents/Communication model are explicitly out of
+// scope for this migration — see the Migration 3 brief §17 "Scope Control".
+
+enum InquirySource {
+  website
+  quotation_request
+  business_network
+  manual
+}
+
+enum InquiryStatus {
+  new
+  contacted
+  converted
+  closed
+}
+
+/// Normalizes inquiries from every source (public website form, the existing
+/// `QuotationRequest`, the Business Network portal, or manual admin entry) into one shape
+/// before CRM triage turns one into a `Lead`. `sourceQuotationRequestId` is the one narrow,
+/// additive link back to the existing public quotation flow — `QuotationRequest` itself gains
+/// no new column, only a virtual reverse-relation array (`inquiries` below).
+model Inquiry {
+  id                       String            @id @default(cuid())
+  inquiryNumber            String            @unique @map("inquiry_number")
+  source                   InquirySource
+  companyName              String            @map("company_name")
+  /// Migration 15 (additive): nullable because a public/anonymous visitor's Inquiry has no
+  /// known Company yet — `companyName` above stays the free-text fallback for that case. When
+  /// an Inquiry originates from an authenticated/known Company, this links it directly, same
+  /// nullable/SetNull pattern as `Lead.companyId`.
+  companyId                String?           @map("company_id")
+  company                  Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactName              String            @map("contact_name")
+  email                    String
+  phone                    String?
+  subject                  String?
+  message                  String?
+  status                   InquiryStatus     @default(new)
+  sourceQuotationRequestId String?           @map("source_quotation_request_id")
+  sourceQuotationRequest   QuotationRequest? @relation(fields: [sourceQuotationRequestId], references: [id], onDelete: SetNull)
+  createdAt                DateTime          @default(now()) @map("created_at")
+  updatedAt                DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  leads Lead[]
+
+  /// Phase 18B (additive): a QuotationRequest may convert into at most one Inquiry — unlike
+  /// Inquiry→Lead or Lead→Opportunity, there is no legitimate case for converting the same
+  /// public submission twice, so this is a real uniqueness rule, not just a lookup index.
+  /// Multiple manually-created Inquiries (`sourceQuotationRequestId = null`) remain unaffected —
+  /// Postgres never treats NULL as equal to another NULL under a unique index.
+  @@unique([sourceQuotationRequestId])
+  @@index([status])
+  @@index([source])
+  @@index([createdAt])
+  @@index([companyId])
+  @@map("inquiries")
+}
+
+enum LeadStatus {
+  new
+  contacted
+  qualified
+  unqualified
+  converted
+  lost
+}
+
+/// A Lead may originate from an `Inquiry`, directly from a `QuotationRequest` (bypassing the
+/// Inquiry normalization step for a fast admin-side conversion), or be entered manually (both
+/// source fields null). `ownerId`/`ownerName` are plain denormalized strings — never a live FK
+/// into `Admin` — identical reasoning to `BusinessRelationship.approvedById`/`approvedByName`:
+/// internal staff assignment is recorded without adding any inbound relation to `Admin` itself.
+/// Converting a Lead into an `Opportunity` is a status transition (`status: converted`) plus a
+/// new `Opportunity` row created by the future CRM service — never automatic at the schema
+/// level.
+model Lead {
+  id                        String             @id @default(cuid())
+  leadNumber                String             @unique @map("lead_number")
+  companyId                 String?            @map("company_id")
+  company                   Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  sourceInquiryId           String?            @map("source_inquiry_id")
+  sourceInquiry             Inquiry?           @relation(fields: [sourceInquiryId], references: [id], onDelete: SetNull)
+  sourceQuotationRequestId  String?            @map("source_quotation_request_id")
+  sourceQuotationRequest    QuotationRequest?  @relation(fields: [sourceQuotationRequestId], references: [id], onDelete: SetNull)
+  status                    LeadStatus         @default(new)
+  ownerId                   String?            @map("owner_id")
+  ownerName                 String?            @map("owner_name")
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  updatedAt                 DateTime           @default(now()) @updatedAt @map("updated_at")
+
+  opportunities Opportunity[]
+  activities    Activity[]
+
+  /// Phase 18C (additive): performance only, not a correctness mechanism — one Inquiry may
+  /// legitimately produce multiple Leads over time (a lost/unqualified/converted Lead can be
+  /// re-engaged later), so this is deliberately a plain index, never `@@unique`. The
+  /// duplicate-active-lead rule is enforced in the service layer; the real concurrency guard is
+  /// the conditional update on `Inquiry.status` during conversion, not this index.
+  @@index([sourceInquiryId])
+  @@index([status])
+  @@index([companyId])
+  @@index([ownerId])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+enum OpportunityStage {
+  prospecting
+  qualification
+  proposal
+  negotiation
+  won
+  lost
+}
+
+/// One Opportunity always belongs to exactly one Lead (`onDelete: Restrict` — a Lead with real
+/// pipeline value behind it can't be silently removed). Never creates an RFQ/Quotation/
+/// SalesOrder at this migration stage — that chain is explicitly deferred to the next
+/// migration (Sales).
+model Opportunity {
+  id                String           @id @default(cuid())
+  opportunityNumber String           @unique @map("opportunity_number")
+  leadId            String           @map("lead_id")
+  lead              Lead             @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  companyId         String?          @map("company_id")
+  company           Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  name              String
+  stage             OpportunityStage @default(prospecting)
+  estimatedValue    Decimal?         @map("estimated_value") @db.Decimal(14, 2)
+  currency          String?
+  expectedCloseDate DateTime?        @map("expected_close_date")
+  ownerId           String?          @map("owner_id")
+  ownerName         String?          @map("owner_name")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  activities Activity[]
+  rfqs       RFQ[]
+
+  @@index([stage])
+  @@index([leadId])
+  @@index([companyId])
+  @@index([ownerId])
+  @@index([createdAt])
+  @@map("opportunities")
+}
+
+enum ActivityType {
+  call
+  email
+  meeting
+  note
+  follow_up
+}
+
+/// A CRM interaction log entry — deliberately never required to carry all three of
+/// leadId/opportunityId/companyId at once (any combination, including none, is valid). All
+/// three relations use `onDelete: SetNull` rather than `Cascade` or `Restrict`: removing a
+/// Lead/Opportunity/Company must never silently delete the activity history logged against it,
+/// and logging an activity must never block deleting its parent either — the log entry just
+/// loses that one reference. `createdById`/`createdByName` follow the same plain-string,
+/// no-live-FK-to-Admin convention as `Lead.ownerId`/`ownerName`.
+model Activity {
+  id            String       @id @default(cuid())
+  type          ActivityType
+  subject       String
+  description   String?
+  dueAt         DateTime?    @map("due_at")
+  completedAt   DateTime?    @map("completed_at")
+  createdById   String?      @map("created_by_id")
+  createdByName String?      @map("created_by_name")
+  leadId        String?      @map("lead_id")
+  lead          Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  opportunityId String?      @map("opportunity_id")
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  companyId     String?      @map("company_id")
+  company       Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  @@index([leadId])
+  @@index([opportunityId])
+  @@index([companyId])
+  @@index([dueAt])
+  @@map("activities")
+}
+
+// ── Sales Foundation (Database Implementation Plan Migration 4) ─────────────
+// Opportunity → RFQ → RFQItem → Quotation → QuotationItem → SalesOrder → SalesOrderItem only.
+// Procurement/Warehouse/Inventory/Operations/Finance/Communication are explicitly out of scope
+// for this migration — see the Migration 4 brief §27 "Scope Control". No business-workflow
+// constraint (e.g. "Quotation only from a submitted RFQ") is enforced at the schema level here
+// by design — that belongs to the future service layer, per the brief's explicit §20.
+
+enum RFQStatus {
+  draft
+  submitted
+  reviewing
+  quoted
+  rejected
+  cancelled
+}
+
+/// A buyer's Request for Quotation to PPN — may originate from an `Opportunity` (nullable, the
+/// CRM has already qualified this company) or be created directly against a `Company` (Business
+/// Network self-service or manual admin entry, bypassing CRM). `companyId` is required — an RFQ
+/// always names who it's for, even when it has no Opportunity behind it.
+model RFQ {
+  id            String     @id @default(cuid())
+  rfqNumber     String     @unique @map("rfq_number")
+  opportunityId String?    @map("opportunity_id")
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  companyId     String     @map("company_id")
+  company       Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  status        RFQStatus  @default(draft)
+  requestedAt   DateTime?  @map("requested_at")
+  validUntil    DateTime?  @map("valid_until")
+  notes         String?
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @default(now()) @updatedAt @map("updated_at")
+
+  items      RFQItem[]
+  quotations Quotation[]
+
+  @@index([status])
+  @@index([companyId])
+  @@index([opportunityId])
+  @@index([createdAt])
+  @@map("rfqs")
+}
+
+/// One line item on an RFQ — Cascade on `rfqId` (an item has no meaning without its RFQ, same
+/// convention as `ProductGalleryImage`/`ProductSpecification` cascading from `Product`),
+/// Restrict on `productId` (a Product with real transaction history behind it can't be silently
+/// deleted). `productNameSnapshot` preserves the product's name as of the request, same idiom
+/// as `QuotationRequest.productNameSnapshot` — history reads correctly even if the Product is
+/// later renamed.
+model RFQItem {
+  id                    String    @id @default(cuid())
+  rfqId                 String    @map("rfq_id")
+  rfq                   RFQ       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  productId             String    @map("product_id")
+  product               Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot   String?   @map("product_name_snapshot")
+  quantity              Decimal   @db.Decimal(14, 2)
+  unit                  String?
+  requestedDeliveryDate DateTime? @map("requested_delivery_date")
+  specifications        String?
+  notes                 String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([rfqId])
+  @@index([productId])
+  @@map("rfq_items")
+}
+
+enum QuotationStatus {
+  draft
+  sent
+  accepted
+  rejected
+  expired
+  cancelled
+}
+
+/// PPN's formal offer against an RFQ. `rfqId` is required and NOT unique — one RFQ may receive
+/// several Quotations over a negotiation/revision lifecycle (brief §22), so this is a real 1:N
+/// relation, never enforced 1:1. Every monetary field is `Decimal(14,2)`, matching the one
+/// existing precedent in this schema (`Opportunity.estimatedValue`) — never `Float`.
+model Quotation {
+  id              String          @id @default(cuid())
+  quotationNumber String          @unique @map("quotation_number")
+  rfqId           String          @map("rfq_id")
+  rfq             RFQ             @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  companyId       String          @map("company_id")
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  status          QuotationStatus @default(draft)
+  quotationDate   DateTime        @map("quotation_date")
+  validUntil      DateTime?       @map("valid_until")
+  currency        String
+  subtotal        Decimal         @db.Decimal(14, 2)
+  discount        Decimal?        @db.Decimal(14, 2)
+  shippingCost    Decimal?        @map("shipping_cost") @db.Decimal(14, 2)
+  total           Decimal         @db.Decimal(14, 2)
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  items       QuotationItem[]
+  salesOrders SalesOrder[]
+
+  @@index([status])
+  @@index([companyId])
+  @@index([rfqId])
+  @@index([createdAt])
+  @@map("quotations")
+}
+
+/// One priced line item on a Quotation — same Cascade/Restrict split as `RFQItem`: the item has
+/// no meaning without its Quotation (Cascade), but the Product it prices must never be silently
+/// removable while priced history references it (Restrict).
+model QuotationItem {
+  id                  String    @id @default(cuid())
+  quotationId         String    @map("quotation_id")
+  quotation           Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId           String    @map("product_id")
+  product             Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String    @map("product_name_snapshot")
+  quantity            Decimal   @db.Decimal(14, 2)
+  unit                String
+  unitPrice           Decimal   @map("unit_price") @db.Decimal(14, 2)
+  discount            Decimal?  @db.Decimal(14, 2)
+  subtotal            Decimal   @db.Decimal(14, 2)
+  specifications      String?
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([quotationId])
+  @@index([productId])
+  @@map("quotation_items")
+}
+
+enum SalesOrderStatus {
+  draft
+  confirmed
+  processing
+  partially_fulfilled
+  fulfilled
+  cancelled
+}
+
+/// `quotationId` is nullable and NOT unique (brief §21 — a future/manual order flow may exist
+/// without a Quotation behind it, and whether one Quotation can produce more than one order is
+/// not yet determined, so no constraint forces either answer). Deliberately carries no shipment
+/// status — Shipment is Operations, a later migration (brief §11: "Jangan memasukkan shipment
+/// status ke SalesOrder").
+model SalesOrder {
+  id                    String           @id @default(cuid())
+  salesOrderNumber      String           @unique @map("sales_order_number")
+  quotationId           String?          @map("quotation_id")
+  quotation             Quotation?       @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  companyId             String           @map("company_id")
+  company               Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  status                SalesOrderStatus @default(draft)
+  orderDate             DateTime         @map("order_date")
+  requestedDeliveryDate DateTime?        @map("requested_delivery_date")
+  currency              String
+  subtotal              Decimal          @db.Decimal(14, 2)
+  discount              Decimal?         @db.Decimal(14, 2)
+  shippingCost          Decimal?         @map("shipping_cost") @db.Decimal(14, 2)
+  total                 Decimal          @db.Decimal(14, 2)
+  notes                 String?
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  items         SalesOrderItem[]
+  packingOrders PackingOrder[]
+  shipments     Shipment[]
+  invoices      Invoice[]
+
+  @@index([status])
+  @@index([companyId])
+  @@index([quotationId])
+  @@index([createdAt])
+  @@map("sales_orders")
+}
+
+/// One line item on a Sales Order — same Cascade/Restrict split as `RFQItem`/`QuotationItem`.
+model SalesOrderItem {
+  id                  String     @id @default(cuid())
+  salesOrderId        String     @map("sales_order_id")
+  salesOrder          SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  productId           String     @map("product_id")
+  product             Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String     @map("product_name_snapshot")
+  quantity            Decimal    @db.Decimal(14, 2)
+  unit                String
+  unitPrice           Decimal    @map("unit_price") @db.Decimal(14, 2)
+  discount            Decimal?   @db.Decimal(14, 2)
+  subtotal            Decimal    @db.Decimal(14, 2)
+  specifications      String?
+  notes               String?
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @default(now()) @updatedAt @map("updated_at")
+
+  @@index([salesOrderId])
+  @@index([productId])
+  @@map("sales_order_items")
+}
+
+// ── Procurement Foundation (Database Implementation Plan Migration 5) ───────
+// PurchaseRequest → SupplierRFQ → SupplierQuotation → PurchaseOrder only. Receiving,
+// Weighbridge, QC, Inventory, and Warehouse are explicitly deferred to the next migration —
+// see the Migration 5 brief §29-31 "No Receiving/Inventory/Weighbridge/QC Yet". No FK exists
+// from SalesOrder to any model in this block, and none is added here, per the brief's explicit
+// §32 "Sales ↔ Procurement" instruction — whether a Sales Order needs Procurement is a future
+// service/workflow decision, not a schema-level relationship.
+
+enum PurchaseRequestStatus {
+  draft
+  submitted
+  approved
+  rejected
+  cancelled
+  converted
+}
+
+/// PPN's internal request to buy something — raw coconut, copra, packaging, operational
+/// supplies. `requestedById`/`requestedByName` are plain denormalized strings, never a live FK
+/// into `Admin` — same convention as `Lead.ownerId`/`ownerName` and every other internal-actor
+/// reference introduced since Migration 3.
+model PurchaseRequest {
+  id              String                @id @default(cuid())
+  requestNumber   String                @unique @map("request_number")
+  status          PurchaseRequestStatus @default(draft)
+  requestedById   String?               @map("requested_by_id")
+  requestedByName String?               @map("requested_by_name")
+  requiredDate    DateTime?             @map("required_date")
+  notes           String?
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @default(now()) @updatedAt @map("updated_at")
+
+  items          PurchaseRequestItem[]
+  supplierRfqs   SupplierRFQ[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([createdAt])
+  @@map("purchase_requests")
+}
+
+/// One line item on a Purchase Request — Cascade on `purchaseRequestId` (no independent meaning
+/// without its parent, same convention as `RFQItem`/`QuotationItem`/`SalesOrderItem` from
+/// Migration 4), Restrict on `productId` (a Product with real transaction history can't be
+/// silently deleted).
+model PurchaseRequestItem {
+  id                  String          @id @default(cuid())
+  purchaseRequestId   String          @map("purchase_request_id")
+  purchaseRequest     PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+  productId           String          @map("product_id")
+  product             Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String?         @map("product_name_snapshot")
+  quantity            Decimal         @db.Decimal(14, 2)
+  unit                String
+  requiredDate        DateTime?       @map("required_date")
+  specifications      String?
+  notes               String?
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  @@index([purchaseRequestId])
+  @@index([productId])
+  @@map("purchase_request_items")
+}
+
+enum SupplierRFQStatus {
+  draft
+  sent
+  reviewing
+  quoted
+  rejected
+  cancelled
+}
+
+/// PPN's request for a price quote sent to one specific supplier `Company` — never a `Supplier`
+/// model of its own (brief §4/§8: suppliers ARE companies, distinguished only by their
+/// `BusinessRelationship` type). One `PurchaseRequest` may fan out into several SupplierRFQs
+/// (one per candidate supplier), which is why `purchaseRequestId` is required but not unique.
+model SupplierRFQ {
+  id                 String            @id @default(cuid())
+  supplierRfqNumber  String            @unique @map("supplier_rfq_number")
+  purchaseRequestId  String            @map("purchase_request_id")
+  purchaseRequest    PurchaseRequest   @relation(fields: [purchaseRequestId], references: [id], onDelete: Restrict)
+  supplierCompanyId  String            @map("supplier_company_id")
+  supplierCompany    Company           @relation(fields: [supplierCompanyId], references: [id], onDelete: Restrict)
+  status             SupplierRFQStatus @default(draft)
+  requestedAt        DateTime?         @map("requested_at")
+  validUntil         DateTime?         @map("valid_until")
+  notes              String?
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  items      SupplierRFQItem[]
+  quotations SupplierQuotation[]
+
+  @@index([purchaseRequestId])
+  @@index([supplierCompanyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("supplier_rfqs")
+}
+
+/// One line item on a SupplierRFQ — same Cascade/Restrict split as `PurchaseRequestItem`.
+model SupplierRFQItem {
+  id                  String      @id @default(cuid())
+  supplierRfqId       String      @map("supplier_rfq_id")
+  supplierRfq         SupplierRFQ @relation(fields: [supplierRfqId], references: [id], onDelete: Cascade)
+  productId           String      @map("product_id")
+  product             Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String?     @map("product_name_snapshot")
+  quantity            Decimal     @db.Decimal(14, 2)
+  unit                String
+  specifications      String?
+  notes               String?
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  @@index([supplierRfqId])
+  @@index([productId])
+  @@map("supplier_rfq_items")
+}
+
+enum SupplierQuotationStatus {
+  draft
+  received
+  under_review
+  selected
+  rejected
+  expired
+  cancelled
+}
+
+/// A supplier's priced response to a SupplierRFQ. `supplierCompanyId` is denormalized here
+/// (also reachable via `supplierRfq.supplierCompanyId`) rather than cross-checked against the
+/// RFQ's own supplier by a database constraint — brief §21 is explicit that this consistency is
+/// a service-layer concern, not a schema one. One selected SupplierQuotation may produce at
+/// most one PurchaseOrder (`PurchaseOrder.supplierQuotationId` is `@unique`) — locked by the
+/// Database Gap Analysis §19, not invented here.
+model SupplierQuotation {
+  id                      String                  @id @default(cuid())
+  supplierQuotationNumber String                  @unique @map("supplier_quotation_number")
+  supplierRfqId           String                  @map("supplier_rfq_id")
+  supplierRfq             SupplierRFQ             @relation(fields: [supplierRfqId], references: [id], onDelete: Restrict)
+  supplierCompanyId       String                  @map("supplier_company_id")
+  supplierCompany         Company                 @relation(fields: [supplierCompanyId], references: [id], onDelete: Restrict)
+  status                  SupplierQuotationStatus @default(draft)
+  quotationDate           DateTime?               @map("quotation_date")
+  validUntil              DateTime?               @map("valid_until")
+  currency                String
+  subtotal                Decimal                 @db.Decimal(14, 2)
+  discount                Decimal?                @db.Decimal(14, 2)
+  shippingCost            Decimal?                @map("shipping_cost") @db.Decimal(14, 2)
+  total                   Decimal                 @db.Decimal(14, 2)
+  notes                   String?
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @default(now()) @updatedAt @map("updated_at")
+
+  items         SupplierQuotationItem[]
+  purchaseOrder PurchaseOrder?
+
+  @@index([supplierRfqId])
+  @@index([supplierCompanyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("supplier_quotations")
+}
+
+/// One priced line item on a SupplierQuotation — same Cascade/Restrict split as every other
+/// *Item model in this migration.
+model SupplierQuotationItem {
+  id                  String            @id @default(cuid())
+  supplierQuotationId String            @map("supplier_quotation_id")
+  supplierQuotation   SupplierQuotation @relation(fields: [supplierQuotationId], references: [id], onDelete: Cascade)
+  productId           String            @map("product_id")
+  product             Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String            @map("product_name_snapshot")
+  quantity            Decimal           @db.Decimal(14, 2)
+  unit                String
+  unitPrice           Decimal           @map("unit_price") @db.Decimal(14, 2)
+  discount            Decimal?          @db.Decimal(14, 2)
+  subtotal            Decimal           @db.Decimal(14, 2)
+  specifications      String?
+  notes               String?
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  @@index([supplierQuotationId])
+  @@index([productId])
+  @@map("supplier_quotation_items")
+}
+
+enum PurchaseOrderStatus {
+  draft
+  issued
+  confirmed
+  partially_received
+  received
+  cancelled
+  closed
+}
+
+/// Created once a SupplierQuotation is selected. `purchaseRequestId` and `supplierQuotationId`
+/// are both nullable and neither forces the other — a PO may exist without either in a future
+/// manual-entry flow, and one PurchaseRequest may legitimately produce several POs (split across
+/// suppliers), so `purchaseRequestId` is deliberately NOT unique. `supplierQuotationId` IS
+/// unique (see the model doc on `SupplierQuotation` above). Carries `partially_received`/
+/// `received` status values to be future-integration-ready, but no `Receiving` model exists
+/// yet — that relationship is built in the next migration, not this one.
+model PurchaseOrder {
+  id                   String              @id @default(cuid())
+  purchaseOrderNumber  String              @unique @map("purchase_order_number")
+  purchaseRequestId    String?             @map("purchase_request_id")
+  purchaseRequest      PurchaseRequest?    @relation(fields: [purchaseRequestId], references: [id], onDelete: SetNull)
+  supplierQuotationId  String?             @unique @map("supplier_quotation_id")
+  supplierQuotation    SupplierQuotation?  @relation(fields: [supplierQuotationId], references: [id], onDelete: SetNull)
+  supplierCompanyId    String              @map("supplier_company_id")
+  supplierCompany      Company             @relation(fields: [supplierCompanyId], references: [id], onDelete: Restrict)
+  status               PurchaseOrderStatus @default(draft)
+  orderDate            DateTime            @map("order_date")
+  expectedDeliveryDate DateTime?           @map("expected_delivery_date")
+  currency             String
+  subtotal             Decimal             @db.Decimal(14, 2)
+  discount             Decimal?            @db.Decimal(14, 2)
+  shippingCost         Decimal?            @map("shipping_cost") @db.Decimal(14, 2)
+  total                Decimal             @db.Decimal(14, 2)
+  notes                String?
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  items      PurchaseOrderItem[]
+  receivings Receiving[]
+  invoices   Invoice[]
+
+  @@index([purchaseRequestId])
+  @@index([supplierQuotationId])
+  @@index([supplierCompanyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("purchase_orders")
+}
+
+/// One line item on a Purchase Order — same Cascade/Restrict split as every other *Item model
+/// in this migration.
+model PurchaseOrderItem {
+  id                  String        @id @default(cuid())
+  purchaseOrderId     String        @map("purchase_order_id")
+  purchaseOrder       PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId           String        @map("product_id")
+  product             Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String        @map("product_name_snapshot")
+  quantity            Decimal       @db.Decimal(14, 2)
+  unit                String
+  unitPrice           Decimal       @map("unit_price") @db.Decimal(14, 2)
+  discount            Decimal?      @db.Decimal(14, 2)
+  subtotal            Decimal       @db.Decimal(14, 2)
+  specifications      String?
+  notes               String?
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  receivingItems ReceivingItem[]
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@map("purchase_order_items")
+}
+
+// ── 3.13b Receiving / Weighbridge / QC / Warehouse / Inventory ───────────
+// Database Implementation Plan — Migration 6 (Receiving + Weighbridge + QC + Warehouse/
+// Inventory Foundation). The core rule this whole block encodes: RECEIVED ≠ AVAILABLE. Goods
+// enter as `InventoryLot`/`Inventory` rows in `quarantine`; only a `QCInspection` release moves
+// them to `available`. That lifecycle is enforced by the not-yet-written InventoryService, not
+// by a database CHECK constraint — the schema only needs to be able to represent each state.
+// `Warehouse` is a brand-new operational entity, deliberately separate from the pre-existing
+// `Facility` (public CMS/marketing showcase content) — no relation between them exists or is
+// added here. `Vehicle` is NOT created in this migration (flagged future domain, per prompt);
+// `WeighbridgeTransaction.vehicleId` is a plain nullable string placeholder, not a FK.
+// Production/Heating/Packing/Loading/Container/Shipment/Invoice/Payment/StockReservation are
+// explicitly out of scope for this migration.
+enum WarehouseStatus {
+  active
+  inactive
+}
+
+/// A physical inventory site — operational, not the public-facing `Facility` showcase model.
+model Warehouse {
+  id              String          @id @default(cuid())
+  warehouseNumber String          @unique @map("warehouse_number")
+  name            String
+  code            String?
+  address         String?
+  status          WarehouseStatus @default(active)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  locations          WarehouseLocation[]
+  receivings         Receiving[]
+  inventoryLots      InventoryLot[]
+  inventories        Inventory[]
+  inventoryMovements InventoryMovement[]
+  productionOrders   ProductionOrder[]
+  productionBatches  ProductionBatch[]
+  packingOrders      PackingOrder[]
+
+  @@index([status])
+  @@map("warehouses")
+}
+
+enum WarehouseLocationStatus {
+  active
+  inactive
+}
+
+/// A storage bin/zone within a Warehouse (e.g. RECEIVING, QUARANTINE, AVAILABLE, PACKING,
+/// HOLD) — deliberately one generic model rather than separate ReceivingArea/QuarantineArea/
+/// PackingArea models, per the prompt's explicit instruction.
+model WarehouseLocation {
+  id           String                  @id @default(cuid())
+  warehouseId  String                  @map("warehouse_id")
+  warehouse    Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  locationCode String                  @map("location_code")
+  name         String
+  locationType String?                 @map("location_type")
+  status       WarehouseLocationStatus @default(active)
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @default(now()) @updatedAt @map("updated_at")
+
+  inventories        Inventory[]
+  inventoryMovements InventoryMovement[]
+
+  @@unique([warehouseId, locationCode])
+  @@index([warehouseId])
+  @@index([status])
+  @@map("warehouse_locations")
+}
+
+enum ReceivingStatus {
+  draft
+  received
+  inspecting
+  completed
+  cancelled
+}
+
+/// A goods-receipt document against a Purchase Order. `completed` means the receiving
+/// document itself is finished — it does NOT mean the received stock is AVAILABLE; that is
+/// determined only by a downstream QC release (see `InventoryLotStatus`/`InventoryStatus`).
+/// `purchaseOrderId` is required but deliberately NOT unique — a PurchaseOrder may have many
+/// Receivings (partial receiving), never the reverse.
+model Receiving {
+  id                String          @id @default(cuid())
+  receivingNumber   String          @unique @map("receiving_number")
+  purchaseOrderId   String          @map("purchase_order_id")
+  purchaseOrder     PurchaseOrder   @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  warehouseId       String          @map("warehouse_id")
+  warehouse         Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  status            ReceivingStatus @default(draft)
+  /// Nullable: a `draft` Receiving (created before goods physically arrive) has no received
+  /// timestamp yet — matches every other workflow-completion date elsewhere in this schema
+  /// (e.g. RFQ.requestedAt, SupplierRFQ.requestedAt).
+  receivedAt        DateTime?       @map("received_at")
+  /// Denormalized convenience snapshot — the normalized source of truth remains
+  /// Receiving → PurchaseOrder → supplierCompany. Never the sole reference.
+  supplierCompanyId String?         @map("supplier_company_id")
+  supplierCompany   Company?        @relation(fields: [supplierCompanyId], references: [id], onDelete: SetNull)
+  notes             String?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  items                   ReceivingItem[]
+  weighbridgeTransactions WeighbridgeTransaction[]
+  inventoryLots           InventoryLot[]
+
+  @@index([purchaseOrderId])
+  @@index([warehouseId])
+  @@index([status])
+  @@index([receivedAt])
+  @@map("receivings")
+}
+
+/// One received line item. `purchaseOrderItemId` is nullable to support partial/manual
+/// receiving flows, per the prompt's explicit instruction. Cascade to its parent Receiving
+/// (owned child, no independent meaning) — same *Item convention as every prior migration.
+model ReceivingItem {
+  id                  String             @id @default(cuid())
+  receivingId         String             @map("receiving_id")
+  receiving           Receiving          @relation(fields: [receivingId], references: [id], onDelete: Cascade)
+  productId           String             @map("product_id")
+  product             Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaseOrderItemId String?            @map("purchase_order_item_id")
+  purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
+  productNameSnapshot String             @map("product_name_snapshot")
+  quantityExpected    Decimal?           @map("quantity_expected") @db.Decimal(14, 2)
+  quantityReceived    Decimal            @map("quantity_received") @db.Decimal(14, 2)
+  unit                String
+  notes               String?
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at")
+
+  inventoryLots InventoryLot[]
+
+  @@index([receivingId])
+  @@index([purchaseOrderItemId])
+  @@index([productId])
+  @@map("receiving_items")
+}
+
+enum WeighbridgeStatus {
+  open
+  weigh_in
+  weigh_out
+  completed
+  cancelled
+}
+
+/// A weighbridge (truck scale) transaction. `receivingId` is nullable and NOT unique — a
+/// Receiving may have zero, one, or multiple weighing records depending on truck workflow.
+/// `vehicleId` is a plain string placeholder, not a FK: no `Vehicle` model exists yet
+/// (flagged as a future Operations-domain model, not built in this migration).
+model WeighbridgeTransaction {
+  id                String            @id @default(cuid())
+  transactionNumber String            @unique @map("transaction_number")
+  receivingId       String?           @map("receiving_id")
+  receiving         Receiving?        @relation(fields: [receivingId], references: [id], onDelete: SetNull)
+  /// Migration 7: was a plain nullable string with no FK (Vehicle didn't exist yet in
+  /// Migration 6); now a real relation. Column itself is unchanged — only a FK constraint
+  /// was added, confirmed safe because zero existing rows had a non-null vehicle_id.
+  vehicleId         String?           @map("vehicle_id")
+  vehicle           Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  weighInAt         DateTime?         @map("weigh_in_at")
+  weighOutAt        DateTime?         @map("weigh_out_at")
+  grossWeight       Decimal?          @map("gross_weight") @db.Decimal(14, 2)
+  tareWeight        Decimal?          @map("tare_weight") @db.Decimal(14, 2)
+  netWeight         Decimal?          @map("net_weight") @db.Decimal(14, 2)
+  unit              String
+  status            WeighbridgeStatus @default(open)
+  notes             String?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  @@index([receivingId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("weighbridge_transactions")
+}
+
+enum InventoryLotStatus {
+  quarantine
+  available
+  hold
+  rejected
+  consumed
+  closed
+}
+
+/// The traceability anchor: Supplier → PurchaseOrder → Receiving → Weighbridge → Lot → QC →
+/// Inventory. Always created with status `quarantine` when it originates from a Receiving —
+/// never `available`. A QC release may move it to `available`; a QC failure may move it to
+/// `rejected` or `hold`, per service-layer workflow. `receivingItemId` is nullable and NOT
+/// unique — one ReceivingItem may produce multiple lots.
+model InventoryLot {
+  id                String              @id @default(cuid())
+  lotNumber         String              @unique @map("lot_number")
+  productId         String              @map("product_id")
+  product           Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  receivingId       String?             @map("receiving_id")
+  receiving         Receiving?          @relation(fields: [receivingId], references: [id], onDelete: SetNull)
+  receivingItemId   String?             @map("receiving_item_id")
+  receivingItem     ReceivingItem?      @relation(fields: [receivingItemId], references: [id], onDelete: SetNull)
+  /// Denormalized convenience snapshot — same rationale as Receiving.supplierCompanyId.
+  supplierCompanyId String?             @map("supplier_company_id")
+  supplierCompany   Company?            @relation(fields: [supplierCompanyId], references: [id], onDelete: SetNull)
+  warehouseId       String?             @map("warehouse_id")
+  warehouse         Warehouse?          @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  quantity          Decimal             @db.Decimal(14, 2)
+  unit              String
+  status            InventoryLotStatus  @default(quarantine)
+  origin            String?
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  qcInspections      QCInspection[]
+  inventories        Inventory[]
+  inventoryMovements InventoryMovement[]
+  productionInputs   ProductionInput[]
+  packingItems       PackingItem[]
+
+  @@index([productId])
+  @@index([receivingId])
+  @@index([receivingItemId])
+  @@index([warehouseId])
+  @@index([status])
+  @@map("inventory_lots")
+}
+
+enum QCInspectionType {
+  incoming
+  release
+  reinspection
+}
+
+enum QCInspectionStatus {
+  pending
+  in_progress
+  passed
+  failed
+  released
+  cancelled
+}
+
+/// QC header, always tied to a Lot. `inventoryLotId` is required but deliberately NOT unique
+/// (no `@unique`) — a lot may go through several inspections over time (incoming, release,
+/// reinspection). `passed` does not by itself flip Inventory to AVAILABLE if the workflow
+/// requires a separate `released` state — the service layer decides which status is the
+/// actual availability gate.
+model QCInspection {
+  id               String              @id @default(cuid())
+  inspectionNumber String              @unique @map("inspection_number")
+  inventoryLotId   String              @map("inventory_lot_id")
+  inventoryLot     InventoryLot        @relation(fields: [inventoryLotId], references: [id], onDelete: Restrict)
+  inspectionType   QCInspectionType    @map("inspection_type")
+  inspectorId      String?             @map("inspector_id")
+  inspectorName    String?             @map("inspector_name")
+  inspectedAt      DateTime            @map("inspected_at")
+  status           QCInspectionStatus  @default(pending)
+  notes            String?
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  results QCResult[]
+
+  @@index([inventoryLotId])
+  @@index([status])
+  @@index([inspectedAt])
+  @@map("qc_inspections")
+}
+
+enum QCResultStatus {
+  pass
+  fail
+  na
+}
+
+/// One parameter/result row per inspection (e.g. Moisture / ≤20% / 17.5% / pass) — deliberately
+/// a single generic model, not per-parameter models (MoistureResult, ColorResult, etc.).
+/// Cascade to its parent QCInspection (owned child, no independent meaning).
+model QCResult {
+  id             String         @id @default(cuid())
+  qcInspectionId String         @map("qc_inspection_id")
+  qcInspection   QCInspection   @relation(fields: [qcInspectionId], references: [id], onDelete: Cascade)
+  parameter      String
+  specification  String?
+  actualValue    String?        @map("actual_value")
+  unit           String?
+  result         QCResultStatus
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  @@index([qcInspectionId])
+  @@map("qc_results")
+}
+
+enum InventoryStatus {
+  quarantine
+  available
+  hold
+  blocked
+  depleted
+}
+
+/// Current stock state per (Product, WarehouseLocation, Lot) — per Gap Analysis §9. No
+/// `reservedQuantity`/`availableQuantity` columns: per that same section, available quantity
+/// is meant to be derived (on-hand − reserved − on-hold) once `StockReservation` exists, not
+/// stored redundantly — and `StockReservation` is explicitly out of scope for this migration.
+/// Uniqueness is the full (warehouseId, warehouseLocationId, productId, inventoryLotId)
+/// combination, NOT a bare unique on inventoryLotId — the same lot may legitimately be split
+/// across multiple locations (e.g. LOT-001: 500kg in AVAILABLE-A, 300kg in AVAILABLE-B).
+/// Receiving never creates an `available` row directly — initial status is always `quarantine`.
+model Inventory {
+  id                  String            @id @default(cuid())
+  warehouseId         String            @map("warehouse_id")
+  warehouse           Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  warehouseLocationId String            @map("warehouse_location_id")
+  warehouseLocation   WarehouseLocation @relation(fields: [warehouseLocationId], references: [id], onDelete: Restrict)
+  productId           String            @map("product_id")
+  product             Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  inventoryLotId      String            @map("inventory_lot_id")
+  inventoryLot        InventoryLot      @relation(fields: [inventoryLotId], references: [id], onDelete: Restrict)
+  quantity            Decimal           @db.Decimal(14, 2)
+  status              InventoryStatus   @default(quarantine)
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  movements        InventoryMovement[]
+  productionInputs ProductionInput[]
+  packingItems     PackingItem[]
+
+  /// Explicit `map`: the default Prisma-generated name for a 4-column unique constraint here
+  /// exceeds PostgreSQL's 63-byte identifier limit.
+  @@unique([warehouseId, warehouseLocationId, productId, inventoryLotId], map: "inventories_warehouse_location_product_lot_key")
+  @@index([warehouseId])
+  @@index([warehouseLocationId])
+  @@index([productId])
+  @@index([inventoryLotId])
+  @@index([status])
+  @@map("inventories")
+}
+
+enum InventoryMovementType {
+  receiving
+  transfer_in
+  transfer_out
+  adjustment_in
+  adjustment_out
+  /// Added in Migration 7 (Vehicle + Production + Batch Traceability Foundation) — the
+  /// "future domains" extension anticipated by this enum's own original doc comment.
+  production_in
+  production_out
+  /// Added in Migration 8 (Packing Foundation) — same extension pattern as production_in/out.
+  packing_in
+  packing_out
+}
+
+/// Append-only stock ledger — deliberately no `updatedAt`, matching its "immutable-ish" design.
+/// Movement types are intentionally the smallest approved set (§26 of the prompt): future
+/// domains (production/packing/shipment) will extend this enum when those migrations land,
+/// not before. `referenceType`/`referenceId` are plain denormalized strings (no FK), same
+/// polymorphic-reference idiom already used elsewhere in this schema (e.g.
+/// QuotationRequest.productNameSnapshot).
+model InventoryMovement {
+  id                  String                 @id @default(cuid())
+  movementNumber      String                 @unique @map("movement_number")
+  inventoryId         String?                @map("inventory_id")
+  inventory           Inventory?             @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  inventoryLotId      String?                @map("inventory_lot_id")
+  inventoryLot        InventoryLot?          @relation(fields: [inventoryLotId], references: [id], onDelete: SetNull)
+  warehouseId         String                 @map("warehouse_id")
+  warehouse           Warehouse              @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  warehouseLocationId String?                @map("warehouse_location_id")
+  warehouseLocation   WarehouseLocation?     @relation(fields: [warehouseLocationId], references: [id], onDelete: SetNull)
+  productId           String                 @map("product_id")
+  product             Product                @relation(fields: [productId], references: [id], onDelete: Restrict)
+  movementType        InventoryMovementType  @map("movement_type")
+  quantity            Decimal                @db.Decimal(14, 2)
+  unit                String
+  referenceType       String?                @map("reference_type")
+  referenceId         String?                @map("reference_id")
+  notes               String?
+  createdAt           DateTime               @default(now()) @map("created_at")
+
+  @@index([inventoryId])
+  @@index([inventoryLotId])
+  @@index([warehouseId])
+  @@index([productId])
+  @@index([movementType])
+  @@index([createdAt])
+  @@map("inventory_movements")
+}
+
+// ── 3.13c Vehicle / Production / Batch Traceability ──────────────────────
+// Database Implementation Plan — Migration 7 (Vehicle + Production + Batch Traceability
+// Foundation). Five brand-new tables. `WeighbridgeTransaction.vehicleId` — a plain nullable
+// string placeholder since Migration 6 (Vehicle didn't exist yet) — becomes a real relation;
+// the column itself is unchanged, only a FK constraint is added (confirmed safe: zero existing
+// rows had a non-null vehicle_id). No `ProductionOutput` model is created: a batch's output is
+// represented entirely through a new `InventoryLot` row plus a `production_in` `InventoryMovement`
+// row (via its existing `inventoryLotId` FK and `referenceType`/`referenceId` polymorphic pair),
+// so Migration 6's `InventoryLot`/`Inventory` tables receive zero new columns. No
+// Packing/Loading/Container/Shipment/Invoice/Payment/StockReservation/SalesAllocation table is
+// created here (out of scope for this migration).
+enum VehicleStatus {
+  active
+  inactive
+  maintenance
+}
+
+/// Truck/vessel master data for weighbridge transactions. `vehicleType` is a plain
+/// service-layer-validated String, not an enum — no Gap Analysis or prompt precedent locks a
+/// fixed type list. `licensePlate` is intentionally NOT unique: neither this prompt nor the
+/// Gap Analysis locks that constraint, so it isn't invented.
+model Vehicle {
+  id            String        @id @default(cuid())
+  vehicleNumber String        @unique @map("vehicle_number")
+  licensePlate  String        @map("license_plate")
+  vehicleType   String        @map("vehicle_type")
+  ownershipType String?       @map("ownership_type")
+  capacity      Decimal?      @db.Decimal(14, 2)
+  unit          String?
+  status        VehicleStatus @default(active)
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  weighbridgeTransactions WeighbridgeTransaction[]
+
+  @@index([status])
+  @@map("vehicles")
+}
+
+enum ProductionOrderStatus {
+  draft
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+/// An instruction to run a production process. `warehouseId` is nullable — the production
+/// warehouse may be derivable from Inventory/Input in some flows, so it isn't forced.
+model ProductionOrder {
+  id               String                 @id @default(cuid())
+  productionNumber String                 @unique @map("production_number")
+  productId        String                 @map("product_id")
+  product          Product                @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouseId      String?                @map("warehouse_id")
+  warehouse        Warehouse?             @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  plannedQuantity  Decimal                @map("planned_quantity") @db.Decimal(14, 2)
+  unit             String
+  status           ProductionOrderStatus  @default(draft)
+  plannedStartAt   DateTime?              @map("planned_start_at")
+  plannedEndAt     DateTime?              @map("planned_end_at")
+  actualStartAt    DateTime?              @map("actual_start_at")
+  actualEndAt      DateTime?              @map("actual_end_at")
+  notes            String?
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @default(now()) @updatedAt @map("updated_at")
+
+  batches ProductionBatch[]
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("production_orders")
+}
+
+enum ProductionBatchStatus {
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+/// The actual execution/traceability record. `productionOrderId` is required but deliberately
+/// NOT unique — one ProductionOrder may yield several batches. `Restrict` on delete (not
+/// Cascade): conservative, per the prompt's explicit instruction to protect production history.
+model ProductionBatch {
+  id                String                @id @default(cuid())
+  batchNumber       String                @unique @map("batch_number")
+  productionOrderId String                @map("production_order_id")
+  productionOrder   ProductionOrder       @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  productId         String                @map("product_id")
+  product           Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouseId       String?               @map("warehouse_id")
+  warehouse         Warehouse?            @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  plannedQuantity   Decimal?              @map("planned_quantity") @db.Decimal(14, 2)
+  actualQuantity    Decimal?              @map("actual_quantity") @db.Decimal(14, 2)
+  unit              String
+  status            ProductionBatchStatus @default(planned)
+  startedAt         DateTime?             @map("started_at")
+  completedAt       DateTime?             @map("completed_at")
+  notes             String?
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at")
+
+  inputs         ProductionInput[]
+  heatingBatches HeatingBatch[]
+  packingOrders  PackingOrder[]
+
+  @@index([productionOrderId])
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("production_batches")
+}
+
+/// Records which InventoryLot(s) were consumed by a batch — the core traceability edge
+/// (Lot → ProductionInput → ProductionBatch). No unique constraint on `inventoryLotId`: a lot
+/// may be split across many inputs, and a batch may draw from many lots. Cascade to its parent
+/// batch (owned line-item-like child, no independent meaning outside it — the actual immutable
+/// stock ledger lives separately in InventoryMovement, which is never cascaded).
+model ProductionInput {
+  id                String           @id @default(cuid())
+  productionBatchId String           @map("production_batch_id")
+  productionBatch   ProductionBatch  @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  inventoryLotId    String           @map("inventory_lot_id")
+  inventoryLot      InventoryLot     @relation(fields: [inventoryLotId], references: [id], onDelete: Restrict)
+  inventoryId       String?          @map("inventory_id")
+  inventory         Inventory?       @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  productId         String           @map("product_id")
+  product           Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity          Decimal          @db.Decimal(14, 2)
+  unit              String
+  notes             String?
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  @@index([productionBatchId])
+  @@index([inventoryLotId])
+  @@index([inventoryId])
+  @@index([productId])
+  @@map("production_inputs")
+}
+
+enum HeatingStatus {
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+/// Copra-heating-specific process record, linked to a ProductionBatch. No unique
+/// `productionBatchId` — a batch may undergo more than one heating process. `Restrict` on
+/// delete: a standalone historical process record (own business ID, own status lifecycle),
+/// grouped by the prompt alongside ProductionBatch/ProductionInput as needing protection from
+/// destructive cascade.
+model HeatingBatch {
+  id                String        @id @default(cuid())
+  heatingNumber     String        @unique @map("heating_number")
+  productionBatchId String        @map("production_batch_id")
+  productionBatch   ProductionBatch @relation(fields: [productionBatchId], references: [id], onDelete: Restrict)
+  status            HeatingStatus @default(planned)
+  inputQuantity     Decimal?      @map("input_quantity") @db.Decimal(14, 2)
+  outputQuantity    Decimal?      @map("output_quantity") @db.Decimal(14, 2)
+  unit              String?
+  startedAt         DateTime?     @map("started_at")
+  completedAt       DateTime?     @map("completed_at")
+  notes             String?
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  @@index([productionBatchId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("heating_batches")
+}
+
+// ── 3.13d Packing Foundation ──────────────────────────────────────────────
+// Database Implementation Plan — Migration 8 (Packing + Packaging Traceability Foundation).
+// Two brand-new tables. No `PackedLot` model: per the locked architecture decision, packing
+// output reuses `InventoryLot` — the same "new InventoryLot row" pattern Migration 7 already
+// established for production output — so `QCInspection`'s existing, required `inventoryLotId`
+// FK works unmodified for packed goods too, with no parallel QC path. No `PackagingMaterial`
+// master: packaging is a transaction-time snapshot field only (`PackingItem.packagingType`),
+// since the Gap Analysis never locked a packaging master and this schema's own established
+// precedent (`RFQItem`/`QuotationItem`/etc.'s `specifications` field) already shows the pattern
+// of folding non-catalog transaction detail into the line item rather than a new master table.
+// `PackingOrder.productionBatchId`/`salesOrderId` are both required per the Gap Analysis's own
+// locked FK plan (§19) — cited directly, not invented. Existing tables touched at the column
+// level: none — `productionBatches`/`sales_orders`/`warehouses`/`inventory_lots`/`inventories`/
+// `products` each only gain Prisma-side virtual relation arrays, which generate no SQL of their
+// own, plus the `InventoryMovementType` enum gains two additive values. No Loading/Container/
+// Shipment/Invoice/Payment/StockReservation/SalesAllocation/Delivery table is created here.
+enum PackingOrderStatus {
+  draft
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+/// An instruction to pack goods, tied to both the ProductionBatch supplying the goods and the
+/// SalesOrder they're being packed for — both required per the Gap Analysis's own locked FK
+/// plan (§19: PackingOrder.productionBatchId/salesOrderId, N:1, required, Restrict). Actual
+/// source inventory is NOT tracked here (a PackingOrder may draw from several source lots) —
+/// that traceability lives on PackingItem below.
+model PackingOrder {
+  id                String             @id @default(cuid())
+  packingNumber     String             @unique @map("packing_number")
+  productionBatchId String             @map("production_batch_id")
+  productionBatch   ProductionBatch    @relation(fields: [productionBatchId], references: [id], onDelete: Restrict)
+  salesOrderId      String             @map("sales_order_id")
+  salesOrder        SalesOrder         @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  warehouseId       String?            @map("warehouse_id")
+  warehouse         Warehouse?         @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  status            PackingOrderStatus @default(draft)
+  plannedStartAt    DateTime?          @map("planned_start_at")
+  plannedEndAt      DateTime?          @map("planned_end_at")
+  actualStartAt     DateTime?          @map("actual_start_at")
+  actualEndAt       DateTime?          @map("actual_end_at")
+  notes             String?
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at")
+
+  items         PackingItem[]
+  shipmentItems ShipmentItem[]
+
+  @@index([productionBatchId])
+  @@index([salesOrderId])
+  @@index([warehouseId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("packing_orders")
+}
+
+/// Records which InventoryLot(s) were consumed by a packing run — the actual source
+/// traceability edge (a PackingOrder alone doesn't say which lots were used). No unique
+/// constraint on `inventoryLotId`: a lot may be split across many packing items, and one
+/// packing order may draw from many lots. Cascade to its parent order (owned line-item-like
+/// child, no independent meaning outside it — the immutable stock ledger lives separately in
+/// InventoryMovement, which is never cascaded), same convention as ProductionInput.
+/// `packagingType` is a transaction-time snapshot string (e.g. "Jute Gunny Bag 50kg") — no
+/// packaging master model, per the locked decision; kept to a single minimal field rather than
+/// a type/description pair.
+model PackingItem {
+  id             String        @id @default(cuid())
+  packingOrderId String        @map("packing_order_id")
+  packingOrder   PackingOrder  @relation(fields: [packingOrderId], references: [id], onDelete: Cascade)
+  inventoryLotId String        @map("inventory_lot_id")
+  inventoryLot   InventoryLot  @relation(fields: [inventoryLotId], references: [id], onDelete: Restrict)
+  inventoryId    String?       @map("inventory_id")
+  inventory      Inventory?    @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  productId      String        @map("product_id")
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity       Decimal       @db.Decimal(14, 2)
+  unit           String
+  packagingType  String?       @map("packaging_type")
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  @@index([packingOrderId])
+  @@index([inventoryLotId])
+  @@index([inventoryId])
+  @@index([productId])
+  @@map("packing_items")
+}
+
+// ── 3.13e Container / Loading Plan Foundation ─────────────────────────────
+// Database Implementation Plan — Migration 9 (Container + Loading Plan Foundation). Two
+// brand-new tables, following the previously-approved Gap Analysis's own locked FK plan
+// (§19: LoadingPlan.containerId → Container, 1:1, required, Cascade) rather than an earlier,
+// materially-conflicting draft design (a rejected `LoadingOrder`/`LoadingItem` shape) — see the
+// preflight discussion for the full comparison. Deliberately excludes `Container.shipmentId`:
+// the Gap Analysis locks that FK as nullable/SetNull, but `Shipment` does not exist yet and
+// creating it early, or creating a dummy placeholder, was explicitly ruled out. The precedent
+// this follows is `WeighbridgeTransaction.vehicleId` (Migration 6: built with no FK because
+// `Vehicle` didn't exist yet; Migration 7 added the real FK once it did) — the future Shipment
+// migration adds `Container.shipmentId` the same additive way. Zero existing tables are touched
+// at the column level: neither `Container` nor `LoadingPlan` references any pre-existing model
+// (Product/Warehouse/Vehicle/InventoryLot/SalesOrder), per the explicit scope lock, so no
+// back-relation array is added anywhere else in this schema. The five pre-existing
+// `Shipment*` models (`ShipmentLoadingLocation`, `ShipmentContainerType`, `ShipmentScheduleStep`,
+// `ShipmentDocument`, `ShipmentCommitmentItem`) are public CMS/marketing-content models,
+// confirmed unrelated, and are not referenced or modified here. No LoadingOrder/LoadingItem/
+// Shipment/ShipmentItem/ContainerItem/TransportOrder/Delivery/FreightOrder model is created.
+enum ContainerStatus {
+  available
+  loading
+  loaded
+  cancelled
+}
+
+/// A physical logistics container. `containerType` is a plain, service-layer-validated String
+/// (e.g. "20FT", "40FT") — not an enum, matching the exact precedent set by `Vehicle.vehicleType`
+/// in Migration 7, since no Gap Analysis or prior migration locks a fixed value list. Not the
+/// same as the pre-existing `ShipmentContainerType` CMS model (a public-page toggle-label list,
+/// confirmed unrelated). No `shipmentId` in this migration — see this section's header comment.
+model Container {
+  id              String          @id @default(cuid())
+  containerNumber String          @unique @map("container_number")
+  containerType   String          @map("container_type")
+  status          ContainerStatus @default(available)
+  /// Migration 10 (additive): was deliberately omitted in Migration 9 because `Shipment`
+  /// didn't exist yet. Nullable — a Container may exist before being assigned to a Shipment.
+  shipmentId      String?         @map("shipment_id")
+  shipment        Shipment?       @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  loadingPlan LoadingPlan?
+
+  @@index([status])
+  @@index([shipmentId])
+  @@map("containers")
+}
+
+enum LoadingPlanStatus {
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+/// A 1:1, Cascade-owned operational plan for a Container — not a standalone document, so it
+/// carries no separate business-readable number of its own (Container.containerNumber is the
+/// externally-facing identifier for this pair). No `salesOrderId`, `inventoryLotId`,
+/// `packingItemId`, or `loadingItemId`: none are locked by the Gap Analysis for this pair: Sales
+/// Order and lot-level traceability enter the architecture later, through the future Shipment
+/// domain, per the approved architecture decision.
+model LoadingPlan {
+  id          String            @id @default(cuid())
+  containerId String            @unique @map("container_id")
+  container   Container         @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  status      LoadingPlanStatus @default(planned)
+  plannedAt   DateTime?         @map("planned_at")
+  completedAt DateTime?         @map("completed_at")
+  notes       String?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("loading_plans")
+}
+
+// ── 3.13f Shipment Foundation ─────────────────────────────────────────────
+// Database Implementation Plan — Migration 10 (Shipment Foundation). Two brand-new tables,
+// plus one additive extension to Migration 9's `Container` (adding `shipmentId`, deliberately
+// deferred at the time — see that model's own field comment). Every relation here is cited
+// directly from the previously-approved Gap Analysis's own locked FK plan (§19): no cardinality
+// was invented. `ShipmentItem` references `PackingOrder` only — no `productId`, `inventoryLotId`,
+// `inventoryId`, `qcInspectionId`, or `containerId` — per the explicit architecture decision:
+// lot-level traceability is not part of this migration's scope (traceability continues to flow
+// `Shipment → ShipmentItem → PackingOrder → PackingItem → InventoryLot`, each hop already
+// built). No `Shipment.packingOrderId` shortcut FK. `LoadingPlan` is unchanged — Shipment
+// connects to `Container`, not to `LoadingPlan`. No `ShipmentInventory`/`ShipmentLot`/
+// `ShipmentQC`/`ShipmentInventoryMovement` model, no new `InventoryMovementType` value, no
+// Vehicle/Warehouse FK anywhere in this domain, no operational shipment-document model (the
+// six pre-existing `Shipment*`/`AboutCompanyShipmentTermsSection` CMS models remain untouched
+// and unreferenced — confirmed unrelated public marketing-content tables).
+enum ShipmentStatus {
+  draft
+  planned
+  loaded
+  in_transit
+  delivered
+  cancelled
+}
+
+/// One shipment against a SalesOrder. `salesOrderId` is required but deliberately NOT unique —
+/// a SalesOrder may have multiple Shipments (partial/multiple shipment supported).
+model Shipment {
+  id             String         @id @default(cuid())
+  shipmentNumber String         @unique @map("shipment_number")
+  salesOrderId   String         @map("sales_order_id")
+  salesOrder     SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  status         ShipmentStatus @default(draft)
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  items      ShipmentItem[]
+  containers Container[]
+
+  @@index([salesOrderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("shipments")
+}
+
+/// Names which PackingOrder is being shipped and how much of it. No product/lot-level FK — see
+/// this section's header comment for why. Cascade to its parent Shipment (owned line item, no
+/// independent meaning outside it); Restrict on PackingOrder (cross-document reference into
+/// historical data, same convention as every other cross-document FK in this schema).
+model ShipmentItem {
+  id             String       @id @default(cuid())
+  shipmentId     String       @map("shipment_id")
+  shipment       Shipment     @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  packingOrderId String       @map("packing_order_id")
+  packingOrder   PackingOrder @relation(fields: [packingOrderId], references: [id], onDelete: Restrict)
+  quantity       Decimal      @db.Decimal(14, 2)
+  unit           String
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  @@index([shipmentId])
+  @@index([packingOrderId])
+  @@map("shipment_items")
+}
+
 // ── 3.14 Media ───────────────────────────────────────────────────────────
 enum MediaFileType {
   image
@@ -129,11 +1762,366 @@ model Media {
   pageHeaderMobileBackgroundOf  PageHeader[]                  @relation("PageHeaderMobileBackgroundImage")
   footerBackgroundOf            FooterSettings[]              @relation("FooterBackgroundImage")
   footerMobileBackgroundOf      FooterSettings[]              @relation("FooterMobileBackgroundImage")
+  documents                     Document[]
 
   @@index([fileType])
   @@index([uploadedAt])
   @@index([deletedAt])
   @@map("media")
+}
+
+// ── 3.13g Documents Foundation ─────────────────────────────────────────────
+// Database Implementation Plan — Migration 11 (Documents Foundation). Three brand-new tables,
+// following the previously-approved Gap Analysis's own locked FK plan (§19: Document.fileId →
+// Media and Document.typeId → DocumentType, both N:1/required/Restrict; DocumentLink.documentId
+// → Document, N:1/required/Cascade; DocumentLink's target is polymorphic — attachedToType +
+// attachedToId, no FK — same idiom already used by InventoryMovement.referenceType/referenceId
+// in Migrations 6-8). `Media` is reused unmodified as the storage layer — only a back-relation
+// array (`documents`) was added to it, no column change. No new FK or back-relation was added
+// to any of the ten operational models DocumentLink is meant to eventually attach to (Company,
+// SalesOrder, PurchaseOrder, Receiving, QCInspection, ProductionBatch, PackingOrder, Shipment,
+// Container) — that is the entire point of the polymorphic design: attaching documents to new
+// entity types later requires zero schema change. `LegalCertificateDocument` is deliberately
+// NOT reused for operational documents: that table's `active`/`featured`/`translations` fields
+// control PUBLIC visibility on the About Company → Legal & Certificates page, so reusing its
+// rows would risk an internal document surfacing there by accident — the same reasoning the
+// Gap Analysis itself gives. The six pre-existing CMS document-shaped models
+// (LegalCertificateDocument, LegalDocumentCategory, FactoryDocument, ShipmentDocument,
+// ProductDownload, AboutCompanyShipmentTermsSection) are untouched and unreferenced.
+// Versioning is a plain `Document.version Int` field — no separate DocumentVersion table; a
+// revised document is a new Document row with an incremented version, linked via a new
+// DocumentLink, preserving full history as immutable rows (same philosophy as
+// ProductPublishedSnapshot). `documentNumber` is optional (String? @unique, not required) —
+// unlike every transactional business number elsewhere in this schema, a Document is closer in
+// nature to an uploaded artifact than to a transaction, and not every document has (or needs) an
+// external reference number.
+enum DocumentStatus {
+  draft
+  issued
+  active
+  expired
+  archived
+  cancelled
+}
+
+/// Admin-manageable document classification — a database master table, not an enum, matching
+/// the same "admin wants to add more over time" precedent already set by ProductCategory and
+/// LegalDocumentCategory.
+model DocumentType {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  documents Document[]
+
+  @@index([active])
+  @@map("document_types")
+}
+
+/// Operational business document metadata — generalizes the same "metadata row pointing at a
+/// Media file" shape LegalCertificateDocument already uses, for internal/operational documents
+/// (QC certificates, Bills of Lading, contracts, etc.) instead of public CMS content.
+/// `documentNumber` is nullable: it holds an external reference number (a BL number, a
+/// certificate number) when one exists, and stays NULL otherwise — no auto-generated business
+/// number is created by this migration.
+model Document {
+  id             String         @id @default(cuid())
+  documentNumber String?        @unique @map("document_number")
+  fileId         String         @map("file_id")
+  file           Media          @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  typeId         String         @map("type_id")
+  type           DocumentType   @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  title          String
+  version        Int            @default(1)
+  status         DocumentStatus @default(draft)
+  issuedAt       DateTime?      @map("issued_at")
+  expiresAt      DateTime?      @map("expires_at")
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  links DocumentLink[]
+
+  @@index([fileId])
+  @@index([typeId])
+  @@index([status])
+  @@map("documents")
+}
+
+/// Attaches a Document to any business entity via a polymorphic (attachedToType, attachedToId)
+/// pair, deliberately NOT a set of explicit nullable FKs — see this section's header comment.
+/// No FK, no back-relation on any attachable entity; integrity for the polymorphic side is a
+/// service-layer concern for a future migration/phase, not this one.
+model DocumentLink {
+  id             String   @id @default(cuid())
+  documentId     String   @map("document_id")
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  attachedToType String   @map("attached_to_type")
+  attachedToId   String   @map("attached_to_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([documentId])
+  @@index([attachedToType, attachedToId])
+  @@map("document_links")
+}
+
+// ── 3.13h Finance Foundation ────────────────────────────────────────────────
+// Database Implementation Plan — Migration 12 (Finance Foundation). Three brand-new tables,
+// following the previously-approved Gap Analysis's own locked FK plan (§19: Invoice.salesOrderId
+// → SalesOrder and Invoice.purchaseOrderId → PurchaseOrder, both nullable/N:1/Restrict, exactly
+// one populated — enforced at the service layer, not a DB constraint, same idiom as
+// QCInspection's receivingItemId/productionBatchId in Migration 6; Invoice.companyId → Company,
+// required/N:1/Restrict, deliberately direct rather than derived through either order relation;
+// Payment.invoiceId → Invoice, required/N:1/Restrict — one invoice may receive many payments
+// over time, but one payment never splits across invoices, i.e. no PaymentAllocation).
+// `InvoiceItem` is one deliberate extension beyond the Gap Analysis's literal 2-model Finance
+// count (Invoice, Payment only) — the same kind of line-item extension Migration 8 already made
+// for PackingItem beyond the Gap Analysis's PackingOrder-only entry. No `invoiceType` enum: the
+// order type is implicit from which of salesOrderId/purchaseOrderId is set. No Currency/Tax/
+// PaymentMethod master table — currency and paymentMethod are plain Strings, matching the
+// unbroken precedent set by every prior migration (RFQ/Quotation/SalesOrder/PurchaseOrder/
+// SupplierQuotation.currency; Vehicle/Container's own *Type fields). No PaymentAllocation,
+// CreditNote, Refund, or any General Ledger model (ChartOfAccounts/JournalEntry/JournalLine/
+// TrialBalance/ProfitAndLoss/BalanceSheet/CashFlow) — all explicitly deferred. No new FK to
+// Document/DocumentType/DocumentLink: Invoice/Payment attach documents (an invoice PDF, a
+// payment receipt) purely through Migration 11's existing polymorphic DocumentLink
+// (attachedToType = "Invoice"/"Payment"), requiring zero schema change on either side. No
+// `deletedAt` — status lifecycle plus the existing AdminActivityLog audit trail is sufficient,
+// matching every other transactional model in this schema (none of RFQ/Quotation/SalesOrder/
+// PurchaseOrder/Shipment has soft-delete either).
+enum InvoiceStatus {
+  draft
+  issued
+  partially_paid
+  paid
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  confirmed
+  failed
+  cancelled
+}
+
+/// A billing document against either a SalesOrder (buyer invoice) or a PurchaseOrder (supplier
+/// invoice) — never both; which one is set determines the invoice's direction, so no separate
+/// `invoiceType` enum is needed. `companyId` is deliberately a direct field, not merely derived
+/// through `salesOrder.companyId`/`purchaseOrder.supplierCompanyId` — it answers "who is this
+/// invoice to/from" with one consistent, always-populated field regardless of which order type
+/// is attached. `dueDate` is a plain field, not a status: "overdue" is a derived condition
+/// (`dueDate < now() AND status NOT IN (paid, cancelled)`), computed at the service/reporting
+/// layer, never stored as an enum value.
+model Invoice {
+  id              String         @id @default(cuid())
+  invoiceNumber   String         @unique @map("invoice_number")
+  salesOrderId    String?        @map("sales_order_id")
+  salesOrder      SalesOrder?    @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  purchaseOrderId String?        @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  companyId       String         @map("company_id")
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  status          InvoiceStatus  @default(draft)
+  dueDate         DateTime?      @map("due_date")
+  subtotal        Decimal        @db.Decimal(14, 2)
+  taxAmount       Decimal?       @map("tax_amount") @db.Decimal(14, 2)
+  total           Decimal        @db.Decimal(14, 2)
+  currency        String
+  notes           String?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@index([salesOrderId])
+  @@index([purchaseOrderId])
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("invoices")
+}
+
+/// One billed line. `productId` is nullable — unlike SalesOrderItem/PurchaseOrderItem, an
+/// invoice line may represent a non-catalog charge (shipping, a bank fee, an adjustment), not
+/// always a real Product. `productNameSnapshot` preserves the historical description either
+/// way. Cascade to its parent Invoice (owned child, no independent meaning outside it) — same
+/// convention as every other *Item model in this schema.
+model InvoiceItem {
+  id                  String   @id @default(cuid())
+  invoiceId           String   @map("invoice_id")
+  invoice             Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId           String?  @map("product_id")
+  product             Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productNameSnapshot String?  @map("product_name_snapshot")
+  quantity            Decimal  @db.Decimal(14, 2)
+  unit                String
+  unitPrice           Decimal  @map("unit_price") @db.Decimal(14, 2)
+  subtotal            Decimal  @db.Decimal(14, 2)
+  taxRate             Decimal? @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount           Decimal? @map("tax_amount") @db.Decimal(14, 2)
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@map("invoice_items")
+}
+
+/// A settlement against one Invoice. `invoiceId` is required and NOT unique — many payments may
+/// accumulate against one invoice over time (partial/installment payment), but a single payment
+/// never settles more than one invoice (no PaymentAllocation in this migration — deferred).
+/// `paymentMethod` is a plain service-layer-validated String (e.g. "T/T", "L/C",
+/// "bank_transfer") — no enum, no master table, matching Vehicle.vehicleType/
+/// Container.containerType's precedent. `status` describes the payment transaction itself,
+/// deliberately independent of Invoice.status (the billing document's own lifecycle).
+model Payment {
+  id            String        @id @default(cuid())
+  paymentNumber String        @unique @map("payment_number")
+  invoiceId     String        @map("invoice_id")
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  amount        Decimal       @db.Decimal(14, 2)
+  currency      String
+  paymentMethod String        @map("payment_method")
+  paymentDate   DateTime      @map("payment_date")
+  reference     String?
+  status        PaymentStatus @default(pending)
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  @@index([invoiceId])
+  @@index([status])
+  @@index([paymentDate])
+  @@map("payments")
+}
+
+// ── 3.13i Communication Foundation ──────────────────────────────────────────
+// Database Implementation Plan — Migration 13 (Communication Foundation). Three brand-new
+// tables, following the previously-approved Gap Analysis's own locked FK plan (§19:
+// Conversation.companyId → Company, required/N:1/Cascade; Message.conversationId →
+// Conversation, required/N:1/Cascade, plus senderType+senderId — polymorphic, admin or
+// external, no FK; Notification.recipientType+recipientId — polymorphic, no FK). No
+// `ConversationParticipant` table: the locked architecture scopes a Conversation by `companyId`
+// alone — any ExternalAccount with an active CompanyUser membership for that company is an
+// eligible participant, checked at a future service layer, not tracked as its own row. No
+// `Actor` table and no FK from either polymorphic pair to `Admin` or `ExternalAccount`: this is
+// the one design that can represent both without ever creating a Admin↔ExternalAccount
+// cross-reference, preserving the hybrid-identity isolation rule that has held across every
+// prior migration. No `MessageAttachment`: attachments reuse Migration 11's existing
+// `DocumentLink` (`attachedToType = "Message"`), requiring zero schema change here. No
+// `contextType`/`contextId` on Conversation and no new FK/column on Inquiry/RFQ/Quotation/
+// SalesOrder/PurchaseOrder/Shipment/Invoice/Payment/etc. — Communication stays company-level
+// foundation only; business-record-specific linking is deferred. `Notification.type` is a
+// plain String (not an enum, not a master table) — the business-event space spans every domain
+// and will keep growing, matching the precedent already set by Vehicle.vehicleType/
+// Container.containerType/Payment.paymentMethod. `Notification.readAt` is a nullable timestamp,
+// not a boolean, matching every other "has this happened yet" field in this schema
+// (ExternalAccount.emailVerifiedAt/lastLoginAt, BusinessRelationship.approvedAt). No new
+// EmailLog/EmailMessage/EmailDelivery model — the existing `EmailService` (Resend) is reused
+// as-is for future notification delivery, per the Gap Analysis's own explicit note.
+enum ConversationStatus {
+  open
+  closed
+  archived
+}
+
+/// A company-scoped communication thread. No separate participant table — any ExternalAccount
+/// with an active CompanyUser membership for `companyId` is an eligible participant, checked at
+/// a future service layer. `onDelete: Cascade` (not Restrict, unlike most Company references
+/// elsewhere in this schema): Conversation is lighter-weight communication data, not an
+/// irreplaceable transactional record.
+model Conversation {
+  id        String             @id @default(cuid())
+  companyId String             @map("company_id")
+  company   Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  status    ConversationStatus @default(open)
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @default(now()) @updatedAt @map("updated_at")
+
+  messages Message[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("conversations")
+}
+
+/// One turn in a Conversation. `senderType`/`senderId` is polymorphic (e.g. "admin"/Admin.id or
+/// "external"/ExternalAccount.id) with deliberately NO FK to either — the only design that can
+/// represent both without ever creating a direct Admin↔ExternalAccount relation. Cascade to its
+/// parent Conversation (owned child, no independent meaning outside it).
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderType     String       @map("sender_type")
+  senderId       String       @map("sender_id")
+  body           String
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@index([senderType, senderId])
+  @@map("messages")
+}
+
+/// A one-way, in-app/database notification record — structurally distinct from Message (not a
+/// conversation turn). `recipientType`/`recipientId` is polymorphic, same no-FK reasoning as
+/// Message's sender. `type` is a plain String routing key (e.g. "quotation.accepted"), not an
+/// enum — the business-event space spans every domain and will keep growing. `readAt` is
+/// nullable, not a boolean; unread is derived as `readAt IS NULL`.
+model Notification {
+  id            String    @id @default(cuid())
+  recipientType String    @map("recipient_type")
+  recipientId   String    @map("recipient_id")
+  type          String
+  title         String
+  body          String
+  readAt        DateTime? @map("read_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([recipientType, recipientId])
+  @@index([readAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ── 3.13j Audit Foundation ───────────────────────────────────────────────────
+// Database Implementation Plan — Migration 14 (Audit & Analytics Foundation). One brand-new
+// table. Per the previously-approved Gap Analysis's own locked decision (§14 of that document,
+// quoted in the preflight): AdminActivityLog needs zero schema change — it already covers every
+// admin-side domain automatically via its global interceptor — and the one genuine gap is a
+// parallel, identically-shaped table for ExternalAccount-side actions, kept structurally
+// separate for the same reason Admin and ExternalAccount stay separate everywhere else in this
+// schema (different trust levels, isolated blast radius). `actorId`/`actorName` are plain
+// strings, NOT FK'd to ExternalAccount — the exact same pattern AdminActivityLog already uses
+// for `actorId`/`actorName` against Admin. `entityType`/`entityId` are plain strings, NOT FK'd
+// to any transactional model — same polymorphic-reference idiom as AdminActivityLog.entityType/
+// entityId, DocumentLink.attachedToType/attachedToId, and InventoryMovement.referenceType/
+// referenceId. No oldValue/newValue/metadata/payload field: AdminActivityLog deliberately never
+// reads a request/response body (so secrets can never enter the log by accident), and this
+// table follows the identical discipline. No updatedAt/deletedAt: append-only, same as
+// AdminActivityLog. Zero changes to AdminActivityLog, Admin, ExternalAccount, CompanyUser,
+// BusinessRelationship, or any transactional model — this table has no FK to anything.
+model BusinessActivityLog {
+  id         String   @id @default(cuid())
+  actorId    String   @map("actor_id")
+  actorName  String   @map("actor_name")
+  action     String
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@map("business_activity_logs")
 }
 
 // ── 3.2–3.6 Product & related ───────────────────────────────────────────
@@ -143,26 +2131,32 @@ enum ContentStatus {
 }
 
 model Product {
-  id               String        @id @default(cuid())
-  slug             String        @unique
+  id               String           @id @default(cuid())
+  slug             String           @unique
   name             String
   /// Optional leading portion of `name` to render in the brand accent colour on the detail
   /// page banner (e.g. name "Coconut Shisha Charcoal Briquette", titleAccent "Coconut Shisha").
   /// Must be an exact prefix of `name`; the public page falls back to a plain, single-colour
   /// title if it isn't (never guesses a split point — a wrong guess reads worse than none).
-  titleAccent      String?       @map("title_accent")
+  titleAccent      String?          @map("title_accent")
+  /// Free-text category label — kept as the display/legacy value; never deleted or backfilled
+  /// automatically. `categoryId` below is the new, optional relational category (P1-DB-01 —
+  /// same "add an admin-manageable table, keep the old column as a read-only fallback" shape
+  /// already proven by `LegalDocumentCategory` replacing `LegalDocumentType`).
   category         String
-  shortDescription String        @map("short_description")
-  fullDescription  String        @map("full_description")
-  coverImageId     String?       @map("cover_image_id")
-  coverImage       Media?        @relation("ProductCoverImage", fields: [coverImageId], references: [id])
-  metaTitle        String?       @map("meta_title")
-  metaDescription  String?       @map("meta_description")
-  isFeatured       Boolean       @default(false) @map("is_featured")
-  status           ContentStatus @default(draft)
-  order            Int           @default(0)
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  categoryId       String?          @map("category_id")
+  categoryRef      ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  shortDescription String           @map("short_description")
+  fullDescription  String           @map("full_description")
+  coverImageId     String?          @map("cover_image_id")
+  coverImage       Media?           @relation("ProductCoverImage", fields: [coverImageId], references: [id])
+  metaTitle        String?          @map("meta_title")
+  metaDescription  String?          @map("meta_description")
+  isFeatured       Boolean          @default(false) @map("is_featured")
+  status           ContentStatus    @default(draft)
+  order            Int              @default(0)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
   /// i18n — non-English overrides for name/titleAccent/category/shortDescription/
   /// fullDescription/metaTitle/metaDescription, e.g. {"id": {"name": "...", ...}, "zh": {...}}.
   translations     Json?
@@ -182,11 +2176,52 @@ model Product {
   whatWeDoItems      WhatWeDoItem[]                @relation("WhatWeDoProduct")
   shapes             ProductShape[]
   snapshots          ProductPublishedSnapshot[]
+  rfqItems               RFQItem[]
+  quotationItems         QuotationItem[]
+  salesOrderItems        SalesOrderItem[]
+  purchaseRequestItems   PurchaseRequestItem[]
+  supplierRfqItems       SupplierRFQItem[]
+  supplierQuotationItems SupplierQuotationItem[]
+  purchaseOrderItems     PurchaseOrderItem[]
+  receivingItems         ReceivingItem[]
+  inventoryLots          InventoryLot[]
+  inventories            Inventory[]
+  inventoryMovements     InventoryMovement[]
+  productionOrders       ProductionOrder[]
+  productionBatches      ProductionBatch[]
+  productionInputs       ProductionInput[]
+  packingItems           PackingItem[]
+  invoiceItems           InvoiceItem[]
 
   @@index([status])
   @@index([isFeatured])
   @@index([order])
+  @@index([categoryId])
   @@map("products")
+}
+
+/// Admin-manageable product categories (P1-DB-01 — Database Implementation Plan Migration 1).
+/// Deliberately the same shape as `LegalDocumentCategory`: add/edit/delete/reorder/activate,
+/// none of which the old `Product.category` free-text field could do without a migration per
+/// change. `Product.category` is kept untouched as a read-only legacy/display value — this
+/// table is additive, not a replacement, and no existing Product row is backfilled by this
+/// migration (see Database Implementation Plan §11 for why the backfill is a separate,
+/// explicitly-approved step).
+model ProductCategory {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  /// i18n — non-English overrides for name/description.
+  translations Json?
+
+  products Product[]
+
+  @@map("product_categories")
 }
 
 /// Append-only publish history for one Product — same `data: Json` snapshot idiom as
@@ -1437,6 +3472,13 @@ model QuotationRequest {
   status              QuotationRequestStatus @default(new)
   sourcePage          String                 @map("source_page")
   createdAt           DateTime               @default(now()) @map("created_at")
+
+  /// Database Implementation Plan Migration 3 — the CRM side of the existing public quotation
+  /// flow. Purely virtual (no new column on this table): a QuotationRequest may become zero,
+  /// one, or more Inquiry/Lead rows via their own nullable `sourceQuotationRequestId`, but this
+  /// table itself is never modified by that conversion.
+  inquiries Inquiry[]
+  leads     Lead[]
 
   @@index([status])
   @@index([createdAt])

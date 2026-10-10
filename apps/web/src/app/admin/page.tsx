@@ -310,7 +310,7 @@ function DashboardContent({
       </div>
 
       {/* ── Quick Actions ── */}
-      <div className="mt-6">
+      <div className="mt-4">
         <p className="text-small font-semibold uppercase tracking-wide text-neutral-500">Quick Actions</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <QuickAction href="/admin/produk/baru" label="+ Add Product" />

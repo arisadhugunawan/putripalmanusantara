@@ -106,7 +106,7 @@ export function Header({
       >
         <div
           className={cn(
-            "mx-auto flex max-w-(--container-page) items-center justify-between px-5 transition-[padding] duration-300 sm:px-8",
+            "mx-auto flex max-w-(--container-page) items-center justify-between px-5 transition-[padding] duration-300 sm:px-8 lg:px-5 xl:px-8",
             shrunk ? "py-3" : "py-4",
           )}
         >
@@ -116,7 +116,7 @@ export function Header({
                 media={branding.header_logo}
                 altText={branding.header_logo_alt}
                 priority
-                className="hidden h-14 w-[240px] sm:block"
+                className="hidden h-14 w-[240px] sm:block lg:w-[180px] xl:w-[240px]"
               />
             )}
             {branding.mobile_logo && (
@@ -139,7 +139,7 @@ export function Header({
             )}
           </Link>
 
-          <nav className="hidden items-center gap-5 xl:flex" aria-label={dictionary.nav.home}>
+          <nav className="hidden items-center gap-2 lg:flex xl:gap-5" aria-label={dictionary.nav.home}>
             {entries.map((entry) =>
               isDropdown(entry) ? (
                 <NavDropdown key={entry.label} label={entry.label} items={entry.items} />
@@ -148,7 +148,7 @@ export function Header({
                   key={entry.href}
                   href={entry.href}
                   className={cn(
-                    "text-body text-neutral-600 transition-colors hover:text-neutral-900",
+                    "whitespace-nowrap text-body text-neutral-600 transition-colors hover:text-neutral-900",
                     pathname === entry.href && "font-medium text-neutral-900",
                   )}
                 >
@@ -158,7 +158,7 @@ export function Header({
             )}
           </nav>
 
-          <div className="hidden items-center gap-4 xl:flex">
+          <div className="hidden items-center gap-2 lg:flex xl:gap-4">
             <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
             {/* A plain anchor on the product-detail branch, not the i18n `Link` — Next's
                 `Link` intercepts the click and updates the URL hash via History without
@@ -175,7 +175,7 @@ export function Header({
             )}
           </div>
 
-          <div className="flex items-center gap-1 xl:hidden">
+          <div className="flex items-center gap-1 lg:hidden">
             <LanguageSwitcher locale={locale} label={dictionary.nav.language} />
             <button
               type="button"

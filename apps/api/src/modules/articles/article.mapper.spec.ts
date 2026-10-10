@@ -1,4 +1,4 @@
-import { toArticleDetail } from './article.mapper';
+import { joinKeyTakeaways, toArticleDetail } from './article.mapper';
 
 function stubArticleRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -80,5 +80,59 @@ describe('toArticleDetail — read-time XSS defense (Phase 5F-P0.1)', () => {
     const result = toArticleDetail(row as never, 'en');
 
     expect(result.content).toBe('<h2>Heading</h2><p><strong>Bold</strong></p>');
+  });
+});
+
+// P1.23 QA finding — key_takeaways silently stayed in English on every non-English locale of a
+// real published article, because it's a string[] and translate()'s generic mechanism only
+// resolves flat string fields. joinKeyTakeaways()/resolveKeyTakeaways() are the fix.
+describe('toArticleDetail — key_takeaways per-locale resolution', () => {
+  it('falls back to the English array when no translation exists', () => {
+    const row = stubArticleRow({
+      keyTakeaways: ['Point one.', 'Point two.'],
+      translations: null,
+    });
+
+    const result = toArticleDetail(row as never, 'th');
+
+    expect(result.key_takeaways).toEqual(['Point one.', 'Point two.']);
+  });
+
+  it('splits the translated newline-joined string back into an array', () => {
+    const row = stubArticleRow({
+      keyTakeaways: ['Point one.', 'Point two.'],
+      translations: {
+        th: { keyTakeaways: 'ข้อแรก\nข้อสอง' },
+      },
+    });
+
+    const result = toArticleDetail(row as never, 'th');
+
+    expect(result.key_takeaways).toEqual(['ข้อแรก', 'ข้อสอง']);
+  });
+
+  it('never translates for the English locale itself', () => {
+    const row = stubArticleRow({
+      keyTakeaways: ['Point one.'],
+      translations: { en: { keyTakeaways: 'Should never be read' } },
+    });
+
+    const result = toArticleDetail(row as never, 'en');
+
+    expect(result.key_takeaways).toEqual(['Point one.']);
+  });
+});
+
+describe('joinKeyTakeaways', () => {
+  it('joins non-empty items with a newline', () => {
+    expect(joinKeyTakeaways(['One.', 'Two.'])).toBe('One.\nTwo.');
+  });
+
+  it('drops blank/whitespace-only entries', () => {
+    expect(joinKeyTakeaways(['One.', '  ', ''])).toBe('One.');
+  });
+
+  it('returns an empty string for an empty array', () => {
+    expect(joinKeyTakeaways([])).toBe('');
   });
 });

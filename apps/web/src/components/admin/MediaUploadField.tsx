@@ -41,6 +41,11 @@ interface MediaUploadFieldProps {
    * than ideal at large display sizes ("Jangan memaksa image menjadi besar secara artificial"). */
   minWidth?: number;
   minHeight?: number;
+  /** File picker `accept` override — defaults to every type this shared field has ever needed
+   * across its callers (images, video, PDF for Legal & Certificates). Pass `"image/*"` for a
+   * field that can only ever be an image (e.g. Open Graph Image, which social platforms can
+   * never render as a PDF/video) so the picker itself can't offer the wrong file type. */
+  accept?: string;
 }
 
 /** Direct upload-and-attach — POST /admin/media then store the returned id (FR-CMS-03/05/08). */
@@ -56,6 +61,7 @@ export function MediaUploadField({
   previewBackgroundClassName,
   minWidth,
   minHeight,
+  accept = "image/*,video/*,application/pdf",
 }: MediaUploadFieldProps) {
   const policy = context ? getMediaPolicy(context) : null;
   const effectiveMaxBytes = maxSizeBytes ?? policy?.maxBytes;
@@ -115,21 +121,30 @@ export function MediaUploadField({
   return (
     <div>
       <Label>{label}</Label>
-      {media && media.file_type === "image" && (
+      {media && (
         <div className="mb-2">
-          <div
-            className={cn(
-              "relative aspect-video w-full max-w-xs overflow-hidden rounded-field border border-neutral-200",
-              previewBackgroundClassName,
-            )}
-          >
-            <Image
-              src={media.file_url}
-              alt={media.alt_text}
-              fill
-              className={previewFit === "contain" ? "object-contain p-4" : "object-cover"}
-            />
-          </div>
+          {media.file_type === "image" ? (
+            <div
+              className={cn(
+                "relative aspect-video w-full max-w-xs overflow-hidden rounded-field border border-neutral-200",
+                previewBackgroundClassName,
+              )}
+            >
+              <Image
+                src={media.file_url}
+                alt={media.alt_text}
+                fill
+                className={previewFit === "contain" ? "object-contain p-4" : "object-cover"}
+              />
+            </div>
+          ) : (
+            // A non-image file (e.g. a PDF picked before `accept` was scoped to this field —
+            // see `accept` prop) can't be shown as an <Image>, but must still be removable —
+            // otherwise the admin has no way to self-recover once one is attached.
+            <p className="max-w-xs truncate rounded-field border border-neutral-200 bg-neutral-50 px-3 py-2 text-small text-neutral-600">
+              {media.alt_text || media.file_url}
+            </p>
+          )}
           {onRemove && (
             <button
               type="button"
@@ -156,7 +171,7 @@ export function MediaUploadField({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/*,application/pdf"
+          accept={accept}
           onChange={() => void handleFileChange()}
           disabled={uploading}
           className="text-small"

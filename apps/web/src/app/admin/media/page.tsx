@@ -149,7 +149,7 @@ export default function AdminMediaLibraryPage() {
         Factory, dan lainnya — berbagi satu pustaka yang sama.
       </p>
 
-      <div className="mt-6 flex gap-2">
+      <div className="mt-4 flex gap-2">
         {STATUS_TABS.map((t) => (
           <button
             key={t.value}

@@ -48,7 +48,7 @@ export default async function ArticleDetailPage({ params }: PageProps<"/[locale]
 
   return (
     <>
-      <JsonLd data={articleJsonLd(article, locale)} />
+      <JsonLd data={articleJsonLd(article, locale as Locale)} />
       <ArticleDetailView
         article={article}
         relatedArticles={relatedArticles}

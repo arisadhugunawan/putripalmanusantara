@@ -60,7 +60,7 @@ const ALLOWED_ATTRIBUTES: Record<string, string[]> = {
  */
 export function sanitizeRichText(html: string): string {
   if (typeof html !== 'string' || html.length === 0) return html;
-  return sanitizeHtml(html, {
+  const sanitized = sanitizeHtml(html, {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: ALLOWED_ATTRIBUTES,
     allowedSchemes: ['http', 'https', 'mailto'],
@@ -90,6 +90,11 @@ export function sanitizeRichText(html: string): string {
       ),
     },
   });
+  // Word/Notion/Google Docs paste artifacts (a lone "&nbsp;" line, a bare spacer <br>) survive
+  // the allowlist above since both are individually legal — collapsed here so pasted content
+  // can't introduce blank lines the admin never intentionally typed. Images are separate
+  // top-level nodes in this editor's schema (never wrapped in <p>), so this can't ever eat one.
+  return sanitized.replace(/<p>(?:&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '');
 }
 
 /**

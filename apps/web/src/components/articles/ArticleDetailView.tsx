@@ -1,12 +1,13 @@
 "use client";
 
-import { Container, Section, cn } from "@ppn/ui-components";
+import { Container, Section, buttonVariants, cn } from "@ppn/ui-components";
 import type { ArticleDetail, ArticleSummary, Locale } from "@ppn/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dictionary } from "@/i18n/dictionary.d";
 import { SITE_URL, localeToBCP47 } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/json-ld";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { Link } from "@/i18n/Link";
 import { Breadcrumb } from "@/components/page/Breadcrumb";
 import { SafeImage } from "@/components/SafeImage";
 import { ArticleCard } from "./ArticleCard";
@@ -92,43 +93,45 @@ export function ArticleDetailView({
 
       <div ref={contentRef}>
         {/* ── Editorial hero ─────────────────────────────────────────────── */}
+        {/* P1.25 — header block and hero image now stack vertically (category → title →
+            excerpt → meta, then the image below) instead of the previous side-by-side 50/50
+            grid, which put a full-height title and a full-height image in direct competition
+            on the first screen. A vertical sequence reads as one editorial document instead of
+            two landing-page halves fighting for attention. */}
         <section className="relative overflow-hidden bg-linear-to-b from-primary-50/70 via-white to-white">
           <ArticleDecorative />
-          <Container className="relative py-10 lg:py-16">
+          <Container className="relative py-8 lg:py-12">
             <Breadcrumb items={breadcrumbItems} />
 
-            <div className="mt-8 grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-14">
-              <div>
-                {article.category && (
-                  <p className="text-small font-semibold uppercase tracking-[0.08em] text-primary-700">
-                    {article.category.name}
-                  </p>
-                )}
-                <h1 className="mt-3 font-heading text-[clamp(2rem,1.2rem+4.2vw,3.9rem)] font-bold leading-[1.08] tracking-tight text-neutral-900">
-                  {article.title}
-                </h1>
-                <p className="mt-5 max-w-xl text-body-lg text-neutral-600">{article.excerpt}</p>
-                <p className="mt-6 text-small uppercase tracking-wide text-neutral-500">
-                  {article.author} <span aria-hidden="true">·</span> {dateLabel}{" "}
-                  <span aria-hidden="true">·</span>{" "}
-                  {t.minReadTemplate.replace("{minutes}", String(article.reading_time_minutes))}
+            <div className="mt-6 max-w-3xl">
+              {article.category && (
+                <p className="text-small font-semibold uppercase tracking-[0.08em] text-primary-700">
+                  {article.category.name}
                 </p>
-                <div className="mt-6 lg:hidden">
-                  <ArticleToolsRail url={shareUrl} title={article.title} orientation="horizontal" labels={t} />
-                </div>
+              )}
+              <h1 className="article-title mt-3 font-heading font-bold tracking-tight text-neutral-900">
+                {article.title}
+              </h1>
+              <p className="article-excerpt mt-4 max-w-xl text-neutral-600">{article.excerpt}</p>
+              <p className="mt-5 text-small uppercase tracking-wide text-neutral-500">
+                {article.author} <span aria-hidden="true">·</span> {dateLabel}{" "}
+                <span aria-hidden="true">·</span>{" "}
+                {t.minReadTemplate.replace("{minutes}", String(article.reading_time_minutes))}
+              </p>
+              <div className="mt-5 lg:hidden">
+                <ArticleToolsRail url={shareUrl} title={article.title} orientation="horizontal" labels={t} />
               </div>
+            </div>
 
-              {/* Brief item 33 — mobile stacks title first, image second; DOM order already
-                  reads that way top-to-bottom, so no order-* override is needed here. On
-                  desktop the same order simply becomes left column / right column. */}
-              <div className="relative aspect-16/10 overflow-hidden rounded-card bg-neutral-100 lg:aspect-16/11">
-                <SafeImage
-                  media={article.cover_image}
-                  priority
-                  fit="contain"
-                  className="animate-article-hero-reveal"
-                />
-              </div>
+            {/* Width-capped (not edge-to-edge) so a strong photo never turns into an oversized
+                banner competing with the reading column below it. */}
+            <div className="relative mt-8 aspect-16/10 max-w-4xl overflow-hidden rounded-card bg-neutral-100 lg:mt-10 lg:aspect-16/9">
+              <SafeImage
+                media={article.cover_image}
+                priority
+                fit="contain"
+                className="animate-article-hero-reveal"
+              />
             </div>
           </Container>
         </section>
@@ -145,7 +148,7 @@ export function ArticleDetailView({
 
               <div className="min-w-0">
                 <div
-                  className={cn("prose article-drop-cap max-w-none text-body-lg text-neutral-600")}
+                  className={cn("prose article-body-text max-w-none text-neutral-600")}
                   dangerouslySetInnerHTML={{ __html: article.content }}
                 />
 
@@ -210,6 +213,15 @@ export function ArticleDetailView({
                     ))}
                   </div>
                 )}
+
+                {/* P1.25 — closing CTA (previously absent entirely). Reuses the sitewide
+                    Request Quotation label/route/button style (Header.tsx) rather than
+                    inventing new copy or a new button variant. */}
+                <div className="mt-10 border-t border-neutral-200 pt-8">
+                  <Link href="/#request-quotation" className={buttonVariants("primary", "md")}>
+                    {dictionary.nav.requestQuotation}
+                  </Link>
+                </div>
               </div>
             </div>
           </Container>

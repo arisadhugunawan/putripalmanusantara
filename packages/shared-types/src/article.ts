@@ -38,6 +38,8 @@ export interface ArticleGalleryImage {
 export interface ArticleStatistic {
   value: string;
   label: string;
+  /** Key into the fixed article icon set (see `ArticleStatIcons.tsx`) — optional. */
+  icon?: string | null;
 }
 
 /** Card / listing shape — GET /articles, /articles/latest */

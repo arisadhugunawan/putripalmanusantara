@@ -75,7 +75,7 @@ const dictionary: Dictionary = {
     packagingPolypropyleneBags: "Karung Polipropilena",
     packagingPlasticNettedBags: "Karung Jaring Plastik",
     whatsappMessageTemplate:
-      "Halo Tim PPN, saya tertarik dengan {product}. Bisakah Anda membagikan spesifikasi, pilihan kemasan, dan ketersediaan saat ini?",
+      "Halo Tim PPN, saya tertarik dengan produk kelapa Anda — {product}. Bisakah Anda membagikan ketersediaan saat ini, spesifikasi, MOQ, kemasan, harga, dan syarat pengiriman? Terima kasih.",
     whatsappCta: "WhatsApp",
     closeAriaLabel: "Tutup",
     previousImageAriaLabel: "Gambar sebelumnya",
@@ -261,22 +261,20 @@ const dictionary: Dictionary = {
       playVideoPrefix: "Putar video:",
     },
     products: {
-      eyebrow: "Yang Kami Ekspor",
-      heading: "Produk Unggulan",
+      eyebrow: "Produk Ekspor Kami",
+      heading: "Produk Kelapa Indonesia untuk Pembeli Global",
+      description:
+        "Dari Kelapa Setengah Kelobot dan Copra hingga Arang Tempurung Kelapa dan Kayu Kelapa — PPN menyediakan produk berbasis kelapa yang bersumber dan dipersiapkan di Indonesia untuk pembeli di Asia, Timur Tengah, dan Eropa.",
       viewAllCta: "Lihat Semua Produk →",
       viewDetailsCta: "Lihat Detail",
       viewDetailsAriaPrefix: "Lihat detail untuk",
     },
     facilities: {
-      eyebrow: "Dibangun untuk Skala Besar",
-      heading: "Fasilitas Kami",
+      eyebrow: "Dibangun untuk Operasional Ekspor",
+      heading: "Fasilitas yang Mendukung Ekspor Kelapa yang Andal",
       description:
-        "Infrastruktur dan peralatan yang dirancang untuk mendukung kualitas yang konsisten, penanganan yang efisien, dan pasokan kelapa yang andal.",
+        "Dari penyimpanan dan penimbangan hingga penanganan material, fasilitas kami mendukung persiapan dan penanganan produk kelapa untuk pembeli internasional.",
       viewAllCta: "Lihat Semua Fasilitas →",
-      ariaSlide: "Slide fasilitas",
-      ariaGoToFacility: "Ke fasilitas",
-      ariaPrevFacility: "Fasilitas sebelumnya",
-      ariaNextFacility: "Fasilitas berikutnya",
     },
     gallery: {
       eyebrow: "Sekilas tentang PPN",
@@ -285,12 +283,8 @@ const dictionary: Dictionary = {
     },
     articles: {
       eyebrow: "Wawasan & Artikel",
-      heading: "Wawasan Industri dari Dunia Kelapa & Perdagangan Global",
+      heading: "Wawasan Ekspor Kelapa & Berita Industri",
       viewAllCta: "Lihat Semua Wawasan →",
-      ariaSlide: "Slide wawasan",
-      ariaGoToArticle: "Ke artikel",
-      ariaPrevArticle: "Artikel sebelumnya",
-      ariaNextArticle: "Artikel berikutnya",
       instagramBadge: "Awalnya dibagikan di Instagram",
       readArticleCta: "Baca Artikel",
       viewOnInstagramCta: "Lihat di Instagram",

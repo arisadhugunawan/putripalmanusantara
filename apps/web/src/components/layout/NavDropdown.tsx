@@ -68,7 +68,7 @@ export function NavDropdown({ label, items }: { label: string; items: NavLink[] 
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "flex items-center gap-1 text-body text-neutral-600 transition-colors hover:text-neutral-900",
+          "flex items-center gap-1 whitespace-nowrap text-body text-neutral-600 transition-colors hover:text-neutral-900",
           isActive && "text-neutral-900 font-medium",
         )}
       >

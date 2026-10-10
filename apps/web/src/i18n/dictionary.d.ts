@@ -330,6 +330,8 @@ export interface Dictionary {
     products: {
       eyebrow: string;
       heading: string;
+      /** Supporting paragraph between the heading and the product cards. */
+      description: string;
       viewAllCta: string;
       viewDetailsCta: string;
       /** "View details for" — the product's (already-localized) name is appended. */
@@ -340,10 +342,6 @@ export interface Dictionary {
       heading: string;
       description: string;
       viewAllCta: string;
-      ariaSlide: string;
-      ariaGoToFacility: string;
-      ariaPrevFacility: string;
-      ariaNextFacility: string;
     };
     gallery: {
       eyebrow: string;
@@ -354,10 +352,6 @@ export interface Dictionary {
       eyebrow: string;
       heading: string;
       viewAllCta: string;
-      ariaSlide: string;
-      ariaGoToArticle: string;
-      ariaPrevArticle: string;
-      ariaNextArticle: string;
       instagramBadge: string;
       readArticleCta: string;
       viewOnInstagramCta: string;

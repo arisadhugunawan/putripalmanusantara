@@ -171,22 +171,38 @@ function findActiveLeafHref(children: NavLeaf[], pathname: string): string | nul
 
 const EXPANDED_GROUPS_KEY = "admin.sidebar.expandedGroups";
 
-function loadExpandedGroups(): Set<string> {
-  if (typeof window === "undefined") return new Set();
+/** Explicit open/closed override per group, keyed by group key. A group with no entry here falls
+ * back to auto-expanding while active (see `open` below) — this is what lets a user explicitly
+ * collapse the group they're currently inside, which a plain "expanded while active" boolean
+ * can't represent (see `AdminNavList` docstring). */
+function loadExpandedGroups(): Map<string, boolean> {
+  if (typeof window === "undefined") return new Map();
   try {
     const raw = window.localStorage.getItem(EXPANDED_GROUPS_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : []);
+    if (!Array.isArray(parsed)) return new Map();
+    return new Map(
+      parsed.filter(
+        (v): v is [string, boolean] => Array.isArray(v) && typeof v[0] === "string" && typeof v[1] === "boolean",
+      ),
+    );
   } catch {
-    return new Set();
+    return new Map();
   }
 }
 
 /** Shared nav renderer — used by both the fixed desktop sidebar and the mobile/tablet drawer, so
  * the two never drift apart. `onNavigate` closes the drawer after a link is clicked (no-op on
  * desktop). Groups auto-expand when they contain the active page; clicking a group's own chevron
- * toggles it independently (multiple groups can stay open at once — not an exclusive accordion),
- * and that manual choice persists to localStorage so it survives a refresh/navigation.
+ * always toggles it — including the currently active group — and that explicit choice persists
+ * to localStorage so it survives a refresh/navigation. (Multiple groups can stay open at once —
+ * not an exclusive accordion.)
+ *
+ * The open/closed state is an explicit per-group override, not a plain "expanded while active"
+ * boolean: a boolean can't represent "the user explicitly collapsed the group they're currently
+ * inside," so a fresh visit to an active group's chevron looked unresponsive — the click toggled
+ * the underlying set correctly, but `active` unconditionally forced the row back open regardless,
+ * making "Collapse X" a no-op exactly when a user was most likely to reach for it.
  *
  * `collapsed` renders an icon-only rail (72px) — submenus and labels hide, each icon gets a
  * native `title` tooltip instead. Passing `collapsed` also disables the persisted-state localStorage
@@ -203,16 +219,16 @@ export function AdminNavList({
   onNavigate?: () => void;
   collapsed?: boolean;
 }) {
-  const [manuallyOpen, setManuallyOpen] = useState<Set<string>>(() => loadExpandedGroups());
+  const [overrides, setOverrides] = useState<Map<string, boolean>>(() => loadExpandedGroups());
   const activeLeafRef = useRef<HTMLAnchorElement | null>(null);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify([...manuallyOpen]));
+      window.localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify([...overrides]));
     } catch {
       // Best-effort persistence — a private-browsing quota error shouldn't break navigation.
     }
-  }, [manuallyOpen]);
+  }, [overrides]);
 
   // Keeps the active submenu item visible when the sidebar's own scroll area is shorter than
   // its content — scrolls only the sidebar, never the page (brief item 69).
@@ -220,11 +236,13 @@ export function AdminNavList({
     activeLeafRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [pathname]);
 
-  function toggle(key: string) {
-    setManuallyOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+  /** Always flips the group's rendered state, regardless of why it was open — `currentlyOpen` is
+   * the value this same render just showed the user, so one click reliably produces one visible
+   * change no matter whether the group got there via `active` or a prior explicit override. */
+  function toggle(key: string, currentlyOpen: boolean) {
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(key, !currentlyOpen);
       return next;
     });
   }
@@ -234,7 +252,7 @@ export function AdminNavList({
       {groups.map((group) => {
         const active = isGroupActive(group, pathname);
         const hasChildren = Boolean(group.children?.length);
-        const open = !collapsed && (active || manuallyOpen.has(group.key));
+        const open = !collapsed && (overrides.get(group.key) ?? active);
         const Icon = group.icon;
         const activeLeafHref = hasChildren ? findActiveLeafHref(group.children!, pathname) : null;
 
@@ -262,10 +280,10 @@ export function AdminNavList({
               {hasChildren && !collapsed && (
                 <button
                   type="button"
-                  onClick={() => toggle(group.key)}
+                  onClick={() => toggle(group.key, open)}
                   aria-expanded={open}
                   aria-label={open ? `Collapse ${group.label}` : `Expand ${group.label}`}
-                  className="mr-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
+                  className="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
                 >
                   <ChevronDownIcon className={cn("h-4 w-4 transition-transform duration-200", open ? "rotate-180" : "")} />
                 </button>

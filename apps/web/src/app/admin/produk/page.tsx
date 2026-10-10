@@ -98,7 +98,7 @@ export default function AdminProductsPage() {
         </Link>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <input
           type="search"
           value={search}

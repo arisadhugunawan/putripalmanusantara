@@ -157,6 +157,33 @@ describe('sanitizeRichText — legitimate formatting preserved', () => {
   });
 });
 
+describe('sanitizeRichText — collapses blank paragraphs from pasted content', () => {
+  it('strips a lone "&nbsp;" paragraph (Word/Google Docs spacer)', () => {
+    const result = sanitizeRichText('<p>Hello</p><p>&nbsp;</p><p>World</p>');
+    expect(result).toBe('<p>Hello</p><p>World</p>');
+  });
+
+  it('strips a paragraph containing only a bare <br>', () => {
+    const result = sanitizeRichText('<p>Hello</p><p><br /></p><p>World</p>');
+    expect(result).toBe('<p>Hello</p><p>World</p>');
+  });
+
+  it('strips a paragraph containing only whitespace', () => {
+    const result = sanitizeRichText('<p>Hello</p><p>   </p><p>World</p>');
+    expect(result).toBe('<p>Hello</p><p>World</p>');
+  });
+
+  it('never touches a paragraph with real text or an inline element', () => {
+    const html = '<p>Hello</p><p><strong>Bold</strong></p>';
+    expect(sanitizeRichText(html)).toBe(html);
+  });
+
+  it('never touches a top-level <img> (not wrapped in <p> by this editor)', () => {
+    const html = '<p>Hello</p><img src="https://example.com/a.png" alt="A" />';
+    expect(sanitizeRichText(html)).toBe(html);
+  });
+});
+
 describe('sanitizeTranslationsRichText', () => {
   it('sanitizes the named field in every locale, preserving other fields untouched', () => {
     const translations = {

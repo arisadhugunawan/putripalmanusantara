@@ -156,7 +156,7 @@ export default function AdminGalleryMediaPage() {
 
       {categories && <AddMediaPanel categories={categories} onAdded={() => void reload()} />}
 
-      <Card className="mt-6">
+      <Card className="mt-4">
         <div className="flex flex-wrap items-center gap-3">
           <input
             type="search"

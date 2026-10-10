@@ -46,6 +46,7 @@ export function FeaturedProductsSection({
               {dictionary.home.products.eyebrow}
             </p>
             <h2 className="mt-3 max-w-xl text-h2 text-neutral-900">{dictionary.home.products.heading}</h2>
+            <p className="mt-3 max-w-2xl text-body text-neutral-600">{dictionary.home.products.description}</p>
           </div>
           <Link href="/products" className={buttonVariants("ghost", "md")}>
             {dictionary.home.products.viewAllCta}

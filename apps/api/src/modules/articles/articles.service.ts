@@ -21,7 +21,11 @@ import {
   computeTranslationStatus,
 } from '../ai/ai-translation.service';
 import { toArticleCategory } from './article-category.mapper';
-import { toArticleDetail, toArticleSummary } from './article.mapper';
+import {
+  joinKeyTakeaways,
+  toArticleDetail,
+  toArticleSummary,
+} from './article.mapper';
 import type {
   AddArticleGalleryItemDto,
   ArticleQueryDto,
@@ -690,6 +694,7 @@ export class ArticlesService {
         metaTitle: true,
         metaDescription: true,
         quoteText: true,
+        keyTakeaways: true,
       },
     });
     if (!article)
@@ -699,15 +704,25 @@ export class ArticlesService {
     for (const field of ArticlesService.TRANSLATABLE_ARTICLE_FIELDS) {
       sourceFields[field] = article[field];
     }
+    sourceFields.keyTakeaways = joinKeyTakeaways(article.keyTakeaways);
     return computeTranslationStatus(sourceFields, article.translations);
   }
 
   /** "Generate Translations" for Article — mirrors `ProductsService.generateTranslations()`
-   * exactly, with one addition: `content` is rich HTML, so the freshly generated translation for
-   * it must go through the same `sanitizeTranslationsRichText()` pass `update()` above already
-   * applies to manually-typed translations, before the merged blob is persisted. The AI prompt
-   * itself treats `content` as plain text (see `AiTranslationService.translateFields()`), so its
-   * output can contain HTML the sanitizer needs to clean up exactly like any other source. */
+   * exactly, with two additions:
+   * - `content` is rich HTML, so the freshly generated translation for it must go through the
+   *   same `sanitizeTranslationsRichText()` pass `update()` above already applies to
+   *   manually-typed translations, before the merged blob is persisted. The AI prompt itself
+   *   treats `content` as plain text (see `AiTranslationService.translateFields()`), so its
+   *   output can contain HTML the sanitizer needs to clean up exactly like any other source.
+   * - `keyTakeaways` is a `string[]` (one bullet per array item), which doesn't fit the
+   *   translation pipeline's flat `Record<string, string>` field shape — it's sent as one
+   *   synthetic `keyTakeaways` field, newline-joined (matching the admin UI's own "one point per
+   *   line" convention), translated as ordinary text, and split back into an array by
+   *   `resolveKeyTakeaways()` in `article.mapper.ts` when read. Without this, `key_takeaways`
+   *   silently stayed in English on every non-English locale — verified live on a real published
+   *   article (QA finding, P1.23).
+   */
   async generateTranslations(id: string) {
     const article = await this.prisma.article.findUnique({
       where: { id },
@@ -718,6 +733,7 @@ export class ArticlesService {
         metaTitle: true,
         metaDescription: true,
         quoteText: true,
+        keyTakeaways: true,
         translations: true,
       },
     });
@@ -730,6 +746,8 @@ export class ArticlesService {
       if (typeof value === 'string' && value.trim())
         sourceFields[field] = value;
     }
+    const keyTakeaways = joinKeyTakeaways(article.keyTakeaways);
+    if (keyTakeaways) sourceFields.keyTakeaways = keyTakeaways;
 
     const { available, translatedLocales, generated, mergedTranslations } =
       await this.translationService.generateAndMerge(

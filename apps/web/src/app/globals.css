@@ -521,21 +521,32 @@ h4 {
   background: linear-gradient(to right, transparent, var(--color-primary-500), transparent);
 }
 
-/* Premium editorial drop cap — first paragraph of the article body only, desktop only (brief
-   item 17: "Only desktop. Disable on mobile if it reduces readability"). Scoped to a class
-   applied by ArticleDetailView rather than every `.prose`, so About Company/other rich-text
-   surfaces reusing `.prose` are unaffected. */
-@media (min-width: 1024px) {
-  .article-drop-cap > :where(p):first-of-type::first-letter {
-    float: left;
-    font-family: var(--font-heading);
-    font-size: 4.2em;
-    line-height: 0.85;
-    font-weight: 700;
-    padding-right: 0.08em;
-    padding-top: 0.03em;
-    color: var(--color-primary-700);
-  }
+/* Article Detail — editorial typography scale (P1.25). Self-contained clamp()-based sizes
+   rather than the site's shared `text-h1`/`text-h2`/`text-body-lg` utilities: those utilities
+   bake the `@theme` value into the generated rule as a literal (e.g. `.text-h1 { font-size:
+   36px }`), NOT `font-size: var(--text-h1)` — confirmed live via the compiled stylesheet — so
+   the `@media (min-width: 1024px) { :root { --text-h1: 60px; ... } }` desktop override above
+   never actually reaches anything using those utility classes; they stay pinned at the mobile
+   value at every viewport width. That's a pre-existing, site-wide issue (affects every page
+   using these utilities, not just Articles) — out of scope to fix here since it touches shared
+   `@theme` tokens used everywhere, so this scale is deliberately self-contained instead of
+   depending on the broken utilities, sized to this brief's own target ranges (H1 32→~56px,
+   excerpt 16→20px, body 16→17.5px).
+   Replaces the old giant first-letter drop cap entirely (P1.25 explicit instruction — PPN is a
+   B2B exporter, not a lifestyle magazine; the first paragraph now matches the rest of the body). */
+.article-title {
+  font-size: clamp(2rem, 1.3rem + 2.6vw, 3.6rem);
+  line-height: 1.1;
+}
+
+.article-excerpt {
+  font-size: clamp(1rem, 0.9rem + 0.4vw, 1.25rem);
+  line-height: 1.5;
+}
+
+.article-body-text {
+  font-size: clamp(1rem, 0.94rem + 0.24vw, 1.09375rem);
+  line-height: 1.7;
 }
 
 /* docs/03-design.md §7 — motion must respect the user's reduced-motion preference. */

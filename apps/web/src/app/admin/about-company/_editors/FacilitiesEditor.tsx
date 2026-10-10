@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
 import { LocaleTabs } from "@/components/admin/LocaleTabs";
 import { MediaUploadField } from "@/components/admin/MediaUploadField";
+import { PublishAboutCompanyButton } from "@/components/admin/PublishAboutCompanyButton";
 import { SkeletonCard, SkeletonListRows } from "@/components/admin/Skeleton";
 import { TranslationStatusBadges } from "@/components/admin/TranslationStatusBadges";
 import { useToast } from "@/components/admin/Toast";
@@ -61,10 +62,21 @@ export function FacilitiesEditor() {
 
   return (
     <Card className="mt-6">
-      <h2 className="text-h3 text-neutral-900">Facilities</h2>
-      <p className="mt-1 text-small text-neutral-600">
-        10 fasilitas tetap yang tampil di showcase &quot;Our Facilities&quot;. Nama, deskripsi, dan
-        urutan sudah ditetapkan — admin hanya mengelola foto tiap fasilitas.
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-h3 text-neutral-900">Facilities</h2>
+          <p className="mt-1 text-small text-neutral-600">
+            10 fasilitas tetap yang tampil di showcase &quot;Our Facilities&quot;. Nama, deskripsi, dan
+            urutan sudah ditetapkan — admin hanya mengelola foto tiap fasilitas.
+          </p>
+        </div>
+        <PublishAboutCompanyButton onPublished={() => void reload()} />
+      </div>
+
+      <p className="mt-3 rounded-field border border-amber-200 bg-amber-50 px-3 py-2 text-small text-amber-900">
+        Foto yang diunggah atau diatur sebagai foto utama (&quot;Set Main&quot;) tersimpan
+        langsung, tetapi baru tampil di website publik setelah Anda menekan{" "}
+        <strong>Publish Changes</strong> di atas.
       </p>
 
       <div className="mt-4 flex flex-col gap-3">

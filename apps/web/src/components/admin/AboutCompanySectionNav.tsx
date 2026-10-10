@@ -1,7 +1,5 @@
 "use client";
 
-import { cn } from "@ppn/ui-components";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ABOUT_COMPANY_SECTION_REGISTRY } from "@/app/admin/about-company/section-registry";
 
@@ -14,12 +12,11 @@ const DESTINATIONS = [
 ];
 
 /**
- * Jump between About Company sections without going back to the overview first — a horizontal
- * pill row on desktop, a single `<select>` on small screens so five destinations never push the
- * editor's own content below the fold.
- *
- * Navigation goes through the router rather than plain links on mobile because a `<select>` has
- * no href; both paths land on the same section routes.
+ * Jump between About Company sections without going back to the overview first — one compact
+ * selector at every breakpoint. The previous version paired this same `<select>` (mobile) with a
+ * desktop pill row that wrapped its 10 long-label destinations across two lines even at 1440px,
+ * pushing the editor's actual content down the page — a select never wraps, so it replaces the
+ * pill row entirely rather than just supplementing it below `lg`.
  */
 export function AboutCompanySectionNav({
   currentHref,
@@ -39,12 +36,15 @@ export function AboutCompanySectionNav({
   }
 
   return (
-    <nav aria-label="About Company sections" className="mt-3">
+    <nav aria-label="About Company sections" className="mt-2 flex items-center gap-2">
+      <label htmlFor="about-company-section-nav" className="shrink-0 text-small text-neutral-500">
+        Section
+      </label>
       <select
+        id="about-company-section-nav"
         value={currentHref}
         onChange={(event) => handleSelect(event.target.value)}
-        aria-label="Pindah ke section lain"
-        className="w-full rounded-field border border-neutral-300 bg-white px-3 py-2 text-small lg:hidden"
+        className="w-full max-w-xs rounded-field border border-neutral-300 bg-white px-3 py-1.5 text-small font-medium text-neutral-900 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-100"
       >
         {DESTINATIONS.map((destination) => (
           <option key={destination.href} value={destination.href}>
@@ -52,32 +52,6 @@ export function AboutCompanySectionNav({
           </option>
         ))}
       </select>
-
-      <ul className="hidden flex-wrap items-center gap-2 lg:flex">
-        {DESTINATIONS.map((destination) => {
-          const isCurrent = destination.href === currentHref;
-          return (
-            <li key={destination.href}>
-              <Link
-                href={destination.href}
-                aria-current={isCurrent ? "page" : undefined}
-                onClick={(event) => {
-                  if (isCurrent) return;
-                  if (onNavigate?.(destination.href, event) === false) event.preventDefault();
-                }}
-                className={cn(
-                  "inline-flex rounded-button border px-3 py-1 text-small transition-colors",
-                  isCurrent
-                    ? "border-primary-600 bg-primary-100 font-medium text-primary-700"
-                    : "border-neutral-300 bg-white text-neutral-600 hover:border-neutral-400",
-                )}
-              >
-                {destination.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
     </nav>
   );
 }

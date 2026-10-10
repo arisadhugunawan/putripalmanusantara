@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, cn, Input, Label, Textarea } from "@ppn/ui-components";
+import { Badge, Button, Card, cn, Input, Label, Select, Textarea } from "@ppn/ui-components";
 import type {
   ArticleCategory,
   ArticleContentSource,
@@ -19,6 +19,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { arrayMove, DragHandle, useDragReorder } from "@/hooks/useDragReorder";
 import { AdminLoadError } from "@/components/admin/AdminLoadError";
 import { ArticleCard } from "@/components/articles/ArticleCard";
+import { ARTICLE_STAT_ICON_OPTIONS } from "@/components/articles/ArticleStatIcons";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DocumentPreviewModal } from "@/components/admin/DocumentPreviewModal";
 import { GenerateTranslationsPanel } from "@/components/admin/GenerateTranslationsPanel";
@@ -510,7 +511,7 @@ export default function EditArticlePage() {
         </div>
       </div>
 
-      <Card className="mt-6">
+      <Card className="mt-4">
         <h2 className="text-h3 text-neutral-900">Website Content</h2>
         <div className="mt-4 flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -653,6 +654,13 @@ export default function EditArticlePage() {
                     onChange={(e) => updateStatistic(index, { label: e.target.value })}
                     placeholder="Export Markets"
                     className="max-w-56 flex-1"
+                  />
+                  <Select
+                    aria-label="Ikon (opsional)"
+                    value={stat.icon ?? ""}
+                    onChange={(e) => updateStatistic(index, { icon: e.target.value || undefined })}
+                    options={ARTICLE_STAT_ICON_OPTIONS}
+                    className="w-auto"
                   />
                   <button type="button" onClick={() => removeStatistic(index)} className="text-small text-red-600 underline">
                     Hapus
@@ -843,6 +851,7 @@ export default function EditArticlePage() {
           </div>
           <MediaUploadField
             label="Open Graph Image (opsional — default memakai Cover Image)"
+            accept="image/*"
             media={article.og_image}
             onChange={async (media) => {
               await adminApi.put(`/admin/articles/${id}`, { og_image_id: media.id });

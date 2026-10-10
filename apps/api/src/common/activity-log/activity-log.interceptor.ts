@@ -28,6 +28,15 @@ export function deriveAction(
   if (lower.endsWith('/publish')) return 'PUBLISH';
   if (lower.endsWith('/unpublish')) return 'UNPUBLISH';
   if (lower.includes('/restore')) return 'RESTORE';
+  // Phase 17C: deliberately lowercase snake_case (unlike every other branch here) to match the
+  // action-naming convention BusinessActivityLog already uses on the external side
+  // (`login_success`, `member_approved`, ...) — these four describe a BusinessRelationship
+  // lifecycle event, not a generic CRUD verb, so they intentionally don't follow this
+  // interceptor's own ALL_CAPS style.
+  if (lower.endsWith('/approve')) return 'relationship_approved';
+  if (lower.endsWith('/reject')) return 'relationship_rejected';
+  if (lower.endsWith('/suspend')) return 'relationship_suspended';
+  if (lower.endsWith('/reactivate')) return 'relationship_reactivated';
   if (mod === 'media' && method === 'POST') return 'UPLOAD';
   if (mod === 'media' && method === 'DELETE') return 'MEDIA_DELETE';
   if (mod === 'ai' && lower.endsWith('/settings') && method === 'PUT')

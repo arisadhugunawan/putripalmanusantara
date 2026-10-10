@@ -49,14 +49,50 @@ function toStatistics(raw: unknown): ArticleStatistic[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter(
-      (item): item is { value: string; label: string } =>
+      (item): item is { value: string; label: string; icon?: unknown } =>
         !!item &&
         typeof item === 'object' &&
         typeof (item as { value: unknown }).value === 'string' &&
         typeof (item as { label: unknown }).label === 'string',
     )
-    .map((item) => ({ value: item.value, label: item.label }))
+    .map((item) => ({
+      value: item.value,
+      label: item.label,
+      icon:
+        typeof item.icon === 'string' && item.icon !== ''
+          ? item.icon
+          : undefined,
+    }))
     .filter((item) => item.value !== '' && item.label !== '');
+}
+
+/** `Article.keyTakeaways` is a `string[]`, one bullet per item, which doesn't fit the
+ * translation pipeline's flat `Record<string, string>` field shape — `ArticlesService` sends it
+ * to `AiTranslationService` as one synthetic `keyTakeaways` field, joined with `\n` (matching the
+ * admin UI's own "one point per line" convention for this same textarea). `resolveKeyTakeaways`
+ * below is the read-side counterpart, splitting it back into an array. */
+export function joinKeyTakeaways(items: string[]): string {
+  return items.filter((item) => item.trim()).join('\n');
+}
+
+/** Read-side counterpart to `joinKeyTakeaways()` — mirrors `translate()`'s own fallback logic
+ * (English locale or no non-empty translated string → keep the base value) since a `string[]`
+ * field can't go through `translate()`'s generic `typeof value === 'string'` check directly. */
+function resolveKeyTakeaways(
+  translations: unknown,
+  locale: string,
+  base: string[],
+): string[] {
+  if (locale === DEFAULT_LOCALE) return base;
+  if (!translations || typeof translations !== 'object') return base;
+  const localeBlock = (translations as Record<string, unknown>)[locale];
+  if (!localeBlock || typeof localeBlock !== 'object') return base;
+  const value = (localeBlock as Record<string, unknown>).keyTakeaways;
+  if (typeof value !== 'string' || !value.trim()) return base;
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function toCategoryRef(
@@ -137,7 +173,11 @@ export function toArticleDetail(
     instagram_username: article.instagramUsername,
     instagram_post_id: article.instagramPostId,
     instagram_imported_at: article.instagramImportedAt?.toISOString() ?? null,
-    key_takeaways: article.keyTakeaways,
+    key_takeaways: resolveKeyTakeaways(
+      article.translations,
+      locale,
+      article.keyTakeaways,
+    ),
     quote_text: t.quoteText,
     quote_author: article.quoteAuthor,
     statistics: toStatistics(article.statistics),

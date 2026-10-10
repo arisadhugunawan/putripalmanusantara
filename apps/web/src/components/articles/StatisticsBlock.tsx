@@ -3,6 +3,7 @@
 import type { ArticleStatistic, Locale } from "@ppn/shared-types";
 import { useEffect, useRef, useState } from "react";
 import { localeToBCP47 } from "@/lib/seo";
+import { ArticleStatIcon } from "./ArticleStatIcons";
 
 const COUNT_UP_MS = 900;
 
@@ -10,7 +11,9 @@ const COUNT_UP_MS = 900;
  * value isn't count-up-able (e.g. plain text), in which case the raw string is shown statically
  * instead of animating (brief item 23: "Use animated count-up only when appropriate"). */
 function parseNumeric(value: string): { number: number; prefix: string; suffix: string } | null {
-  const match = value.match(/^([^\d]*)([\d,]+)(.*)$/);
+  // The digit run must start with an actual digit — `\d[\d,]*` — so a value like
+  // "Surabaya, Indonesia" (a comma with no digits) never false-matches on the bare comma alone.
+  const match = value.match(/^([^\d]*)(\d[\d,]*)(.*)$/);
   if (!match) return null;
   const number = Number(match[2].replace(/,/g, ""));
   if (Number.isNaN(number)) return null;
@@ -81,7 +84,10 @@ export function StatisticsBlock({
           <p className="font-heading text-h2 text-primary-700">
             <StatValue value={stat.value} locale={locale} />
           </p>
-          <p className="mt-1 text-small uppercase tracking-wide text-neutral-600">{stat.label}</p>
+          <p className="mt-1 flex items-center justify-center gap-1.5 text-small uppercase tracking-wide text-neutral-600">
+            <ArticleStatIcon icon={stat.icon} className="h-4 w-4 shrink-0 text-primary-600" />
+            {stat.label}
+          </p>
         </div>
       ))}
     </div>

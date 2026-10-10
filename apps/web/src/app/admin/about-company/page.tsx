@@ -217,7 +217,7 @@ export default function AboutCompanyManagerPage() {
         </div>
       ) : (
         <>
-          <Card className="mt-6">
+          <Card className="mt-4">
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-small text-neutral-600">
               <span>
                 <strong className="text-neutral-900">{sections.length}</strong> Sections
