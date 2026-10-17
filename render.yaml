@@ -1,0 +1,83 @@
+# Render Blueprint for the PPN API (NestJS). The website (apps/web) is deployed separately on
+# Vercel — see docs/DEPLOYMENT.md. Values marked `sync: false` are entered in the Render
+# dashboard on first deploy and are never committed here.
+services:
+  - type: web
+    name: ppn-api
+    runtime: node
+    region: singapore
+    plan: starter
+    # NODE_ENV=production below would make a plain `npm ci` skip devDependencies, but the build
+    # needs them (Nest CLI, TypeScript, Prisma CLI — the last one also runs `migrate deploy` at
+    # start), hence --include=dev. The root postinstall builds @ppn/shared-types.
+    buildCommand: npm ci --include=dev && npm run build --workspace=api
+    # Applies pending Prisma migrations, then runs `node dist/src/main`.
+    startCommand: npm run start:api:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      # Render terminates requests at one proxy; without this every visitor shares one IP for
+      # rate limiting.
+      - key: TRUST_PROXY
+        value: "1"
+
+      - key: DATABASE_URL
+        sync: false
+
+      # Comma-separated origins of the deployed website, e.g. https://www.example.com
+      - key: CORS_ORIGIN
+        sync: false
+      # Base URL of the deployed website, used for on-demand ISR revalidation.
+      - key: WEB_APP_URL
+        sync: false
+      # Must be identical to REVALIDATE_SECRET on Vercel.
+      - key: REVALIDATE_SECRET
+        sync: false
+
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: JWT_COOKIE_NAME
+        value: ppn_admin_token
+
+      # Render's disk is ephemeral — uploads must go to S3-compatible storage (Cloudflare R2).
+      - key: MEDIA_STORAGE_DRIVER
+        value: s3
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
+
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: ADMIN_NOTIFICATION_EMAIL
+        sync: false
+
+      # "groq" or "anthropic"; only the matching API key is needed.
+      - key: AI_PROVIDER
+        sync: false
+      - key: AI_MODEL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+      - key: INSTAGRAM_GRAPH_ACCESS_TOKEN
+        sync: false

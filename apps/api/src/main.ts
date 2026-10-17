@@ -14,6 +14,18 @@ async function bootstrap() {
   assertNoProductionAuthBypass();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Behind a hosting proxy (e.g. Render) every request arrives from the proxy's own IP unless
+  // Express trusts it, which would make the per-IP rate limits (login, public forms) shared by
+  // every visitor. Opt-in via TRUST_PROXY (a hop count, e.g. "1") so a server exposed directly
+  // can't have its client IP spoofed through X-Forwarded-For.
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy) {
+    app.set(
+      'trust proxy',
+      /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy,
+    );
+  }
+
   const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim())
