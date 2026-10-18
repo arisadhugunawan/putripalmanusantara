@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AiFloatingWidgets } from "@/components/ai/AiFloatingWidgets";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { GoogleAnalytics } from "@/components/seo/GoogleAnalytics";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { LocaleHtmlLang } from "@/i18n/LocaleHtmlLang";
 import { getProducts, getPublicAboutCompanyNav, getPublicBranding } from "@/lib/api";
@@ -72,6 +73,7 @@ export default async function LocaleLayout({
       {children}
       <Footer dictionary={dictionary} locale={resolvedLocale} branding={branding} aboutNav={aboutNav} />
       <AiFloatingWidgets locale={resolvedLocale} logoUrl={branding.header_logo?.file_url ?? null} />
+      <GoogleAnalytics />
     </>
   );
 }

@@ -6,17 +6,18 @@ const isDev = process.env.NODE_ENV !== "production";
 const apiOrigin = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1").origin;
 
 /** Every third party the site actually embeds: YouTube/Vimeo videos, the Google Maps contact
- * embed, and TikTok (embed.js plus the iframe and assets it loads). PDFs are shown with
+ * embed, TikTok (embed.js plus the iframe and assets it loads) and Google Analytics 4 when
+ * NEXT_PUBLIC_GA_MEASUREMENT_ID is set. PDFs are shown with
  * <object> straight from the API or object storage, hence object-src. Shipped as
  * Report-Only first so a missing source is logged in the browser console instead of
  * breaking a page; switch the header name to Content-Security-Policy once reports are clean. */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.tiktok.com https://*.tiktokcdn.com https://*.ttwstatic.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.tiktok.com https://*.tiktokcdn.com https://*.ttwstatic.com https://www.googletagmanager.com`,
   "style-src 'self' 'unsafe-inline' https://*.ttwstatic.com",
   `img-src 'self' data: blob: https: ${apiOrigin}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${apiOrigin}${isDev ? " ws: wss:" : ""}`,
+  `connect-src 'self' ${apiOrigin} https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com${isDev ? " ws: wss:" : ""}`,
   `media-src 'self' blob: https: ${apiOrigin}`,
   `frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com https://www.tiktok.com ${apiOrigin}`,
   `object-src 'self' https: ${apiOrigin}`,
