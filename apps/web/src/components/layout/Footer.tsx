@@ -419,7 +419,7 @@ function FooterLocationBlock({ location, dictionary }: { location: ContactLocati
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-2 text-small font-medium text-primary-500 underline underline-offset-2 hover:text-primary-400"
+            className="-my-1 ml-2 inline-block py-1 text-small font-medium text-primary-500 underline underline-offset-2 hover:text-primary-400"
           >
             {dictionary.contact.openInGoogleMaps} →
           </a>

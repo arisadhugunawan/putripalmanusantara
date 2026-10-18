@@ -146,6 +146,7 @@ export function ProcessFlowchart({ steps }: { steps: ProductionStep[] }) {
                 <a
                   href={`#${stageIds[index]}`}
                   onClick={(event) => handleStageClick(event, stageIds[index], index)}
+                  aria-label={`${index + 1}. ${step.title}`}
                   aria-current={isActive ? "step" : undefined}
                   className={cn(
                     "relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 transition-[transform,box-shadow,background-color,border-color,color] duration-500 ease-out",

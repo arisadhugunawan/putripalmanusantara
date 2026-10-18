@@ -5,6 +5,11 @@ import type { Metadata } from "next";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const SITE_NAME = "CV Putri Palma Nusantara";
 
+/** Site-wide social share image (public/og-default.jpg, 1200×630 — a crop of the homepage
+ * hero photo) used whenever a page has no image of its own. Kept static rather than read from
+ * the CMS so share previews never depend on the API being reachable. */
+export const DEFAULT_OG_IMAGE = { url: "/og-default.jpg", width: 1200, height: 630, alt: SITE_NAME };
+
 /** Maps our short locale codes to full OpenGraph locale tags (BCP 47-ish, region-qualified). */
 const OG_LOCALE: Record<Locale, string> = {
   en: "en_US",
@@ -68,7 +73,7 @@ export function buildPageMetadata({
   const resolvedLocale: Locale = isLocale(locale) ? locale : DEFAULT_LOCALE;
   const localizedPath = `/${resolvedLocale}${path === "/" ? "" : path}`;
   const url = canonicalOverride || `${SITE_URL}${localizedPath}`;
-  const images = imageUrl ? [{ url: imageUrl }] : undefined;
+  const images = imageUrl ? [{ url: imageUrl }] : [DEFAULT_OG_IMAGE];
 
   const languages: Record<string, string> = { "x-default": `${SITE_URL}/${DEFAULT_LOCALE}${path === "/" ? "" : path}` };
   for (const loc of SUPPORTED_LOCALES) {
@@ -92,7 +97,7 @@ export function buildPageMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: imageUrl ? [imageUrl] : undefined,
+      images: [imageUrl ?? DEFAULT_OG_IMAGE.url],
     },
   };
 }

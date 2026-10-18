@@ -22,7 +22,10 @@ export function Breadcrumb({ items, color }: { items: BreadcrumbItem[]; color?: 
           <li key={item.label} className="flex items-center gap-2">
             {index > 0 && <span aria-hidden="true">/</span>}
             {item.href ? (
-              <Link href={item.href} className={color ? "opacity-80 hover:opacity-100" : "hover:text-neutral-900"}>
+              <Link
+                href={item.href}
+                className={`-my-1 inline-block py-1 ${color ? "opacity-80 hover:opacity-100" : "hover:text-neutral-900"}`}
+              >
                 {item.label}
               </Link>
             ) : (

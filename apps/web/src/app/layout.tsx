@@ -3,7 +3,7 @@ import { Inter, Sora } from "next/font/google";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { organizationJsonLd } from "@/lib/json-ld";
 import { getPublicBranding } from "@/lib/api";
-import { SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const sora = Sora({
@@ -40,11 +40,13 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: SITE_NAME,
       type: "website",
       locale: "en_US",
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: SITE_NAME,
       description: DEFAULT_DESCRIPTION,
+      images: [DEFAULT_OG_IMAGE.url],
     },
   };
 }
