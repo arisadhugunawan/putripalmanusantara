@@ -279,7 +279,7 @@ describe('ArticlesService.findAllForAdminPaginated', () => {
       sort: '-published_at',
     });
 
-    const [args] = article.findMany.mock.calls;
+    const [args] = article.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toMatchObject({ status: 'draft' });
   });
 
@@ -295,7 +295,7 @@ describe('ArticlesService.findAllForAdminPaginated', () => {
       sort: '-published_at',
     });
 
-    const [args] = article.findMany.mock.calls;
+    const [args] = article.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toMatchObject({
       categoryRef: { slug: 'coconut-export' },
     });
@@ -313,7 +313,7 @@ describe('ArticlesService.findAllForAdminPaginated', () => {
       sort: '-published_at',
     });
 
-    const [args] = article.findMany.mock.calls;
+    const [args] = article.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toMatchObject({
       contentSource: { not: 'instagram' },
     });
@@ -330,7 +330,9 @@ describe('ArticlesService.findAllForAdminPaginated', () => {
       sort: '-featured',
     });
 
-    const [args] = article.findMany.mock.calls;
+    const [args] = article.findMany.mock.calls as [
+      [{ where: unknown; orderBy: unknown }],
+    ];
     expect(args[0].orderBy).toEqual([
       { featured: 'desc' },
       { publishedAt: 'desc' },

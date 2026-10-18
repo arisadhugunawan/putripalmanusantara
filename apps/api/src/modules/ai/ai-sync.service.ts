@@ -233,7 +233,10 @@ export class AiSyncService {
       });
 
       consecutiveFailures += 1;
-      if (consecutiveFailures >= AUTO_SYNC_FAILURE_THRESHOLD && !autoSyncSuppressed) {
+      if (
+        consecutiveFailures >= AUTO_SYNC_FAILURE_THRESHOLD &&
+        !autoSyncSuppressed
+      ) {
         autoSyncSuppressed = true;
         this.logger.warn(
           `Automatic AI sync suppressed after ${consecutiveFailures} consecutive failures (threshold ${AUTO_SYNC_FAILURE_THRESHOLD}). Publish-triggered syncs will be skipped until a successful sync clears this; the 5-minute cron and manual "Sync Now" are unaffected.`,

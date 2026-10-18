@@ -59,10 +59,15 @@ npm run dev:web   # Next.js di http://localhost:3000
 | Script | Deskripsi |
 |---|---|
 | `npm run dev:web` / `dev:api` | Jalankan dev server masing-masing app |
-| `npm run build` | Build backend lalu frontend |
-| `npm run lint` | Lint kedua app |
+| `npm run build` | Build backend lalu frontend (build web butuh API yang sedang berjalan) |
+| `npm run start:api:prod` | `prisma migrate deploy` lalu jalankan API hasil build (`node dist/src/main`) |
+| `npm run lint` | Lint kedua app (hanya memeriksa; perbaikan otomatis API: `npm run lint:fix --workspace=api`) |
+| `npm run test --workspace=api` / `test:e2e --workspace=api` | Unit test API / smoke test e2e AppModule (tanpa database) |
+| `npm run test --workspace=@ppn/ui-components` | Unit test komponen UI (Vitest) |
 | `npm run format` | Format seluruh repo dengan Prettier |
 | `npm run prisma:generate` / `prisma:migrate` / `prisma:studio` | Perintah Prisma (proxy ke `apps/api`) |
+
+Panduan deploy production (Vercel + Render + Neon + Cloudflare R2): [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
 ## Database Lokal
 
@@ -1219,7 +1224,7 @@ Setelah Phase 3, AI Assistant masih hanya "otomatis" lewat dua jalur: resync ter
 
 **Coalescing — `pendingRerun`, bukan antrian**: `AiSyncService` sudah punya guard `syncInFlight` (module-level boolean) sejak awal; ditambah satu boolean lagi, `pendingRerun`. Kalau `scheduleSync()` dipanggil saat sync lain sedang berjalan, ia hanya men-set `pendingRerun = true` lalu return — begitu sync yang berjalan selesai, TEPAT SATU rebuild susulan dijalankan (ekstraksi penuh ulang, bukan merge manual/parsial), lalu `pendingRerun` di-clear. N trigger yang datang selama satu sync berjalan tetap menghasilkan maksimal 1 rebuild susulan, bukan N. **Diverifikasi hidup** (bukan cuma unit test) dengan mem-publish 4 konten berbeda (Home/About Company/Contact/Products) secara BERSAMAAN (concurrent, bukan berurutan) ke server dev sungguhan — hasilnya persis 2 baris `AiSyncLog`: satu run awal (`publish:contact`, yang menang race) dan satu rerun (`publish:contact+rerun`), bukan 4 run terpisah.
 
-**Circuit breaker — sederhana, in-memory, single-instance**: setelah 3 kegagalan BERUNTUN (lintas semua trigger — manual/terjadwal/publish, dihitung sebagai satu counter bersama karena kegagalan adalah bukti mekanisme sync itu sendiri rusak, apa pun pemicunya), `scheduleSync()` (jalur publish-triggered) berhenti mencoba sampai ada sync yang berhasil — dicek & didokumentasikan lewat komentar kode: cron 5 menit dan tombol "Sync Now" manual SENGAJA TIDAK ikut ditahan (cron sudah otomatis membatasi diri ke sekali per 5 menit sehingga bukan risiko "membanjiri", dan manual adalah aksi eksplisit admin yang juga menjadi jalur pemulihan). State ini in-memory & module-level — aman HANYA karena deployment ini single-instance, diverifikasi eksplisit sebelum coding: `start:prod` di `apps/api/package.json` adalah `node dist/main` polos, tidak ada PM2/cluster/Docker Compose/Kubernetes/load balancer di mana pun di repo ini. **Diverifikasi hidup penuh**: 3 publish beruntun dengan extractor yang sengaja dibuat gagal sementara (satu baris `throw` di `AiContentExtractorService.extractAll()`, dikembalikan segera setelah pengujian, dikonfirmasi lewat `git diff` bersih) → `auto_sync_suppressed: true`, `active_version`/`indexed_count` TIDAK berubah (knowledge lama tetap live) → publish ke-4 dicek TIDAK menghasilkan baris `AiSyncLog` baru (automatic sync benar-benar dilewati) → manual "Sync Now" tetap bisa dipanggil (masih mencoba, masih gagal karena extractor belum diperbaiki) → extractor dikembalikan ke semula → manual "Sync Now" berhasil → `auto_sync_suppressed` kembali `false` → publish lagi langsung memicu sync otomatis baru yang berhasil, tanpa menunggu cron.
+**Circuit breaker — sederhana, in-memory, single-instance**: setelah 3 kegagalan BERUNTUN (lintas semua trigger — manual/terjadwal/publish, dihitung sebagai satu counter bersama karena kegagalan adalah bukti mekanisme sync itu sendiri rusak, apa pun pemicunya), `scheduleSync()` (jalur publish-triggered) berhenti mencoba sampai ada sync yang berhasil — dicek & didokumentasikan lewat komentar kode: cron 5 menit dan tombol "Sync Now" manual SENGAJA TIDAK ikut ditahan (cron sudah otomatis membatasi diri ke sekali per 5 menit sehingga bukan risiko "membanjiri", dan manual adalah aksi eksplisit admin yang juga menjadi jalur pemulihan). State ini in-memory & module-level — aman HANYA karena deployment ini single-instance, diverifikasi eksplisit sebelum coding: `start:prod` di `apps/api/package.json` adalah `node dist/src/main` polos, tidak ada PM2/cluster/Docker Compose/Kubernetes/load balancer di mana pun di repo ini. **Diverifikasi hidup penuh**: 3 publish beruntun dengan extractor yang sengaja dibuat gagal sementara (satu baris `throw` di `AiContentExtractorService.extractAll()`, dikembalikan segera setelah pengujian, dikonfirmasi lewat `git diff` bersih) → `auto_sync_suppressed: true`, `active_version`/`indexed_count` TIDAK berubah (knowledge lama tetap live) → publish ke-4 dicek TIDAK menghasilkan baris `AiSyncLog` baru (automatic sync benar-benar dilewati) → manual "Sync Now" tetap bisa dipanggil (masih mencoba, masih gagal karena extractor belum diperbaiki) → extractor dikembalikan ke semula → manual "Sync Now" berhasil → `auto_sync_suppressed` kembali `false` → publish lagi langsung memicu sync otomatis baru yang berhasil, tanpa menunggu cron.
 
 **Bukti "karena publish, bukan karena cron"**: pada produk Copra sungguhan, draft diedit lalu di-publish pukul 03:04:26.731Z — baris `AiSyncLog` baru (`trigger: "publish:products"`, `status: "success"`) muncul pukul 03:04:26.737Z (6 milidetik kemudian), jauh sebelum tick cron berikutnya (03:05:00Z). Isi `ai_knowledge_chunks` untuk `source_key: "products"` dikonfirmasi langsung dari database berisi teks baru yang baru saja di-publish.
 
@@ -1230,6 +1235,14 @@ Setelah Phase 3, AI Assistant masih hanya "otomatis" lewat dua jalur: resync ter
 **Diverifikasi**: `tsc --noEmit` bersih di kedua workspace, `eslint --fix` bersih, `jest` (83 test — naik dari 70, termasuk 11 test baru untuk `AiSyncService`/`AiPublishSyncListener` dan 2 test emit event baru di `ProductsService`), **build produksi penuh** bersih di kedua workspace, dan seluruh skenario live-verification di atas (publish-triggered sync, coalescing, circuit breaker + recovery) dijalankan terhadap server dev sungguhan yang berjalan, bukan hanya lolos unit test.
 
 **Yang TIDAK dikerjakan (di luar cakupan Phase 4, sesuai instruksi brief)**: event publish untuk Gallery/News (keduanya memang tidak punya arsitektur publish), event untuk `restoreSnapshot()` (lihat di atas — gap yang didokumentasikan, bukan kelalaian; restore tetap tercermin lewat cron/manual), retry endpoint kedua, circuit breaker lintas-instance (Redis dkk. — tidak relevan karena deployment ini single-instance), analytics/dashboard AI baru, apa pun dari daftar larangan brief (Kafka/RabbitMQ/Kubernetes/microservices/vector DB/embeddings/workflow engine).
+
+## Pemisahan Platform Bisnis (Oktober 2026)
+
+Repository ini sempat berisi fondasi platform bisnis (CRM, sales, procurement, gudang/inventory, QC, produksi, pengiriman, keuangan, komunikasi, dan portal eksternal "Business Network"). Semua itu sudah dilepas sehingga aplikasi kembali hanya berisi **website publik + admin CMS**, sesuai batasan scope di bawah:
+
+- Kode API modul bisnis dan `external-auth` dihapus; model Prisma + 53 tabel bisnis (semuanya kosong) di-drop lewat migration baru `20261017224510_remove_business_platform` (migration lama tidak diubah).
+- Kode lengkap platform bisnis tetap tersimpan di branch `archive/business-platform` dan tag `pre-website-only-cleanup` (commit `ef11c79`) sebagai titik awal proyek ERP/CRM terpisah.
+- Laporan per tahap dan backup database disimpan di luar repository.
 
 ## Status Pembangunan
 

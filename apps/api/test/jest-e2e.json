@@ -4,6 +4,12 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true } }]
+  },
+  "transformIgnorePatterns": [
+    "/node_modules/(?!(sanitize-html|htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)/)"
+  ],
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 }

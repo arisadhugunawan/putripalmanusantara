@@ -65,7 +65,9 @@ async function waitUntil(fn: () => boolean, maxTicks = 200) {
 describe('AiSyncService.scheduleSync — basic dispatch', () => {
   it('starts a sync immediately when nothing is in flight', async () => {
     const prisma = buildPrisma();
-    const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
     const extractor = {
       extractAll: jest
         .fn()
@@ -89,7 +91,9 @@ describe('AiSyncService.scheduleSync — basic dispatch', () => {
 describe('AiSyncService.scheduleSync — coalescing', () => {
   it('collapses multiple triggers that arrive while a sync is in flight into exactly one rerun', async () => {
     const prisma = buildPrisma();
-    const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
 
     type ExtractResult = { chunks: unknown[]; failedSources: unknown[] };
     let releaseFirstExtract: (result: ExtractResult) => void = () => {};
@@ -124,7 +128,9 @@ describe('AiSyncService.scheduleSync — coalescing', () => {
 
   it('does not start a second overlapping run when nothing is pending after the first finishes', async () => {
     const prisma = buildPrisma();
-    const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
     const extractor = {
       extractAll: jest
         .fn()
@@ -142,8 +148,12 @@ describe('AiSyncService.scheduleSync — coalescing', () => {
 describe('AiSyncService — automatic-sync circuit breaker', () => {
   it('suppresses scheduleSync (but not runSync directly) after 3 consecutive failures', async () => {
     const prisma = buildPrisma();
-    const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
-    const extractor = { extractAll: jest.fn().mockRejectedValue(new Error('boom')) };
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const extractor = {
+      extractAll: jest.fn().mockRejectedValue(new Error('boom')),
+    };
     const service = loadService(prisma, extractor, settingsService);
 
     // Drives the failure counter via `runSync` directly (awaited to full completion, including
@@ -172,8 +182,12 @@ describe('AiSyncService — automatic-sync circuit breaker', () => {
 
   it('a successful run clears the suppression and resets the failure counter', async () => {
     const prisma = buildPrisma();
-    const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
-    const extractor = { extractAll: jest.fn().mockRejectedValue(new Error('boom')) };
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const extractor = {
+      extractAll: jest.fn().mockRejectedValue(new Error('boom')),
+    };
     const service = loadService(prisma, extractor, settingsService);
 
     // Drives the failure counter via `runSync` directly (awaited to full completion, including
@@ -199,8 +213,12 @@ describe('AiSyncService — automatic-sync circuit breaker', () => {
 
   it('the 5-minute cron (scheduledResync) is never gated by autoSyncSuppressed', async () => {
     const prisma = buildPrisma();
-    const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
-    const extractor = { extractAll: jest.fn().mockRejectedValue(new Error('boom')) };
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const extractor = {
+      extractAll: jest.fn().mockRejectedValue(new Error('boom')),
+    };
     const service = loadService(prisma, extractor, settingsService);
 
     // Drives the failure counter via `runSync` directly (awaited to full completion, including
@@ -221,7 +239,9 @@ describe('AiSyncService — automatic-sync circuit breaker', () => {
 describe('AiSyncService.getStatus', () => {
   it('reports auto_sync_suppressed: false when nothing has failed', async () => {
     const prisma = buildPrisma();
-    const settingsService = { getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }) };
+    const settingsService = {
+      getOrCreateRaw: jest.fn().mockResolvedValue({ enabled: true }),
+    };
     const extractor = {
       extractAll: jest
         .fn()

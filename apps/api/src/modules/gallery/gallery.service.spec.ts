@@ -120,7 +120,7 @@ describe('GalleryService.findAllPaginated', () => {
       category_id: 'cat-1',
     });
 
-    const [args] = galleryItem.findMany.mock.calls;
+    const [args] = galleryItem.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toMatchObject({ categoryId: 'cat-1' });
   });
 
@@ -135,7 +135,7 @@ describe('GalleryService.findAllPaginated', () => {
       status: 'inactive',
     });
 
-    const [args] = galleryItem.findMany.mock.calls;
+    const [args] = galleryItem.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toMatchObject({ active: false });
   });
 

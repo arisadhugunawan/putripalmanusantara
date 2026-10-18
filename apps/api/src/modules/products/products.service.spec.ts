@@ -503,7 +503,7 @@ describe('ProductsService.update — partial-payload merge safety (Phase 5F-P0.3
       translations: { th: { name: 'มะพร้าวแห้ง' } },
     });
 
-    const [call] = product.update.mock.calls[0] as [
+    const [call] = product.update.mock.calls[0] as unknown as [
       { data: { translations: Record<string, Record<string, string>> } },
     ];
     expect(call.data.translations.th).toEqual({ name: 'มะพร้าวแห้ง' });
@@ -530,7 +530,7 @@ describe('ProductsService.update — partial-payload merge safety (Phase 5F-P0.3
       translations: { th: { name: 'ชื่อใหม่' } },
     });
 
-    const [call] = product.update.mock.calls[0] as [
+    const [call] = product.update.mock.calls[0] as unknown as [
       { data: { translations: Record<string, Record<string, string>> } },
     ];
     expect(call.data.translations.th).toEqual({
@@ -558,7 +558,7 @@ describe('ProductsService.update — partial-payload merge safety (Phase 5F-P0.3
       translations: { vi: { metaTitle: 'SEO mới' } },
     });
 
-    const [call] = product.update.mock.calls[0] as [
+    const [call] = product.update.mock.calls[0] as unknown as [
       { data: { translations: Record<string, Record<string, string>> } },
     ];
     expect(call.data.translations.vi).toEqual({
@@ -582,7 +582,7 @@ describe('ProductsService.update — partial-payload merge safety (Phase 5F-P0.3
 
     await service.update('p1', { name: 'New Name' });
 
-    const [call] = product.update.mock.calls[0] as [
+    const [call] = product.update.mock.calls[0] as unknown as [
       { data: { translations: unknown } },
     ];
     expect(call.data.translations).toBeUndefined();
@@ -753,7 +753,7 @@ describe('ProductsService.findAllForAdminPaginated', () => {
       q: '  copra  ',
     });
 
-    const [args] = product.findMany.mock.calls;
+    const [args] = product.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toEqual({
       OR: [
         { name: { contains: 'copra', mode: 'insensitive' } },
@@ -773,7 +773,7 @@ describe('ProductsService.findAllForAdminPaginated', () => {
       status: 'draft',
     });
 
-    const [args] = product.findMany.mock.calls;
+    const [args] = product.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toEqual({ status: 'draft' });
   });
 
@@ -788,7 +788,7 @@ describe('ProductsService.findAllForAdminPaginated', () => {
       featured: 'false',
     });
 
-    const [args] = product.findMany.mock.calls;
+    const [args] = product.findMany.mock.calls as [[{ where: unknown }]];
     expect(args[0].where).toEqual({ isFeatured: false });
   });
 
@@ -799,7 +799,9 @@ describe('ProductsService.findAllForAdminPaginated', () => {
 
     await service.findAllForAdminPaginated({ page: 1, limit: 20 });
 
-    const [args] = product.findMany.mock.calls;
+    const [args] = product.findMany.mock.calls as [
+      [{ where: unknown; orderBy: unknown }],
+    ];
     expect(args[0].orderBy).toEqual({ updatedAt: 'desc' });
   });
 });
@@ -820,7 +822,9 @@ describe('ProductsService.update — translation preservation (Phase 5D)', () =>
       translations: translationsWithAllLocales,
     });
 
-    const [args] = product.update.mock.calls;
+    const [args] = product.update.mock.calls as unknown as [
+      [{ data: { translations: Record<string, Record<string, string>> } }],
+    ];
     expect(args[0].data.translations).toEqual(translationsWithAllLocales);
     // Explicitly: the other three locales are still present, unchanged, in what gets written —
     // a regression that rebuilt `translations` from only the current locale would fail this.
@@ -863,7 +867,7 @@ describe('ProductsService.update — SEO translation preservation (Phase 5E-D)',
 
     await service.update('p1', { translations: mergedAfterThEdit });
 
-    const args = product.update.mock.calls[0] as [
+    const args = product.update.mock.calls[0] as unknown as [
       { data: { translations: Record<string, Record<string, string>> } },
     ];
     expect(args[0].data.translations).toEqual(mergedAfterThEdit);
@@ -893,7 +897,7 @@ describe('ProductsService.update — SEO translation preservation (Phase 5E-D)',
 
     await service.update('p1', { translations: mergedAfterViEdit });
 
-    const args = product.update.mock.calls[0] as [
+    const args = product.update.mock.calls[0] as unknown as [
       { data: { translations: Record<string, Record<string, string>> } },
     ];
     expect(args[0].data.translations).toEqual(mergedAfterViEdit);
@@ -925,7 +929,7 @@ describe('ProductsService.update — SEO translation preservation (Phase 5E-D)',
 
     await service.update('p1', { translations: mergedPayload });
 
-    const args = product.update.mock.calls[0] as [
+    const args = product.update.mock.calls[0] as unknown as [
       { data: { translations: Record<string, Record<string, string>> } },
     ];
     expect(args[0].data.translations.th).toEqual({

@@ -291,3 +291,4 @@ erDiagram
 - Seluruh field bertanda "dikelola via CMS" pada dokumen ini **wajib** memiliki endpoint CRUD terkait di `05-api.md`.
 - Struktur data ini tidak mengandung entitas apa pun yang berkaitan dengan fitur Out of Scope (ERP, Inventory, Tracking, Buyer Portal, CRM, Marketplace) — konsisten dengan `01-prd.md` Section 6.2.
 - Implementasi fisik (tipe kolom SQL, constraint, migration) merupakan tanggung jawab tim development saat tahap coding, mengacu pada struktur konseptual di dokumen ini.
+- Drift yang diketahui dan tidak berbahaya: kolom `ai_knowledge_chunks.search_vector` adalah kolom `tsvector` *generated* yang dibuat oleh migration AI dengan SQL mentah. Prisma hanya bisa memodelkannya sebagai `Unsupported("tsvector")`, sehingga `prisma migrate diff` selalu melaporkan perbedaan default pada kolom ini. Jangan membuat migration untuk "memperbaikinya" — kolom tersebut memang dikelola di luar Prisma.
