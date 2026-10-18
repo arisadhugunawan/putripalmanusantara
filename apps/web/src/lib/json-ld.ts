@@ -4,7 +4,6 @@ import type {
   ContactPageSettings,
   Locale,
   ProductDetail,
-  PublicSiteSettings,
 } from "@ppn/shared-types";
 import { SITE_NAME, SITE_URL, localeToBCP47 } from "./seo";
 
@@ -20,24 +19,9 @@ export function organizationJsonLd() {
   };
 }
 
-/** Homepage's LocalBusiness schema — built from the generic Settings key/value store. Used
- * only by `[locale]/page.tsx`; the Contact page has its own dedicated CMS data and uses
- * `contactPageLocalBusinessJsonLd` below instead, so this stays untouched. */
-export function localBusinessJsonLd(settings: PublicSiteSettings | null, locale: string) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: settings?.company_name ?? SITE_NAME,
-    url: `${SITE_URL}/${locale}/contact`,
-    email: settings?.contact_email,
-    telephone: settings?.contact_phone,
-    address: settings?.address ? { "@type": "PostalAddress", streetAddress: settings.address } : undefined,
-  };
-}
-
-/** Contact page only — LocalBusiness schema built entirely from real Contact Page CMS data
- * (email, WhatsApp number, main map location's address); fields with no value on file are
- * simply omitted, never fabricated. */
+/** LocalBusiness schema for the Home and Contact pages, built entirely from real Contact Page
+ * CMS data (email, WhatsApp number, main map location's address); fields with no value on file
+ * are simply omitted, never fabricated. */
 export function contactPageLocalBusinessJsonLd(
   settings: ContactPageSettings | null,
   mainLocation: ContactLocation | null,

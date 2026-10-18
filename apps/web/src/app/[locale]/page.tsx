@@ -8,6 +8,7 @@ import {
   getGallery,
   getLatestArticles,
   getProducts,
+  getPublicContactPage,
   getPublicSettings,
   getPublishedHomepage,
 } from "@/lib/api";
@@ -27,7 +28,7 @@ import { StatisticsSection } from "@/components/home/StatisticsSection";
 import { SupplyNetworkSection } from "@/components/home/supply-network/SupplyNetworkSection";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getDictionary } from "@/i18n/get-dictionary";
-import { faqPageJsonLd, localBusinessJsonLd } from "@/lib/json-ld";
+import { contactPageLocalBusinessJsonLd, faqPageJsonLd } from "@/lib/json-ld";
 import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
@@ -90,7 +91,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     articlesGraphics,
     faqGraphics,
     quotationGraphics,
-    settings,
+    contactPage,
   ] = await Promise.all([
     getDictionary(resolvedLocale),
     getPublishedHomepage(locale),
@@ -112,7 +113,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     getDecorativeGraphics("home-articles"),
     getDecorativeGraphics("home-faq"),
     getDecorativeGraphics("home-quotation"),
-    getPublicSettings(locale).catch(() => null),
+    getPublicContactPage(locale).catch(() => null),
   ]);
 
   const sections: Record<HomepageSectionKey, ReactNode> = {
@@ -196,7 +197,13 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     <main>
       {/* NFR-SEO-01 — FAQPage schema, since FAQ only ever appears on Home (FR-FAQ). */}
       {homepage.faqs.length > 0 && <JsonLd data={faqPageJsonLd(homepage.faqs)} />}
-      <JsonLd data={localBusinessJsonLd(settings, locale)} />
+      {/* Same real Contact Page data as /contact's schema, so search engines never see two
+          different addresses/phone numbers for the business. */}
+      {contactPage && (
+        <JsonLd
+          data={contactPageLocalBusinessJsonLd(contactPage.settings, contactPage.main_map_location, locale)}
+        />
+      )}
 
       {orderedSections.map((section) => (
         <Fragment key={section.key}>{sections[section.key]}</Fragment>

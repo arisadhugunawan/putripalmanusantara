@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { Dictionary } from "@/i18n/dictionary.d";
 
 const TIKTOK_URL_PATTERN = /^https?:\/\/(www\.|vt\.|vm\.)?tiktok\.com\//i;
+/** TikTok's embed.js renders from `data-video-id` (exactly what TikTok's own oEmbed snippet
+ * emits) — without it the player loads `/embed/v2/null`. Short vt./vm. share links carry no ID
+ * in the URL, so those fall back to the plain "Watch on TikTok" link. */
+const TIKTOK_VIDEO_ID_PATTERN = /\/video\/(\d+)/;
 /** How long to wait for TikTok's own script to produce a player before treating the embed as
  * failed (network block, ad blocker, TikTok outage) and falling back to a plain link. */
 const EMBED_TIMEOUT_MS = 8000;
@@ -25,7 +29,8 @@ const EMBED_TIMEOUT_MS = 8000;
  * context, so it keeps the original English copy; the Factory section passes its own. */
 export function TikTokEmbed({ url, dictionary }: { url: string; dictionary?: Dictionary }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [failed, setFailed] = useState(() => !TIKTOK_URL_PATTERN.test(url));
+  const videoId = TIKTOK_URL_PATTERN.test(url) ? TIKTOK_VIDEO_ID_PATTERN.exec(url)?.[1] : undefined;
+  const [failed, setFailed] = useState(() => !videoId);
   const t = {
     watchOnTikTokAriaLabel: dictionary?.aboutCompany.factory.watchOnTikTokAriaLabel ?? "Watch this video on TikTok",
     watchOnTikTokCta: dictionary?.aboutCompany.factory.watchOnTikTokCta ?? "Watch on TikTok →",
@@ -69,7 +74,7 @@ export function TikTokEmbed({ url, dictionary }: { url: string; dictionary?: Dic
       ref={containerRef}
       className="flex h-full w-full items-center justify-center bg-[#0f1f14] [&_.tiktok-embed]:!m-0 [&_.tiktok-embed]:!h-full [&_.tiktok-embed]:!max-w-none [&_.tiktok-embed]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full"
     >
-      <blockquote className="tiktok-embed" cite={url} data-embed-from="oembed">
+      <blockquote className="tiktok-embed" cite={url} data-video-id={videoId} data-embed-from="oembed">
         <section />
       </blockquote>
     </div>
