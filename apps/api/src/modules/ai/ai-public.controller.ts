@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { AiAnalyticsEventType } from '@ppn/shared-types';
 import { AiAnalyticsService } from './ai-analytics.service';
 import { AiChatService } from './ai-chat.service';
@@ -24,11 +24,13 @@ export class AiPublicController {
     private readonly whatsappService: AiWhatsappService,
   ) {}
 
+  @SkipThrottle()
   @Get('settings')
   findSettings() {
     return this.settingsService.findPublic();
   }
 
+  @SkipThrottle()
   @Get('quick-questions')
   findQuickQuestions(@Query('language') language = 'en') {
     return this.quickQuestionsService.findPublic(language);
@@ -42,6 +44,8 @@ export class AiPublicController {
     return this.chatService.chat(dto);
   }
 
+  // Every accepted call writes a row, so it gets its own bound rather than the global one.
+  @Throttle({ default: { limit: 30, ttl: 60 * 1000 } })
   @Post('analytics/event')
   recordEvent(
     @Body('event_type') eventType: string,

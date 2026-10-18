@@ -1,8 +1,10 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { resolveLocale } from '../../common/utils/i18n.util';
 import { ArticleQueryDto } from './dto/article.dto';
 import { ArticlesService } from './articles.service';
 
+@SkipThrottle()
 @Controller('api/v1/articles')
 export class ArticlesController {
   constructor(private readonly articlesService: ArticlesService) {}

@@ -1,7 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { resolveLocale } from '../../common/utils/i18n.util';
 import { GalleryService } from './gallery.service';
 
+@SkipThrottle()
 @Controller('api/v1/gallery')
 export class GalleryController {
   constructor(private readonly galleryService: GalleryService) {}

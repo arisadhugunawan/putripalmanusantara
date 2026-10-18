@@ -1,7 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { resolveLocale } from '../../common/utils/i18n.util';
 import { FooterService } from './footer.service';
 
+@SkipThrottle()
 @Controller('api/v1/footer')
 export class FooterController {
   constructor(private readonly footerService: FooterService) {}

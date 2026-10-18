@@ -1,7 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { resolveLocale } from '../../common/utils/i18n.util';
 import { SettingsService } from './settings.service';
 
+@SkipThrottle()
 @Controller('api/v1/settings')
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}

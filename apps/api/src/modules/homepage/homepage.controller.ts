@@ -1,7 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { resolveLocale } from '../../common/utils/i18n.util';
 import { HomepageService } from './homepage.service';
 
+@SkipThrottle()
 @Controller('api/v1/homepage')
 export class HomepageController {
   constructor(private readonly homepageService: HomepageService) {}

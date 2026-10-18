@@ -38,6 +38,10 @@ import { RevalidationModule } from './revalidation/revalidation.module';
     // `common/events/content-published.event.ts`) without importing anything AI-related;
     // `AiModule`'s own listener is the only thing that knows AI exists and subscribes.
     EventEmitterModule.forRoot(),
+    // Per-IP default for admin and any route without its own @Throttle. Public read-only
+    // content controllers are @SkipThrottle()'d: the website's own server fetches them on
+    // behalf of every visitor from one IP, so counting them here takes the whole site down
+    // under load. Login, forms and AI chat keep their own tighter limits.
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60 * 1000, limit: 100 }],
     }),
