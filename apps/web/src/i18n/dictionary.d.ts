@@ -60,6 +60,8 @@ export interface Dictionary {
     eyebrow: string;
     pageTitle: string;
     pageDescription: string;
+    /** <meta name="description"> for /products — kept separate from the visible pageDescription. */
+    metaDescription: string;
     breadcrumbProducts: string;
     noProductsYet: string;
     viewProduct: string;

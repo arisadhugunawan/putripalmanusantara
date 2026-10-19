@@ -55,6 +55,7 @@ const dictionary: Dictionary = {
     eyebrow: "Produk Kami",
     pageTitle: "Produk Kami",
     pageDescription: "Produk kelapa siap ekspor, disortir dan diperiksa kualitasnya sebelum pengiriman.",
+    metaDescription: "Produk kelapa siap ekspor dari Indonesia: Kelapa Setengah Kelobot, Kopra, Arang Tempurung Kelapa, dan Kayu Kelapa, disortir dan dicek mutunya sebelum dikirim.",
     breadcrumbProducts: "Produk",
     noProductsYet: "Belum ada produk tersedia.",
     viewProduct: "Lihat Produk",
@@ -173,7 +174,7 @@ const dictionary: Dictionary = {
   },
   articles: {
     pageTitle: "Wawasan & Artikel",
-    metaDescription: "Wawasan industri dan berita terbaru dari CV Putri Palma Nusantara.",
+    metaDescription: "Kabar pengiriman, wawasan industri, dan berita ekspor dari CV Putri Palma Nusantara, pemasok kelapa, kopra, dan arang tempurung kelapa dari Indonesia.",
     breadcrumbArticles: "Artikel",
     breadcrumbInsights: "Wawasan",
     featuredBadge: "Unggulan",
@@ -205,7 +206,7 @@ const dictionary: Dictionary = {
     printArticleLabel: "Cetak artikel",
   },
   gallery: {
-    metaDescription: "Foto dan video nyata dari gudang, penyortiran, pemuatan, dan pengiriman PPN.",
+    metaDescription: "Foto dan video nyata dari gudang, penyortiran, pemuatan, dan pengiriman ekspor produk kelapa PPN. Lihat bagaimana setiap pesanan dipersiapkan.",
     heroEyebrow: "Arsip Visual PPN",
     heroFallbackTitle: "Melihat Lebih Dekat PPN",
     heroFallbackDescription:

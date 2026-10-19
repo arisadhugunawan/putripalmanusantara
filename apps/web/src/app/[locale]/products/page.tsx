@@ -9,13 +9,12 @@ import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/products">): Promise<Metadata> {
   const { locale } = await params;
-  // `dictionary.products.pageTitle`/`pageDescription` are the same already-translated strings
-  // the page body below uses for its own H1/intro (line ~35-36) — not a network fetch, just a
-  // per-locale static import, so there is no extra request cost to reusing them here.
+  // `pageTitle` is the same already-translated string the page body uses for its H1; the meta
+  // description has its own, longer dictionary entry so the visible intro can stay short.
   const dictionary = await getDictionary(locale as Locale);
   return buildPageMetadata({
     title: dictionary.products.pageTitle,
-    description: dictionary.products.pageDescription,
+    description: dictionary.products.metaDescription,
     path: "/products",
     locale,
   });

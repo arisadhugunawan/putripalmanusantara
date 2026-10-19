@@ -55,6 +55,7 @@ const dictionary: Dictionary = {
     eyebrow: "हमारे उत्पाद",
     pageTitle: "हमारे उत्पाद",
     pageDescription: "निर्यात के लिए तैयार नारियल उत्पाद, शिपमेंट से पहले छाँटे और गुणवत्ता-जांचे गए।",
+    metaDescription: "इंडोनेशिया से निर्यात के लिए तैयार नारियल उत्पाद: अर्ध-छिलकदार नारियल, कोपरा, नारियल छाल चारकोल और नारियल लकड़ी, शिपमेंट से पहले छाँटे और गुणवत्ता-जाँचे गए।",
     breadcrumbProducts: "उत्पाद",
     noProductsYet: "अभी तक कोई उत्पाद उपलब्ध नहीं है।",
     viewProduct: "उत्पाद देखें",
@@ -173,7 +174,7 @@ const dictionary: Dictionary = {
   },
   articles: {
     pageTitle: "जानकारी और लेख",
-    metaDescription: "CV Putri Palma Nusantara से उद्योग की जानकारी और ताज़ा अपडेट।",
+    metaDescription: "CV Putri Palma Nusantara से शिपमेंट अपडेट, उद्योग की जानकारी और निर्यात समाचार: इंडोनेशिया से नारियल, कोपरा और नारियल छाल चारकोल के आपूर्तिकर्ता।",
     breadcrumbArticles: "लेख",
     breadcrumbInsights: "जानकारी",
     featuredBadge: "विशेष",
@@ -205,7 +206,7 @@ const dictionary: Dictionary = {
     printArticleLabel: "लेख प्रिंट करें",
   },
   gallery: {
-    metaDescription: "PPN के गोदाम, छँटाई, लोडिंग और शिपमेंट की वास्तविक तस्वीरें और वीडियो।",
+    metaDescription: "PPN के गोदाम, छँटाई, लोडिंग और इंडोनेशियाई नारियल उत्पादों के निर्यात शिपमेंट की वास्तविक तस्वीरें और वीडियो। देखें हर ऑर्डर कैसे तैयार किया जाता है।",
     heroEyebrow: "PPN विज़ुअल आर्काइव",
     heroFallbackTitle: "PPN के भीतर एक झलक",
     heroFallbackDescription:

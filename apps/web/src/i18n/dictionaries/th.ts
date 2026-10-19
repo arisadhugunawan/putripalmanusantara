@@ -55,6 +55,7 @@ const dictionary: Dictionary = {
     eyebrow: "ผลิตภัณฑ์ของเรา",
     pageTitle: "ผลิตภัณฑ์ของเรา",
     pageDescription: "ผลิตภัณฑ์มะพร้าวพร้อมส่งออก คัดแยกและตรวจสอบคุณภาพก่อนจัดส่ง",
+    metaDescription: "ผลิตภัณฑ์มะพร้าวพร้อมส่งออกจากอินโดนีเซีย ได้แก่ มะพร้าวพอกกะลา เนื้อมะพร้าวแห้ง (โค้ปรา) ถ่านเปลือกมะพร้าว และไม้มะพร้าว คัดแยกและตรวจคุณภาพก่อนจัดส่ง",
     breadcrumbProducts: "ผลิตภัณฑ์",
     noProductsYet: "ยังไม่มีผลิตภัณฑ์ในขณะนี้",
     viewProduct: "ดูผลิตภัณฑ์",
@@ -173,7 +174,7 @@ const dictionary: Dictionary = {
   },
   articles: {
     pageTitle: "ข้อมูลเชิงลึกและบทความ",
-    metaDescription: "ข้อมูลเชิงลึกในอุตสาหกรรมและความเคลื่อนไหวล่าสุดจาก CV Putri Palma Nusantara",
+    metaDescription: "ข่าวการจัดส่ง ข้อมูลเชิงลึกในอุตสาหกรรม และข่าวการส่งออกจาก CV Putri Palma Nusantara ผู้จัดหามะพร้าว เนื้อมะพร้าวแห้ง และถ่านเปลือกมะพร้าวจากอินโดนีเซีย",
     breadcrumbArticles: "บทความ",
     breadcrumbInsights: "ข้อมูลเชิงลึก",
     featuredBadge: "แนะนำ",
@@ -205,7 +206,7 @@ const dictionary: Dictionary = {
     printArticleLabel: "พิมพ์บทความ",
   },
   gallery: {
-    metaDescription: "ภาพถ่ายและวิดีโอจริงจากคลังสินค้า การคัดแยก การขนถ่าย และการจัดส่งของ PPN",
+    metaDescription: "ภาพถ่ายและวิดีโอจริงจากคลังสินค้า การคัดแยก การบรรทุก และการส่งออกผลิตภัณฑ์มะพร้าวอินโดนีเซียของ PPN ดูว่าเราเตรียมทุกคำสั่งซื้ออย่างไร",
     heroEyebrow: "คลังภาพของ PPN",
     heroFallbackTitle: "มองเข้าไปใน PPN",
     heroFallbackDescription:

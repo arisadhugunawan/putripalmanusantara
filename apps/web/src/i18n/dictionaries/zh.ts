@@ -55,6 +55,7 @@ const dictionary: Dictionary = {
     eyebrow: "我们的产品",
     pageTitle: "我们的产品",
     pageDescription: "出口标准椰子产品，出货前经过分级与质量检测。",
+    metaDescription: "来自印度尼西亚的出口级椰子产品：半去壳椰子、干椰子肉、椰子壳炭和椰子木，出货前均经过分级与质量检测。",
     breadcrumbProducts: "产品",
     noProductsYet: "暂无可用产品。",
     viewProduct: "查看产品",
@@ -167,7 +168,7 @@ const dictionary: Dictionary = {
   },
   articles: {
     pageTitle: "洞察与文章",
-    metaDescription: "来自 CV Putri Palma Nusantara 的行业洞察与最新动态。",
+    metaDescription: "来自 CV Putri Palma Nusantara 的出货动态、行业洞察与出口资讯。我们是印度尼西亚的椰子、干椰子肉和椰子壳炭供应商。",
     breadcrumbArticles: "文章",
     breadcrumbInsights: "洞察",
     featuredBadge: "精选",
@@ -199,7 +200,7 @@ const dictionary: Dictionary = {
     printArticleLabel: "打印文章",
   },
   gallery: {
-    metaDescription: "来自 PPN 仓库、分拣、装货和运输现场的真实照片与视频。",
+    metaDescription: "PPN 仓库、分拣、装货以及印度尼西亚椰子产品出口运输的真实照片与视频，了解每一笔订单是如何准备的。",
     heroEyebrow: "PPN 视觉档案",
     heroFallbackTitle: "走进 PPN",
     heroFallbackDescription: "来自我们仓库、分拣线、装货场和运输现场的真实照片与视频——真实呈现 PPN 如何准备每一次出口订单。",

@@ -53,6 +53,7 @@ const dictionary: Dictionary = {
     eyebrow: "Our Products",
     pageTitle: "Our Products",
     pageDescription: "Export-ready coconut products, sorted and quality-checked before shipment.",
+    metaDescription: "Export-ready coconut products from Indonesia: Semi Husked Coconut, Copra, Coconut Shell Charcoal and Coconut Timber, sorted and quality-checked before shipment.",
     breadcrumbProducts: "Products",
     noProductsYet: "No products available yet.",
     viewProduct: "View Product",
@@ -170,7 +171,7 @@ const dictionary: Dictionary = {
   },
   articles: {
     pageTitle: "Insight & Articles",
-    metaDescription: "Industry insight and updates from CV Putri Palma Nusantara.",
+    metaDescription: "Shipment updates, industry insight and export news from CV Putri Palma Nusantara, an Indonesian supplier of coconut, copra and coconut shell charcoal.",
     breadcrumbArticles: "Articles",
     breadcrumbInsights: "Insights",
     featuredBadge: "Featured",
@@ -202,7 +203,7 @@ const dictionary: Dictionary = {
     printArticleLabel: "Print article",
   },
   gallery: {
-    metaDescription: "Real photos and videos from PPN's warehouse, sorting, loading, and shipments.",
+    metaDescription: "Real photos and videos from PPN's warehouse, sorting, loading and export shipments of Indonesian coconut products. See how every order is prepared.",
     heroEyebrow: "PPN Visual Archive",
     heroFallbackTitle: "A Look Inside PPN",
     heroFallbackDescription:

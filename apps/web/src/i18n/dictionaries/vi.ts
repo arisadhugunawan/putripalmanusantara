@@ -55,6 +55,7 @@ const dictionary: Dictionary = {
     eyebrow: "Sản phẩm của chúng tôi",
     pageTitle: "Sản phẩm của chúng tôi",
     pageDescription: "Sản phẩm dừa sẵn sàng xuất khẩu, được phân loại và kiểm tra chất lượng trước khi giao hàng.",
+    metaDescription: "Sản phẩm dừa sẵn sàng xuất khẩu từ Indonesia: dừa lột vỏ một phần, cùi dừa khô, than gáo dừa và gỗ dừa, được phân loại và kiểm tra chất lượng trước khi giao.",
     breadcrumbProducts: "Sản phẩm",
     noProductsYet: "Hiện chưa có sản phẩm nào.",
     viewProduct: "Xem sản phẩm",
@@ -173,7 +174,7 @@ const dictionary: Dictionary = {
   },
   articles: {
     pageTitle: "Thông Tin & Bài Viết",
-    metaDescription: "Thông tin ngành và cập nhật mới nhất từ CV Putri Palma Nusantara.",
+    metaDescription: "Cập nhật lô hàng, thông tin ngành và tin xuất khẩu từ CV Putri Palma Nusantara, nhà cung cấp dừa, cùi dừa khô và than gáo dừa từ Indonesia.",
     breadcrumbArticles: "Bài viết",
     breadcrumbInsights: "Thông tin",
     featuredBadge: "Nổi bật",
@@ -205,7 +206,7 @@ const dictionary: Dictionary = {
     printArticleLabel: "In bài viết",
   },
   gallery: {
-    metaDescription: "Hình ảnh và video thực tế từ kho hàng, phân loại, xếp hàng và vận chuyển của PPN.",
+    metaDescription: "Hình ảnh và video thực tế từ kho hàng, khâu phân loại, xếp hàng và các lô xuất khẩu sản phẩm dừa Indonesia của PPN. Xem cách mỗi đơn hàng được chuẩn bị.",
     heroEyebrow: "Kho Lưu Trữ Hình Ảnh PPN",
     heroFallbackTitle: "Khám Phá Bên Trong PPN",
     heroFallbackDescription:
